@@ -2,9 +2,10 @@
 
 NanoC-NN 是一个轻量级、跨平台的神经网络推理框架定制开发项目，目标是在嵌入式或资源受限环境中摆脱特定厂商工具链绑定，以标准 C99 代码完成神经网络前向推理部署。
 
-项目采用“双组件工具链”思路，将模型解析与底层计算解耦：
+项目采用“工具链 + 样例 + 算子库”的拆分方式，将模型解析、样例生成和底层计算解耦：
 
 - `NanoC-NN-ONNX-Converter`：ONNX 模型解析与转换工具，负责读取模型结构、导出层级清单，并将权重转换为 C 语言头文件。
+- `NanoC-NN-ONNX-Examples`：ONNX 测试模型样例集合，负责生成可供 converter 验证和教学使用的小模型。
 - `NanoC-NN-C-Operators`：纯 C 神经网络算子库，负责实现 `conv2d`、`relu`、`linear/gemm`、`max_pool`、`softmax` 等基础算子。
 
 整体流程为：先使用 ONNX 转换工具生成模型结构说明和权重头文件，再人工编写 `model.c` 调用 C 算子库拼接网络，最后在 PC 端与 Python/ONNX Runtime 结果进行精度对齐验证。
@@ -23,6 +24,7 @@ NanoC-NN/
 ├── Doc/
 │   └── 项目章程.md
 ├── NanoC-NN-ONNX-Converter/
+├── NanoC-NN-ONNX-Examples/
 └── NanoC-NN-C-Operators/
 ```
 

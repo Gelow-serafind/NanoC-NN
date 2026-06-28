@@ -44,7 +44,7 @@ example-1-is-over-10/
 在仓库根目录执行：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/scripts/train_and_export.py
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/train_and_export.py
 ```
 
 脚本会完成：
@@ -59,19 +59,19 @@ conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/ex
 默认读取 `data/inference/input_values.csv` 中的所有数值：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/scripts/run_checkpoint.py
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_checkpoint.py
 ```
 
 传入单个目标参数时使用 `--value`：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/scripts/run_checkpoint.py --value 11
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_checkpoint.py --value 11
 ```
 
 使用自定义 CSV 文件时使用 `--input-csv`。CSV 必须包含名为 `value` 的列：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/scripts/run_checkpoint.py --input-csv NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/data/inference/input_values.csv
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_checkpoint.py --input-csv NanoC-NN-ONNX-Examples/example-1-is-over-10/data/inference/input_values.csv
 ```
 
 ## 使用 ONNX 推理
@@ -79,19 +79,19 @@ conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/ex
 默认读取 `data/inference/input_values.csv` 中的所有数值：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/scripts/run_onnx.py
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_onnx.py
 ```
 
 传入单个目标参数时使用 `--value`：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/scripts/run_onnx.py --value 11
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_onnx.py --value 11
 ```
 
 使用自定义 CSV 文件时使用 `--input-csv`：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/scripts/run_onnx.py --input-csv NanoC-NN-ONNX-Converter/onnx-examples/example-1-is-over-10/data/inference/input_values.csv
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_onnx.py --input-csv NanoC-NN-ONNX-Examples/example-1-is-over-10/data/inference/input_values.csv
 ```
 
 ## 模型结构

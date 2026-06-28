@@ -14,22 +14,26 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
 
-如需运行教学样例或自行用 PyTorch 生成 ONNX 模型，可额外安装：
+## 目录结构
 
-```bash
-python -m pip install -e ".[examples]"
+```text
+NanoC-NN-ONNX-Converter/
+├── Doc/
+│   └── plan.md
+├── nanoc_onnx_converter/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── c_writer.py
+│   ├── cli.py
+│   ├── exporter.py
+│   ├── model.py
+│   ├── naming.py
+│   ├── parser.py
+│   └── shape.py
+├── tests/
+├── pyproject.toml
+└── README.md
 ```
-
-本阶段也可以直接使用已固化的 conda 环境：
-
-```bash
-conda activate nanoc-onnx-examples
-python -m pip install -e ".[dev]"
-```
-
-## 转换器目录
-
-转换器代码位于 `nanoc_onnx_converter/`，目录设计见 `nanoc_onnx_converter/README.md`。
 
 ## 使用方式
 
@@ -37,15 +41,6 @@ python -m pip install -e ".[dev]"
 
 ```bash
 python -m nanoc_onnx_converter \
-  --model path/to/model.onnx \
-  --out build/export \
-  --prefix nanoc
-```
-
-也可以使用更直接的脚本入口：
-
-```bash
-python scripts/convert_onnx.py \
   --model path/to/model.onnx \
   --out build/export \
   --prefix nanoc

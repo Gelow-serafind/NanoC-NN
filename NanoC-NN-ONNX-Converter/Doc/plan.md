@@ -233,8 +233,13 @@ NanoC-NN-ONNX-Converter/
 │   ├── naming.py
 │   └── c_writer.py
 ├── tests/
-├── examples/
+├── pyproject.toml
 └── README.md
+
+NanoC-NN-ONNX-Examples/
+├── environment.yml
+├── example-1-is-over-10/
+└── example-2-detect-signal-jump/
 ```
 
 ## 5. 里程碑清单
@@ -249,7 +254,7 @@ NanoC-NN-ONNX-Converter/
 
 验收标准：
 
-- `examples/` 中存在可复现导出脚本和生成的样例 ONNX 模型。
+- `NanoC-NN-ONNX-Examples/` 中存在可复现导出脚本和生成的样例 ONNX 模型。
 - 样例模型可被 `onnx.checker.check_model()` 正常校验。
 - 样例模型的输入、输出 shape 明确，不依赖动态非 batch 维度。
 

@@ -1,4 +1,4 @@
-# ONNX 样例生成目录
+# NanoC-NN-ONNX-Examples
 
 本目录用于存放生成 ONNX 测试模型的独立样例。每个样例都应能独立生成数据、训练模型，并导出一个可供 `NanoC-NN-ONNX-Converter` 解析的 ONNX 文件。
 
@@ -9,7 +9,7 @@
 环境文件：
 
 ```text
-onnx-examples/environment.yml
+NanoC-NN-ONNX-Examples/environment.yml
 ```
 
 固定版本如下：
@@ -23,13 +23,13 @@ onnx-examples/environment.yml
 首次使用时创建环境：
 
 ```bash
-conda env create -f NanoC-NN-ONNX-Converter/onnx-examples/environment.yml
+conda env create -f NanoC-NN-ONNX-Examples/environment.yml
 ```
 
 如果环境已存在，可更新环境：
 
 ```bash
-conda env update -f NanoC-NN-ONNX-Converter/onnx-examples/environment.yml --prune
+conda env update -f NanoC-NN-ONNX-Examples/environment.yml --prune
 ```
 
 运行样例时统一使用：

@@ -69,7 +69,7 @@ example-2-detect-signal-jump/
 在仓库根目录执行：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/scripts/train_and_export.py
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/train_and_export.py
 ```
 
 脚本会完成：
@@ -85,19 +85,19 @@ conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/ex
 默认读取 `data/inference/input_windows.csv` 中的所有窗口：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/scripts/run_checkpoint.py
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_checkpoint.py
 ```
 
 传入单个目标窗口时使用 `--window`，窗口必须包含 10 个用逗号分隔的数：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/scripts/run_checkpoint.py --window 5,5,5,5,5,11,11,11,11,11
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_checkpoint.py --window 5,5,5,5,5,11,11,11,11,11
 ```
 
 使用自定义 CSV 文件时使用 `--input-csv`。CSV 必须包含 `x0` 到 `x9` 共 10 列：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/scripts/run_checkpoint.py --input-csv NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/data/inference/input_windows.csv
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_checkpoint.py --input-csv NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/data/inference/input_windows.csv
 ```
 
 ## 使用 ONNX 推理
@@ -105,19 +105,19 @@ conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/ex
 默认读取 `data/inference/input_windows.csv` 中的所有窗口：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/scripts/run_onnx.py
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_onnx.py
 ```
 
 传入单个目标窗口时使用 `--window`：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/scripts/run_onnx.py --window 9,9,9,1,1,1,1,1,1,1
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_onnx.py --window 9,9,9,1,1,1,1,1,1,1
 ```
 
 使用自定义 CSV 文件时使用 `--input-csv`：
 
 ```bash
-conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/scripts/run_onnx.py --input-csv NanoC-NN-ONNX-Converter/onnx-examples/example-2-detect-signal-jump/data/inference/input_windows.csv
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_onnx.py --input-csv NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/data/inference/input_windows.csv
 ```
 
 ## 模型结构
