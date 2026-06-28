@@ -54,7 +54,8 @@ example-x-xxxx
 例如：
 
 - `example-1-is-over-10`：判断输入数值是否大于 10。
-- `example-2-mnist-small-cnn`：简化 MNIST CNN 分类模型。
+- `example-2-detect-signal-jump`：判断 10 点时域窗口是否存在向上或向下突变。
+- `example-3-mnist-small-cnn`：简化 MNIST CNN 分类模型。
 
 ## 推荐目录结构
 
