@@ -8,7 +8,6 @@ from torch import nn
 
 from network import SignalJumpNet
 
-
 SEED = 20260629
 WINDOW_SIZE = 10
 JUMP_THRESHOLD = 5.0
@@ -143,4 +142,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

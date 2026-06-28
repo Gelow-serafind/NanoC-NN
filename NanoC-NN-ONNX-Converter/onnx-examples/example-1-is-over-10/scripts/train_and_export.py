@@ -8,7 +8,6 @@ from torch import nn
 
 from network import IsOver10Net
 
-
 SEED = 20260629
 EPOCHS = 800
 LEARNING_RATE = 0.03
