@@ -4,9 +4,10 @@
 
 ## 项目定位
 
-NanoC-NN 是一个轻量级、跨平台的神经网络推理工具链项目，当前包含两个子项目：
+NanoC-NN 是一个轻量级、跨平台的神经网络推理工具链项目，当前包含三个子项目：
 
 - `NanoC-NN-ONNX-Converter`：Python 编写的 ONNX 解析与转换工具。
+- `NanoC-NN-ONNX-Examples`：ONNX 教学与验证样例集合。
 - `NanoC-NN-C-Operators`：标准 C99 编写的神经网络基础算子库。
 
 ## 通用原则
@@ -43,6 +44,13 @@ NanoC-NN 是一个轻量级、跨平台的神经网络推理工具链项目，�
 - 初期仅支持 `float32` 权重、固定输入尺寸 CNN、默认 `NCHW` 布局。
 - C 符号生成必须经过命名清洗和唯一性检查。
 - 动态 batch 可以按配置固定为 1，非 batch 动态维度不得静默传递到 C 端。
+
+适用于 `NanoC-NN-ONNX-Examples/`：
+
+- 样例代码可以依赖 PyTorch 和 ONNX Runtime，但不得成为 converter 运行时依赖。
+- 每个样例的网络定义必须单独放在 `scripts/network.py`。
+- 样例生成物写入 `outputs/`，不纳入版本管理。
+- 样例 README 需要说明训练、checkpoint 推理、ONNX 推理和参数传入方式。
 
 ## C 子项目规则
 

@@ -1,0 +1,12 @@
+name: nanoc-onnx-examples
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11.15
+  - pip
+  - pip:
+      - numpy==1.26.4
+      - torch==2.2.2
+      - onnx==1.16.2
+      - onnxruntime==1.18.1
+

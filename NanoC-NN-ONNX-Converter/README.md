@@ -14,11 +14,63 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
 
-如需生成样例 ONNX 模型，可额外安装：
+## 目录结构
+
+```text
+NanoC-NN-ONNX-Converter/
+├── Doc/
+│   └── plan.md
+├── nanoc_onnx_converter/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── c_writer.py
+│   ├── cli.py
+│   ├── exporter.py
+│   ├── model.py
+│   ├── naming.py
+│   ├── parser.py
+│   └── shape.py
+├── tests/
+├── pyproject.toml
+└── README.md
+```
+
+## 使用方式
+
+在 `NanoC-NN-ONNX-Converter` 目录下执行：
 
 ```bash
-python -m pip install -e ".[examples]"
+python -m nanoc_onnx_converter \
+  --model path/to/model.onnx \
+  --out build/export \
+  --prefix nanoc
 ```
+
+输出文件：
+
+- `README.md`：输出目录说明和推荐阅读顺序。
+- `conversion_report.txt`：纯文本转换报告。
+- `model_summary.md`：人工走读用的模型结构摘要。
+- `model_graph.json`：后续工具复用的机器可读图结构。
+- `weights.h`：float32 权重导出的 C99 头文件。
+
+当前结构解析支持的 ONNX 算子：
+
+- `Conv`
+- `Relu`
+- `Gemm` / `MatMul`
+- `MaxPool`
+- `Softmax`
+- `Flatten`
+- `Reshape`
+- `Add`
+- `Constant`
+- `Transpose`
+- `Cast`
+- `BatchNormalization`
+- `GlobalAveragePool`
+
+`weights.h` 只导出 float32 参数权重；`Reshape` shape、axis 等辅助 initializer 会保留在结构报告中，但不会作为 C 权重数组导出。
 
 ## 计划文档
 
