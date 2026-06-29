@@ -54,6 +54,24 @@ python -m nanoc_onnx_converter \
 - `model_graph.json`：后续工具复用的机器可读图结构。
 - `weights.h`：float32 权重导出的 C99 头文件。
 
+当前结构解析支持的 ONNX 算子：
+
+- `Conv`
+- `Relu`
+- `Gemm` / `MatMul`
+- `MaxPool`
+- `Softmax`
+- `Flatten`
+- `Reshape`
+- `Add`
+- `Constant`
+- `Transpose`
+- `Cast`
+- `BatchNormalization`
+- `GlobalAveragePool`
+
+`weights.h` 只导出 float32 参数权重；`Reshape` shape、axis 等辅助 initializer 会保留在结构报告中，但不会作为 C 权重数组导出。
+
 ## 计划文档
 
 技术路线和里程碑见 `Doc/plan.md`。

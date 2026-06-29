@@ -48,11 +48,16 @@ class InitializerInfo:
     shape: list[int]
     element_count: int
     c_name: str
+    role: str
     array: Any = field(repr=False)
 
     @property
     def is_float32(self) -> bool:
         return self.elem_type == "FLOAT"
+
+    @property
+    def is_c_exportable(self) -> bool:
+        return self.role == "parameter" and self.is_float32
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -61,7 +66,9 @@ class InitializerInfo:
             "shape": self.shape,
             "element_count": self.element_count,
             "c_name": self.c_name,
+            "role": self.role,
             "is_float32": self.is_float32,
+            "is_c_exportable": self.is_c_exportable,
         }
 
 
@@ -111,6 +118,10 @@ class ModelInfo:
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
+    @property
+    def c_exportable_initializers(self) -> list[InitializerInfo]:
+        return [item for item in self.initializers if item.is_c_exportable]
+
     def to_json(self) -> dict[str, Any]:
         return {
             "model_path": str(self.model_path),
@@ -129,9 +140,11 @@ class ModelInfo:
             "unsupported_ops": sorted(
                 {node.op_type for node in self.nodes if node.status == "unsupported"}
             ),
+            "c_exportable_initializers": [
+                item.name for item in self.c_exportable_initializers
+            ],
         }
 
 
 class ConversionError(RuntimeError):
     """Raised when strict conversion cannot continue."""
-

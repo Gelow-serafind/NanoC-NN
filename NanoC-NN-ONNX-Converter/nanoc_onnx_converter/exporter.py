@@ -98,17 +98,18 @@ def _tensor_section(title: str, tensors: list[Any]) -> list[str]:
 
 def _initializer_section(model_info: ModelInfo) -> list[str]:
     lines = [
-        "## 权重 Initializer",
+        "## Initializer 与权重",
         "",
-        "| ONNX 名称 | C 名称 | 数据类型 | shape | 元素数量 |",
-        "| --- | --- | --- | --- | --- |",
+        "| ONNX 名称 | C 名称 | 角色 | C 导出 | 数据类型 | shape | 元素数量 |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     if not model_info.initializers:
-        lines.append("| 无 | - | - | - | - |")
+        lines.append("| 无 | - | - | - | - | - | - |")
     for item in model_info.initializers:
         lines.append(
             "| "
-            f"`{_escape(item.name)}` | `{item.c_name}` | `{item.elem_type}` | "
+            f"`{_escape(item.name)}` | `{item.c_name}` | `{item.role}` | "
+            f"`{str(item.is_c_exportable).lower()}` | `{item.elem_type}` | "
             f"`{shape_to_text(item.shape)}` | `{item.element_count}` |"
         )
     lines.append("")
@@ -166,12 +167,14 @@ def _shape_map_text(names: list[str], shape_map: dict[str, list[Any]]) -> str:
 
 def _output_readme_markdown(model_info: ModelInfo) -> str:
     warning_count = len(model_info.warnings)
+    exported_weight_count = len(model_info.c_exportable_initializers)
     lines = [
         "# NanoC-NN 转换输出",
         "",
         f"- 输入模型：`{model_info.model_path}`",
         f"- 节点数量：`{len(model_info.nodes)}`",
-        f"- 权重数量：`{len(model_info.initializers)}`",
+        f"- Initializer 数量：`{len(model_info.initializers)}`",
+        f"- C 权重数量：`{exported_weight_count}`",
         f"- 警告数量：`{warning_count}`",
         "",
         "## 建议阅读顺序",
@@ -187,11 +190,11 @@ def _output_readme_markdown(model_info: ModelInfo) -> str:
         "- `conversion_report.txt`：纯文本报告，适合快速查看或贴到日志里。",
         "- `model_summary.md`：面向人工走读的网络结构文档。",
         "- `model_graph.json`：包含输入、输出、节点、属性、shape、权重映射和警告信息。",
-        "- `weights.h`：由 ONNX initializer 导出的 C99 权重头文件。",
+        "- `weights.h`：由 ONNX float32 参数 initializer 导出的 C99 权重头文件。",
         "",
         "## 当前边界",
         "",
-        "- 初期只导出 float32 权重。",
+        "- 初期只导出 float32 参数权重，shape 常量等辅助 initializer 不写入 C 权重数组。",
         "- `--layout` 仅作为标注，不做自动 transpose。",
         "- 不自动生成完整 `model.c`。",
         "- 遇到未知算子会在报告中标注，`--strict` 模式下会直接失败。",
@@ -216,6 +219,7 @@ def _report_text(model_info: ModelInfo) -> str:
         f"outputs: {len(model_info.outputs)}",
         f"nodes: {len(model_info.nodes)}",
         f"initializers: {len(model_info.initializers)}",
+        f"c_exportable_initializers: {len(model_info.c_exportable_initializers)}",
         f"unsupported_ops: {', '.join(unsupported_ops) if unsupported_ops else 'none'}",
         "",
         "Output files:",
@@ -233,6 +237,7 @@ def _report_text(model_info: ModelInfo) -> str:
     for initializer in model_info.initializers:
         lines.append(
             f"- {initializer.name} -> {initializer.c_name}, "
+            f"role={initializer.role}, c_export={initializer.is_c_exportable}, "
             f"dtype={initializer.elem_type}, shape={shape_to_text(initializer.shape)}, "
             f"size={initializer.element_count}"
         )

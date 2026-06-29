@@ -116,6 +116,17 @@ ONNX 属性使用 `AttributeProto` 表示，类型可能是 INT、FLOAT、STRING
 - `Flatten`
 - `Reshape`
 
+后续扩展阶段优先补齐真实模型中高频出现、且对结构导出价值较高的算子：
+
+- `Add`：常见于 bias、残差连接和导出器拆分后的逐元素加法。
+- `Constant`：常用于 shape、轴、reshape 参数等小型常量张量。
+- `Transpose`：常用于布局变换或导出器中间适配。
+- `Cast`：常用于索引、shape 或数据类型桥接。
+- `BatchNormalization`：CNN 模型中常见的归一化层。
+- `GlobalAveragePool`：分类模型尾部常见的全局池化层。
+
+这些算子的第一阶段目标仍是“结构和参数可读”，不是自动生成完整 C 推理代码。转换器需要把算子状态标为 supported，提取关键属性、输入输出 shape、相关权重/常量，并在报告中保留人工实现 C 端所需的信息。
+
 ### 3.4 Shape 推断
 
 优先使用 ONNX 自带的 `onnx.shape_inference.infer_shapes()` 补全张量维度信息。
@@ -365,6 +376,67 @@ NanoC-NN-ONNX-Examples/
 - 基础测试可通过。
 - 新用户可以根据 README 完成一次样例模型转换。
 - README 明确说明初期支持边界，避免误用到量化模型或动态 shape 模型。
+
+### M8：真实模型高频算子扩展
+
+目标：
+
+- 支持 `Add`、`Constant`、`Transpose`、`Cast`、`BatchNormalization`、`GlobalAveragePool` 的结构解析。
+- 为每个新增算子提供稳定的属性归一化结果。
+- 区分参数 initializer 和辅助常量 initializer，例如 `Reshape` 的 INT64 shape 常量不应作为 C 权重导出。
+- 保持未知算子仍能在非严格模式下继续导出结构报告。
+
+验收标准：
+
+- 新增算子不会出现在 unsupported ops 清单中。
+- `model_graph.json` 能保存新增算子的关键属性。
+- `weights.h` 只导出 float32 参数权重，不导出 shape、axis 等辅助常量。
+- 单元测试覆盖新增算子默认属性和 initializer 分类。
+
+### M9：开源 ONNX 模型库准备
+
+目标：
+
+- 在仓库根目录创建 `onnx-model/` 临时测试目录。
+- 从网络上的经典开源 ONNX 模型来源下载至少 10 个 ONNX 文件。
+- 优先选择覆盖 CNN、轻量分类网络、池化、BN、Add、Transpose、Cast、Constant 等常见模式的模型。
+- 记录模型来源、文件名、大小和下载结果，便于后续复测。
+
+验收标准：
+
+- `onnx-model/` 下至少存在 10 个可被 `onnx.load()` 读取的 ONNX 文件。
+- 每个模型来源可追溯。
+- 下载失败的模型必须在报告中记录，不计入覆盖数量。
+
+### M10：模型库轮询转换测试
+
+目标：
+
+- 对 `onnx-model/` 中的模型逐个执行 converter。
+- 每个模型输出独立转换结果目录，避免互相覆盖。
+- 收集节点数、initializer 数、C 权重数、unsupported ops、警告数量、转换是否成功等数据。
+- 对生成的 `model_graph.json` 做 JSON 可读性检查。
+- 对生成的 `weights.h` 做 C99 include 级别语法检查。
+
+验收标准：
+
+- 生成统一测试报告，能够横向比较每个模型的转换情况。
+- 转换失败、shape 推断失败、非 float32 参数、未知算子等风险能被明确定位。
+- 测试轮询结束后先停止，不在同一轮中继续修复，以便人工评估下一步优先级。
+
+### M11：基于测试报告收敛支持边界
+
+目标：
+
+- 根据 M10 报告统计真实模型中仍未覆盖的算子和数据类型。
+- 按出现频率、实现成本和 C 端价值拆分后续任务。
+- 明确哪些问题属于 converter 应解决，哪些属于 C operators 或模型前处理阶段解决。
+
+验收标准：
+
+- 输出后续优先级清单。
+- plan 和 README 中同步当前支持边界。
+- 不把测试中的偶发现象直接扩展成无边界兼容承诺。
 
 ## 6. 初期边界
 

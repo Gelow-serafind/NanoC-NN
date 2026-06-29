@@ -17,9 +17,35 @@ from .model import (
 from .naming import make_unique_c_names
 from .shape import tensor_dtype_name, tensor_info_from_value_info
 
-SUPPORTED_OPS = {"Conv", "Relu", "Gemm", "MatMul", "MaxPool", "Softmax", "Flatten", "Reshape"}
+SUPPORTED_OPS = {
+    "Add",
+    "BatchNormalization",
+    "Cast",
+    "Constant",
+    "Conv",
+    "Flatten",
+    "Gemm",
+    "GlobalAveragePool",
+    "MatMul",
+    "MaxPool",
+    "Relu",
+    "Reshape",
+    "Softmax",
+    "Transpose",
+}
 SUPPORTED_OPSET_MIN = 11
 SUPPORTED_OPSET_MAX = 17
+
+PARAMETER_INITIALIZER_INPUTS = {
+    "Add": {1},
+    "BatchNormalization": {1, 2, 3, 4},
+    "Conv": {1, 2},
+    "Gemm": {1, 2},
+    "MatMul": {1},
+}
+AUXILIARY_INITIALIZER_INPUTS = {
+    "Reshape": {1},
+}
 
 
 def parse_model(options: ConversionOptions) -> ModelInfo:
@@ -58,7 +84,14 @@ def parse_model(options: ConversionOptions) -> ModelInfo:
     initializer_names = [initializer.name for initializer in graph.initializer]
     c_names = make_unique_c_names(initializer_names, prefix=options.prefix)
     initializer_name_set = set(initializer_names)
-    initializers = _parse_initializers(graph, c_names, warnings, options.strict)
+    initializer_roles = _classify_initializer_roles(graph, initializer_name_set)
+    initializers = _parse_initializers(
+        graph,
+        c_names,
+        initializer_roles,
+        warnings,
+        options.strict,
+    )
 
     value_info_by_name = _collect_value_info(graph, options, warnings)
     inputs = [
@@ -108,6 +141,7 @@ def _opset_imports(model: onnx.ModelProto) -> dict[str, int]:
 def _parse_initializers(
     graph: GraphProto,
     c_names: dict[str, str],
+    roles: dict[str, str],
     warnings: list[str],
     strict: bool,
 ) -> list[InitializerInfo]:
@@ -115,7 +149,8 @@ def _parse_initializers(
     for initializer in graph.initializer:
         array = numpy_helper.to_array(initializer)
         elem_type = tensor_dtype_name(initializer.data_type)
-        if elem_type != "FLOAT":
+        role = roles.get(initializer.name, "parameter")
+        if elem_type != "FLOAT" and role == "parameter":
             message = (
                 f"initializer '{initializer.name}' has unsupported data type {elem_type}; "
                 "only float32 weights are exported."
@@ -130,10 +165,41 @@ def _parse_initializers(
                 shape=[int(item) for item in array.shape],
                 element_count=int(array.size),
                 c_name=c_names[initializer.name],
+                role=role,
                 array=array,
             )
         )
     return result
+
+
+def _classify_initializer_roles(
+    graph: GraphProto,
+    initializer_names: set[str],
+) -> dict[str, str]:
+    roles = {name: "unused_constant" for name in initializer_names}
+    for node in graph.node:
+        for input_index, input_name in enumerate(node.input):
+            if input_name not in initializer_names:
+                continue
+            if input_index in PARAMETER_INITIALIZER_INPUTS.get(node.op_type, set()):
+                roles[input_name] = "parameter"
+            elif input_index in AUXILIARY_INITIALIZER_INPUTS.get(node.op_type, set()):
+                roles[input_name] = _merge_initializer_role(
+                    roles[input_name],
+                    "auxiliary_constant",
+                )
+            else:
+                roles[input_name] = _merge_initializer_role(roles[input_name], "parameter")
+    return roles
+
+
+def _merge_initializer_role(current: str, new: str) -> str:
+    priority = {
+        "unused_constant": 0,
+        "auxiliary_constant": 1,
+        "parameter": 2,
+    }
+    return new if priority[new] > priority[current] else current
 
 
 def _collect_value_info(
@@ -168,7 +234,11 @@ def _parse_nodes(
     nodes: list[NodeInfo] = []
     for index, node in enumerate(graph.node):
         attributes = extract_attributes(node.attribute)
-        weights = [name for name in node.input if name in initializer_name_set]
+        weights = [
+            name
+            for name in node.input
+            if name in initializer_name_set and initializer_by_name[name].role == "parameter"
+        ]
         normalized = normalize_attributes(
             op_type=node.op_type,
             attributes=attributes,
@@ -226,10 +296,15 @@ def _plain_attribute_value(value: Any) -> Any:
     if isinstance(value, bytes):
         return value.decode("utf-8", errors="replace")
     if isinstance(value, TensorProto):
+        array = numpy_helper.to_array(value)
+        values = _plain_attribute_value(array.tolist())
         return {
             "name": value.name,
             "data_type": tensor_dtype_name(value.data_type),
             "dims": [int(item) for item in value.dims],
+            "element_count": int(array.size),
+            "values": values if int(array.size) <= 64 else None,
+            "preview": values[:16] if isinstance(values, list) and int(array.size) > 64 else None,
         }
     if isinstance(value, GraphProto):
         return {"name": value.name, "node_count": len(value.node)}
@@ -277,6 +352,39 @@ def normalize_attributes(
         }
     if op_type == "Flatten":
         return {"axis": int(attributes.get("axis", 1))}
+    if op_type == "Add":
+        return {
+            "broadcast": "numpy",
+        }
+    if op_type == "Constant":
+        return attributes
+    if op_type == "Transpose":
+        perm = _as_int_list(attributes.get("perm"))
+        return {
+            "perm": perm,
+            "uses_default_reverse_perm": not perm,
+        }
+    if op_type == "Cast":
+        to_type = int(attributes.get("to", 0))
+        return {
+            "to": to_type,
+            "to_dtype": tensor_dtype_name(to_type),
+            "saturate": int(attributes.get("saturate", 1)),
+        }
+    if op_type == "BatchNormalization":
+        return {
+            "epsilon": float(attributes.get("epsilon", 1e-5)),
+            "momentum": float(attributes.get("momentum", 0.9)),
+            "training_mode": int(attributes.get("training_mode", 0)),
+        }
+    if op_type == "GlobalAveragePool":
+        return {
+            "spatial_axes": "all_axes_after_batch_and_channel",
+        }
+    if op_type == "Reshape":
+        return {
+            "allowzero": int(attributes.get("allowzero", 0)),
+        }
     return attributes
 
 
