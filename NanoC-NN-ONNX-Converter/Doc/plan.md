@@ -6,6 +6,8 @@ NanoC-NN-ONNX-Converter 是 CMSIS-NN ONNX 端侧代码生成器中的前端解�
 
 项目总体方向已经从“人工拼接 C 网络结构”调整为“生成基于 CMSIS-NN 的 C 推理工程”。因此本子项目不直接生成 CMSIS-NN 调用代码，而是输出清晰、可靠、可校验的 `model_graph.json`、模型结构说明、权重资料和量化信息，作为 `NanoC-NN-CMSIS-Codegen` 的输入契约。
 
+架构约束：codegen 的唯一上游必须是 converter 标准输出目录。后续若 CMSIS-NN codegen 需要更多模型信息，应由 converter 增强 schema 和附属产物，而不是让 codegen 直接解析原始 ONNX。
+
 ## 2. 总体技术路线
 
 整体采用 Python 实现，基于 ONNX 官方 Python API 读取模型文件，完成图结构解析、参数提取、权重导出、量化信息提取和结果文件生成。
@@ -47,7 +49,7 @@ NanoC-NN-ONNX-Converter 是 CMSIS-NN ONNX 端侧代码生成器中的前端解�
 - 数据类型：权重初期仅支持 `float32`。遇到 `float16`、`int8` 或其他类型时，先报告为不支持，不做隐式转换。
 - 张量布局：初期默认并只验证 `NCHW`。`--layout` 参数仅用于文档标注和一致性检查，不对权重或激活张量做自动 transpose。
 - 模型形态：优先面向固定输入尺寸 CNN。动态 shape 模型不作为第一阶段目标。
-- Codegen 目标：converter 输出必须能被 CMSIS-NN codegen 稳定消费，字段命名和 schema 需要逐步版本化。
+- Codegen 目标：converter 输出必须能被 CMSIS-NN codegen 稳定消费，字段命名和 schema 需要逐步版本化；后续字段设计优先服务 STM32、GD32 等 Cortex-M MCU 的静态内存、int8 量化和 NHWC 运行期布局。
 - 执行顺序：默认 ONNX `graph.node` 已按拓扑序排列；如果后续遇到非拓扑序模型，再补充显式拓扑排序。
 
 ## 3. 主要实现方式

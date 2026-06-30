@@ -4,7 +4,7 @@
 
 ## 项目定位
 
-本项目当前定位为 **CMSIS-NN ONNX 端侧代码生成器**，目标是从 ONNX 模型生成基于 Arm CMSIS-NN 的 Cortex-M 推理 C 工程。当前包含三个子项目：
+本项目当前定位为 **CMSIS-NN ONNX 端侧代码生成器**，目标是从 ONNX 模型生成基于 Arm CMSIS-NN 的 Cortex-M 推理 C 工程。项目限定场景是 STM32、GD32 等 Arm 架构嵌入式低算力平台上的神经网络开发，优先服务裸机或 RTOS 固件，而不是桌面端、Linux 或 Arm A-class 推理。当前包含三个子项目：
 
 - `NanoC-NN-ONNX-Converter`：Python 编写的 ONNX 前端解析与中间表示导出工具。
 - `NanoC-NN-ONNX-Examples`：ONNX 教学与验证样例集合。
@@ -17,6 +17,8 @@
 - 不引入与当前里程碑无关的大型框架或复杂抽象。
 - 新增文件默认使用 UTF-8 和 LF 换行。
 - 文档优先使用中文，代码中的标识符、注释和错误信息优先使用英文。
+- 设计生成代码时默认面对 SRAM/Flash 有限的 MCU，不假设文件系统、堆内存、POSIX API 或操作系统服务存在。
+- codegen 的唯一上游必须是 converter 标准输出；不得在 codegen 中直接解析原始 ONNX 或建立平行前端。
 
 ## Git 操作规则
 
@@ -57,16 +59,21 @@
 适用于 `NanoC-NN-CMSIS-Codegen/`：
 
 - codegen 读取 converter 产物，优先以 `model_graph.json` 作为中间表示输入。
+- codegen 不接受原始 ONNX 作为直接输入；若生成需要更多字段，应升级 converter schema，而不是绕过 converter。
 - 生成的 C 代码优先兼容 C99，并以 CMSIS-NN/CMSIS-Core 作为目标依赖。
 - 不再自研完整神经网络算子库，优先映射到 CMSIS-NN 已提供的优化内核。
 - 生成代码不得在运行期调用 `malloc` 或 `free`；激活缓冲区、临时 buffer 和权重布局由生成阶段规划。
 - 必须在报告中记录 ONNX 算子到 CMSIS-NN API 的映射关系、量化参数、buffer 大小和不支持原因。
 - 张量布局转换必须显式记录，不得静默假设 NCHW/NHWC 互通。
 - 针对 CMSIS-NN API 版本的约束需要写入 README 或生成报告。
+- codegen 目标平台优先为 STM32、GD32 等 Cortex-M MCU；生成物应易于接入 STM32CubeIDE、Keil MDK、Arm GCC/CMake 或厂商固件工程。
+- 生成报告必须尽量包含目标内核、backend、SRAM/Flash 预算和超预算风险。
+- 不直接绑定具体 HAL、启动文件、链接脚本或 IDE 工程格式，除非后续里程碑明确要求。
 
 ## 验证要求
 
 - 文档类修改至少检查 Markdown 结构和链接路径。
 - Python 代码修改后优先运行 `pytest`。
 - 生成的 C 头文件需要能被 C99 编译器包含。
+- codegen 生成物后续需要优先用 Arm GNU Toolchain/Arm Compiler/FVP 或目标开发板验证，PC 端检查只能作为早期 smoke test。
 - 对高风险逻辑补测试，包括 shape 处理、权重命名、属性解析和 C 数组导出。

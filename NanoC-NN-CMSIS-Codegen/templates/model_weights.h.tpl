@@ -1,0 +1,4 @@
+#ifndef NANOC_MODEL_WEIGHTS_H
+#define NANOC_MODEL_WEIGHTS_H
+
+#endif
