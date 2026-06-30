@@ -4,16 +4,16 @@
 
 ## 项目定位
 
-NanoC-NN 是一个轻量级、跨平台的神经网络推理工具链项目，当前包含三个子项目：
+本项目当前定位为 **CMSIS-NN ONNX 端侧代码生成器**，目标是从 ONNX 模型生成基于 Arm CMSIS-NN 的 Cortex-M 推理 C 工程。当前包含三个子项目：
 
-- `NanoC-NN-ONNX-Converter`：Python 编写的 ONNX 解析与转换工具。
+- `NanoC-NN-ONNX-Converter`：Python 编写的 ONNX 前端解析与中间表示导出工具。
 - `NanoC-NN-ONNX-Examples`：ONNX 教学与验证样例集合。
-- `NanoC-NN-C-Operators`：标准 C99 编写的神经网络基础算子库。
+- `NanoC-NN-CMSIS-Codegen`：基于 converter 输出生成 CMSIS-NN C 推理工程的代码生成器。
 
 ## 通用原则
 
 - 修改前先阅读相关 `README.md`、`Doc/` 文档和已有代码。
-- 保持项目边界清晰：converter 不自动生成完整 `model.c`，operators 不依赖平台专有 SDK。
+- 保持项目边界清晰：converter 负责 ONNX 解析和稳定中间表示，codegen 负责生成 `model.c`、工程骨架和 CMSIS-NN 调用代码。
 - 不引入与当前里程碑无关的大型框架或复杂抽象。
 - 新增文件默认使用 UTF-8 和 LF 换行。
 - 文档优先使用中文，代码中的标识符、注释和错误信息优先使用英文。
@@ -41,7 +41,7 @@ NanoC-NN 是一个轻量级、跨平台的神经网络推理工具链项目，�
 - ONNX 解析使用官方 `onnx` Python API。
 - 数组处理使用 `numpy`。
 - 测试使用 `pytest`。
-- 初期仅支持 `float32` 权重、固定输入尺寸 CNN、默认 `NCHW` 布局。
+- 初期已支持 `float32` 权重、固定输入尺寸 CNN、默认 `NCHW` 布局；后续需要补充量化参数提取能力，为 CMSIS-NN codegen 服务。
 - C 符号生成必须经过命名清洗和唯一性检查。
 - 动态 batch 可以按配置固定为 1，非 batch 动态维度不得静默传递到 C 端。
 
@@ -52,15 +52,17 @@ NanoC-NN 是一个轻量级、跨平台的神经网络推理工具链项目，�
 - 样例生成物写入 `outputs/`，不纳入版本管理。
 - 样例 README 需要说明训练、checkpoint 推理、ONNX 推理和参数传入方式。
 
-## C 子项目规则
+## CMSIS-NN Codegen 子项目规则
 
-适用于 `NanoC-NN-C-Operators/`：
+适用于 `NanoC-NN-CMSIS-Codegen/`：
 
-- 目标语言标准为 C99。
-- 算子接口应无状态，不在算子内部调用 `malloc` 或 `free`。
-- 不包含平台专有头文件，例如 `windows.h`、`stm32f4xx.h`。
-- 输入、输出和工作缓冲区由调用方分配。
-- 张量布局需要在接口和文档中明确说明。
+- codegen 读取 converter 产物，优先以 `model_graph.json` 作为中间表示输入。
+- 生成的 C 代码优先兼容 C99，并以 CMSIS-NN/CMSIS-Core 作为目标依赖。
+- 不再自研完整神经网络算子库，优先映射到 CMSIS-NN 已提供的优化内核。
+- 生成代码不得在运行期调用 `malloc` 或 `free`；激活缓冲区、临时 buffer 和权重布局由生成阶段规划。
+- 必须在报告中记录 ONNX 算子到 CMSIS-NN API 的映射关系、量化参数、buffer 大小和不支持原因。
+- 张量布局转换必须显式记录，不得静默假设 NCHW/NHWC 互通。
+- 针对 CMSIS-NN API 版本的约束需要写入 README 或生成报告。
 
 ## 验证要求
 

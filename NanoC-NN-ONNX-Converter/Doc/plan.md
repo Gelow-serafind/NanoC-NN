@@ -2,13 +2,13 @@
 
 ## 1. 子项目目标
 
-NanoC-NN-ONNX-Converter 是 NanoC-NN 工具链中的模型解析与转换模块，目标是将 ONNX 模型中的网络结构和权重参数提取出来，转换为便于人工编写 C 推理代码的中间资料。
+NanoC-NN-ONNX-Converter 是 CMSIS-NN ONNX 端侧代码生成器中的前端解析模块，目标是将 ONNX 模型中的网络结构、shape、权重参数和后续量化信息提取出来，转换为稳定的中间资料。
 
-本子项目不负责自动生成完整的 `model.c`，而是输出清晰、可靠、可校验的模型结构说明和 C 语言权重头文件，为后续人工拼接 C 网络结构提供依据。
+项目总体方向已经从“人工拼接 C 网络结构”调整为“生成基于 CMSIS-NN 的 C 推理工程”。因此本子项目不直接生成 CMSIS-NN 调用代码，而是输出清晰、可靠、可校验的 `model_graph.json`、模型结构说明、权重资料和量化信息，作为 `NanoC-NN-CMSIS-Codegen` 的输入契约。
 
 ## 2. 总体技术路线
 
-整体采用 Python 实现，基于 ONNX 官方 Python API 读取模型文件，完成图结构解析、参数提取、权重导出和结果文件生成。
+整体采用 Python 实现，基于 ONNX 官方 Python API 读取模型文件，完成图结构解析、参数提取、权重导出、量化信息提取和结果文件生成。
 
 推荐技术栈：
 
@@ -30,11 +30,11 @@ NanoC-NN-ONNX-Converter 是 NanoC-NN 工具链中的模型解析与转换模块�
     ↓
 提取算子类型、输入输出、参数和张量形状
     ↓
-导出模型结构清单
+导出规范化中间表示
     ↓
 导出权重 C 头文件
     ↓
-生成转换报告与验证辅助信息
+生成转换报告、量化资料与 codegen 辅助信息
 ```
 
 ### 2.1 初期支持边界
@@ -47,6 +47,7 @@ NanoC-NN-ONNX-Converter 是 NanoC-NN 工具链中的模型解析与转换模块�
 - 数据类型：权重初期仅支持 `float32`。遇到 `float16`、`int8` 或其他类型时，先报告为不支持，不做隐式转换。
 - 张量布局：初期默认并只验证 `NCHW`。`--layout` 参数仅用于文档标注和一致性检查，不对权重或激活张量做自动 transpose。
 - 模型形态：优先面向固定输入尺寸 CNN。动态 shape 模型不作为第一阶段目标。
+- Codegen 目标：converter 输出必须能被 CMSIS-NN codegen 稳定消费，字段命名和 schema 需要逐步版本化。
 - 执行顺序：默认 ONNX `graph.node` 已按拓扑序排列；如果后续遇到非拓扑序模型，再补充显式拓扑排序。
 
 ## 3. 主要实现方式
@@ -125,7 +126,7 @@ ONNX 属性使用 `AttributeProto` 表示，类型可能是 INT、FLOAT、STRING
 - `BatchNormalization`：CNN 模型中常见的归一化层。
 - `GlobalAveragePool`：分类模型尾部常见的全局池化层。
 
-这些算子的第一阶段目标仍是“结构和参数可读”，不是自动生成完整 C 推理代码。转换器需要把算子状态标为 supported，提取关键属性、输入输出 shape、相关权重/常量，并在报告中保留人工实现 C 端所需的信息。
+这些算子的第一阶段目标仍是“结构和参数可读”，不是在 converter 内部生成完整 C 推理代码。转换器需要把算子状态标为 supported，提取关键属性、输入输出 shape、相关权重/常量，并在报告中保留 CMSIS-NN codegen 所需的信息。
 
 ### 3.4 Shape 推断
 
@@ -180,12 +181,12 @@ static const float conv1_weight[] = {
 
 ### 3.6 结构清单导出
 
-输出人类可读的模型结构文档，作为人工编写 `model.c` 的主要依据。
+输出人类可读的模型结构文档，作为检查 codegen 输入和排查模型结构问题的主要依据。
 
 计划生成文件：
 
 - `model_summary.md`：Markdown 格式结构清单。
-- `model_graph.json`：机器可读的结构化图信息，便于后续扩展。
+- `model_graph.json`：机器可读的结构化图信息，作为 CMSIS-NN codegen 的核心输入。
 
 `model_summary.md` 应包含：
 
@@ -193,6 +194,7 @@ static const float conv1_weight[] = {
 - 每一层的算子类型、输入输出、参数、shape。
 - 每一层关联的权重名称和维度。
 - 当前工具支持状态，如 `supported`、`partial`、`unsupported`。
+- 后续 codegen 需要的 layout、量化参数和算子映射风险。
 
 ### 3.7 错误处理与兼容策略
 
@@ -202,7 +204,7 @@ static const float conv1_weight[] = {
 - 在 `model_summary.md` 中标注该层未支持。
 - 在最终报告中列出未支持算子清单。
 
-对于人工拼接风险较高的情况，例如 shape 缺失、权重维度异常、layout 不明确，应将问题写入转换报告。
+对于 codegen 风险较高的情况，例如 shape 缺失、权重维度异常、layout 不明确，应将问题写入转换报告。
 
 必须重点捕获的风险：
 
@@ -251,6 +253,9 @@ NanoC-NN-ONNX-Examples/
 ├── environment.yml
 ├── example-1-is-over-10/
 └── example-2-detect-signal-jump/
+
+NanoC-NN-CMSIS-Codegen/
+└── README.md
 ```
 
 ## 5. 里程碑清单
@@ -312,7 +317,7 @@ NanoC-NN-ONNX-Examples/
 
 验收标准：
 
-- `model_summary.md` 可作为人工编写 `model.c` 的参考。
+- `model_summary.md` 可作为检查 codegen 输入的参考。
 - shape 缺失时能标注 `unknown`，而不是输出错误维度。
 - 任何动态维度都不会静默进入 C 数组尺寸宏。
 
@@ -430,7 +435,7 @@ NanoC-NN-ONNX-Examples/
 
 - 根据 M10 报告统计真实模型中仍未覆盖的算子和数据类型。
 - 按出现频率、实现成本和 C 端价值拆分后续任务。
-- 明确哪些问题属于 converter 应解决，哪些属于 C operators 或模型前处理阶段解决。
+- 明确哪些问题属于 converter 应解决，哪些属于 CMSIS-NN codegen、CMSIS-NN 后端或模型前处理阶段解决。
 
 验收标准：
 
@@ -438,11 +443,40 @@ NanoC-NN-ONNX-Examples/
 - plan 和 README 中同步当前支持边界。
 - 不把测试中的偶发现象直接扩展成无边界兼容承诺。
 
+### M12：Codegen 输入契约固化
+
+目标：
+
+- 为 `model_graph.json` 增加 schema 版本。
+- 固定 inputs、outputs、nodes、initializers、weights、layout、opset、warnings 等字段含义。
+- 明确哪些字段由 converter 负责提供，哪些字段由 codegen 推导。
+- 为 CMSIS-NN codegen 增加必要字段预留，例如量化参数、权重角色、layout 约束和 constant 折叠结果。
+
+验收标准：
+
+- codegen 可以不重新解析 ONNX，仅依赖 converter 产物完成第一版代码生成。
+- README 和 plan 中说明 schema 兼容策略。
+- 单元测试覆盖关键 JSON 字段，避免无意识破坏 codegen 输入契约。
+
+### M13：量化信息提取
+
+目标：
+
+- 解析 ONNX Q/DQ 模型中的 `QuantizeLinear`、`DequantizeLinear`、scale、zero point 等信息。
+- 将每层输入、输出、权重的量化参数写入 `model_graph.json`。
+- 对缺少量化信息的 float32 模型明确标注为非 CMSIS-NN 加速主路径。
+
+验收标准：
+
+- 一个最小 int8 ONNX 样例能导出 codegen 所需量化参数。
+- 缺失量化参数时报告清晰，不做隐式量化。
+- 量化参数字段能被 CMSIS-NN codegen 直接读取。
+
 ## 6. 初期边界
 
-初期不实现以下能力：
+converter 子项目初期不直接实现以下能力：
 
-- 自动生成完整 `model.c`。
+- 自动生成完整 `model.c`，该能力迁移到 `NanoC-NN-CMSIS-Codegen`。
 - 自动图调度与内存复用规划。
 - 全量 ONNX 算子兼容。
 - 量化模型解析。
@@ -451,4 +485,4 @@ NanoC-NN-ONNX-Examples/
 - 动态输入尺寸模型的 C 端缓冲区规划。
 - 针对特定 MCU 的格式优化。
 
-这些能力可以作为后续版本扩展，但当前版本优先保证结构清晰、权重准确、输出可人工使用。
+这些能力可以作为后续版本扩展或由 codegen 子项目实现。converter 当前优先保证结构清晰、权重准确、schema 稳定、输出可被代码生成器可靠消费。

@@ -189,14 +189,20 @@ def _output_readme_markdown(model_info: ModelInfo) -> str:
         "- `README.md`：当前输出目录说明。",
         "- `conversion_report.txt`：纯文本报告，适合快速查看或贴到日志里。",
         "- `model_summary.md`：面向人工走读的网络结构文档。",
-        "- `model_graph.json`：包含输入、输出、节点、属性、shape、权重映射和警告信息。",
+        (
+            "- `model_graph.json`：包含输入、输出、节点、属性、shape、权重映射和警告信息，"
+            "是后续 CMSIS-NN codegen 的主要输入。"
+        ),
         "- `weights.h`：由 ONNX float32 参数 initializer 导出的 C99 权重头文件。",
         "",
         "## 当前边界",
         "",
         "- 初期只导出 float32 参数权重，shape 常量等辅助 initializer 不写入 C 权重数组。",
         "- `--layout` 仅作为标注，不做自动 transpose。",
-        "- 不自动生成完整 `model.c`。",
+        (
+            "- 当前输出目录不直接包含 `model.c`；完整 CMSIS-NN 推理代码由 "
+            "`NanoC-NN-CMSIS-Codegen` 生成。"
+        ),
         "- 遇到未知算子会在报告中标注，`--strict` 模式下会直接失败。",
         "",
     ]
