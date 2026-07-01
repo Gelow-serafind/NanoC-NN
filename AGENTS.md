@@ -4,21 +4,23 @@
 
 ## 项目定位
 
-本项目当前定位为 **CMSIS-NN ONNX 端侧代码生成器**，目标是从 ONNX 模型生成基于 Arm CMSIS-NN 的 Cortex-M 推理 C 工程。项目限定场景是 STM32、GD32 等 Arm 架构嵌入式低算力平台上的神经网络开发，优先服务裸机或 RTOS 固件，而不是桌面端、Linux 或 Arm A-class 推理。当前包含三个子项目：
+本项目当前定位为 **CMSIS-NN ONNX 端侧代码生成器**，目标是从 ONNX 模型生成基于 Arm CMSIS-NN 的 Cortex-M 推理 C 工程。项目限定场景是 STM32、GD32 等 Arm 架构嵌入式低算力平台上的神经网络开发，优先服务裸机或 RTOS 固件，而不是桌面端、Linux 或 Arm A-class 推理。当前采用根级 Python 工程组织核心能力：
 
-- `NanoC-NN-ONNX-Converter`：Python 编写的 ONNX 前端解析与中间表示导出工具。
-- `NanoC-NN-ONNX-Examples`：ONNX 教学与验证样例集合。
-- `NanoC-NN-CMSIS-Codegen`：基于 converter 输出生成 CMSIS-NN C 推理工程的代码生成器。
+- `src/nanoc_nn/converter`：Python 编写的 ONNX 前端解析与中间表示导出模块。
+- `src/nanoc_nn/codegen`：基于 converter 输出生成 CMSIS-NN C 推理工程的代码生成模块。
+- `src/nanoc_nn/pipeline`：串联 ONNX 解析与 CMSIS-NN 代码生成的一体化编排模块。
+- `NanoC-NN-ONNX-Examples`：暂时无损保留的 ONNX 教学与验证样例集合。
 
 ## 通用原则
 
-- 修改前先阅读相关 `README.md`、`Doc/` 文档和已有代码。
+- 修改前先阅读相关 `README.md`、`docs/` 文档和已有代码。
 - 保持项目边界清晰：converter 负责 ONNX 解析和稳定中间表示，codegen 负责生成 `model.c`、工程骨架和 CMSIS-NN 调用代码。
 - 不引入与当前里程碑无关的大型框架或复杂抽象。
 - 新增文件默认使用 UTF-8 和 LF 换行。
 - 文档优先使用中文，代码中的标识符、注释和错误信息优先使用英文。
 - 设计生成代码时默认面对 SRAM/Flash 有限的 MCU，不假设文件系统、堆内存、POSIX API 或操作系统服务存在。
 - codegen 的唯一上游必须是 converter 标准输出；不得在 codegen 中直接解析原始 ONNX 或建立平行前端。
+- `third_party/CMSIS-NN/` 是 Arm 官方开源库源码快照，不得手工修改、裁剪、格式化或重排其内容；需要升级时只能整体替换为官方新快照，或改用 submodule / 外部依赖。
 
 ## Git 操作规则
 
@@ -34,9 +36,9 @@
   - `修复[FIX]`：修复缺陷、错误行为或测试失败。
 - commit message 应描述项目内容变化，不允许出现“agent 共同提交”、共同作者、AI 生成签名或类似归因内容。
 
-## Python 子项目规则
+## Python 模块规则
 
-适用于 `NanoC-NN-ONNX-Converter/`：
+适用于 `src/nanoc_nn/converter/`：
 
 - 目标 Python 版本为 3.10+。
 - 命令行入口使用 `argparse`。
@@ -54,9 +56,9 @@
 - 样例生成物写入 `outputs/`，不纳入版本管理。
 - 样例 README 需要说明训练、checkpoint 推理、ONNX 推理和参数传入方式。
 
-## CMSIS-NN Codegen 子项目规则
+## CMSIS-NN Codegen 模块规则
 
-适用于 `NanoC-NN-CMSIS-Codegen/`：
+适用于 `src/nanoc_nn/codegen/`：
 
 - codegen 读取 converter 产物，优先以 `model_graph.json` 作为中间表示输入。
 - codegen 不接受原始 ONNX 作为直接输入；若生成需要更多字段，应升级 converter schema，而不是绕过 converter。
