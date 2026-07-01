@@ -581,3 +581,37 @@ generated/
 4. 输出最小 `codegen_report.txt`。
 
 这一步不需要立刻生成 CMSIS-NN 调用代码，先把 codegen 的输入边界守住。
+
+## 10. 第一版执行记录
+
+当前已经从 M0 推进到 M10 的第一版闭环，完成内容如下：
+
+- M0-M1：目录、README、CLI、目标平台参数和 CMSIS-NN 源码说明已经建立。
+- M2：可读取 converter 的 `model_graph.json`，并输出 schema warning/error。
+- M3：已生成第一版 ONNX 到 CMSIS-NN API 的映射报告。
+- M4：已生成 `include/`、`src/`、`reports/` 和 `CMakeLists.txt`。
+- M5：已输出输入、输出、双激活 buffer、scratch 和 Flash/SRAM 预算估算。
+- M6：已生成可 C99 smoke compile 的 C 工程骨架；缺量化时不伪装为可运行 int8 推理。
+- M7：已生成量化缺口报告；当前 converter 无量化 section 时 runtime 层状态为 `blocked`。
+- M8：本地 smoke compile 已接入验证脚本。
+- M9：已生成 STM32/GD32 类固件接入说明 `reports/firmware_integration.md`。
+- M10：已用多种本地生成 ONNX 执行 converter -> codegen -> C99 编译覆盖测试。
+
+当前验证命令：
+
+```bash
+conda run -n nanoc-onnx-examples python tools/validate_local_models.py
+```
+
+当前批量覆盖报告：
+
+```text
+build/local-validation/coverage_report.md
+```
+
+第一版结论：
+
+- codegen 已能稳定消费 converter 输出目录，未绕过 converter 直接解析 ONNX。
+- 生成工程骨架和报告闭环已经跑通。
+- 由于 converter 尚未输出 int8 量化信息，CMSIS-NN runtime 调用仍处于 `blocked`。
+- 下一阶段应优先补 converter schema version、量化参数、layout 规范和 Q/DQ 模型解析。

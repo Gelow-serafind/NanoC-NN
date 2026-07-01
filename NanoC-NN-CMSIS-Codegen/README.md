@@ -88,7 +88,7 @@ python -m nanoc_cmsis_codegen \
   --flash-budget 512K
 ```
 
-当前阶段只完成目录和计划设计，真正的 codegen 逻辑将在后续里程碑中逐步实现。
+当前第一版已经实现 converter 输出目录到 CMSIS-NN C 工程骨架的生成闭环。由于 converter 暂未导出 int8 量化 section，CMSIS-NN s8 runtime 调用会被报告为 `blocked`，但工程结构、报告、静态内存估算和 C99 smoke compile 已经可以执行。
 
 ## 计划输出
 
@@ -124,3 +124,98 @@ generated/
 ## 计划文档
 
 技术路线和里程碑见 `Doc/plan.md`。
+
+## 本地验证
+
+### 已有 ONNX 的一键流程
+
+如果你已经有一个 ONNX 文件，例如：
+
+```text
+/path/to/model.onnx
+```
+
+可以直接运行：
+
+```bash
+cd /Users/tiedan/Desktop/NanoC-NN/NanoC-NN-CMSIS-Codegen
+
+conda run -n nanoc-onnx-examples python tools/onnx_to_cmsis_pipeline.py \
+  --model /path/to/model.onnx \
+  --target cortex-m4 \
+  --sram-budget 128K \
+  --flash-budget 512K
+```
+
+默认会在 ONNX 所在目录生成：
+
+```text
+model-nanoc-cmsis/
+├── converter-output/
+│   ├── model_graph.json
+│   ├── model_summary.md
+│   ├── conversion_report.txt
+│   └── weights.h
+├── cmsis-codegen/
+│   ├── include/
+│   ├── src/
+│   ├── reports/
+│   └── CMakeLists.txt
+└── pipeline_report.md
+```
+
+其中 `converter-output/` 是 converter 的解析结果，`cmsis-codegen/` 是基于这些解析结果生成的 CMSIS-NN C 工程骨架。
+
+如果希望指定输出目录：
+
+```bash
+conda run -n nanoc-onnx-examples python tools/onnx_to_cmsis_pipeline.py \
+  --model /path/to/model.onnx \
+  --out-root /path/to/model_codegen_result \
+  --target cortex-m4
+```
+
+验证重点看：
+
+```text
+model-nanoc-cmsis/pipeline_report.md
+model-nanoc-cmsis/cmsis-codegen/reports/codegen_report.txt
+model-nanoc-cmsis/cmsis-codegen/reports/op_mapping.md
+model-nanoc-cmsis/cmsis-codegen/reports/memory_plan.md
+model-nanoc-cmsis/cmsis-codegen/reports/quantization.md
+```
+
+脚本默认会尝试使用本机 `cc` 做一次 C99 smoke compile，结果写入 `pipeline_report.md`。
+
+### 批量本地验证
+
+运行多模型闭环验证：
+
+```bash
+conda run -n nanoc-onnx-examples python tools/validate_local_models.py
+```
+
+该脚本会生成多种 ONNX 模型，依次执行：
+
+```text
+ONNX -> NanoC-NN-ONNX-Converter 输出目录 -> NanoC-NN-CMSIS-Codegen -> C99 smoke compile
+```
+
+验证报告输出到：
+
+```text
+build/local-validation/coverage_report.md
+```
+
+单模型 codegen 示例：
+
+```bash
+python -m nanoc_cmsis_codegen \
+  --input build/local-validation/exports/gemm_relu \
+  --out build/manual-cli/gemm_relu \
+  --cmsis-nn-root third_party/CMSIS-NN \
+  --target cortex-m4 \
+  --sram-budget 128K \
+  --flash-budget 512K \
+  --verbose
+```
