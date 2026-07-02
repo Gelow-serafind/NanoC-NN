@@ -116,6 +116,17 @@ def compile_generated(codegen_dir: Path) -> tuple[str, Path | None]:
 def write_pipeline_report(result: PipelineResult) -> None:
     options = result.options
     codegen = result.codegen_result
+    quantization_note = (
+        "- Converter 已提供量化 section；若 codegen 仍为 `blocked`，请查看 "
+        "`quantization.md`、`unsupported_ops.md` 和 `op_mapping.md` 的具体节点原因。"
+        if codegen.model_graph.has_quantization
+        else "- Converter 未提供 int8 量化 section 时，CMSIS-NN runtime 层会报告为 `blocked`。"
+    )
+    runtime_note = (
+        "- Codegen 状态为 `ok` 时，生成物已包含当前支持范围内的真实 CMSIS-NN 调用。"
+        if codegen.status == "ok"
+        else "- C99 smoke compile 通过只代表生成工程语法可编译，不代表 blocked 节点已可真实推理。"
+    )
     lines = [
         "# NanoC-NN ONNX 到 CMSIS-NN Pipeline 报告",
         "",
@@ -162,8 +173,8 @@ def write_pipeline_report(result: PipelineResult) -> None:
         "",
         "- 本流程由根级 `nanoc_nn` 包编排 converter 和 codegen。",
         "- codegen 仍然只消费 converter 输出目录，不直接读取 ONNX。",
-        "- 当前 converter 未提供 int8 量化 section 时，CMSIS-NN runtime 层会报告为 `blocked`。",
-        "- C99 smoke compile 通过只代表生成工程骨架语法可编译，不代表真实 int8 推理已可用。",
+        quantization_note,
+        runtime_note,
         "",
     ]
     (options.output_root / "pipeline_report.md").write_text(

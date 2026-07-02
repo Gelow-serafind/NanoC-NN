@@ -18,7 +18,10 @@ def parse_args() -> argparse.Namespace:
         "--value",
         type=float,
         default=None,
-        help="Single input number to classify. If omitted, read values from data/inference/input_values.csv.",
+        help=(
+            "Single input number to classify. If omitted, read values from "
+            "data/inference/input_values.csv."
+        ),
     )
     parser.add_argument(
         "--input-csv",
@@ -29,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--onnx",
         type=Path,
-        default=example_root() / "outputs" / "onnx" / "is_over_10.onnx",
+        default=example_root() / "outputs" / "onnx" / "is_over_10.int8.onnx",
         help="Path to the exported ONNX model.",
     )
     return parser.parse_args()

@@ -7,7 +7,6 @@ from pathlib import Path
 import numpy as np
 import onnxruntime as ort
 
-
 WINDOW_SIZE = 10
 CLASS_NAMES = ["no_jump", "up_jump", "down_jump"]
 
@@ -33,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--onnx",
         type=Path,
-        default=example_root() / "outputs" / "onnx" / "signal_jump.onnx",
+        default=example_root() / "outputs" / "onnx" / "signal_jump.int8.onnx",
         help="Path to the exported ONNX model.",
     )
     return parser.parse_args()

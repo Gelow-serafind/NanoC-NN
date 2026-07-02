@@ -556,6 +556,33 @@ generated/
 - 输出批量覆盖报告。
 - 明确下一批优先支持项。
 
+### M11：真实 CMSIS-NN s8 渲染闭环
+
+目标：
+
+- 消费 converter 输出的 `model_graph.json.quantization`。
+- 第一阶段只生成 per-tensor Fully Connected 路径：
+  `Gemm` / `MatMul` -> `arm_fully_connected_s8()`。
+- 在 `model_weights.h` 中输出 int8 权重和 int32 bias，而不是继续复用
+  float32 `weights.h` 作为运行期权重。
+- 在 `model.c` 中输出 `cmsis_nn_context`、`cmsis_nn_fc_params`、
+  `cmsis_nn_per_tensor_quant_params`、`cmsis_nn_dims` 和真实
+  `arm_fully_connected_s8()` 调用。
+- 使用 `arm_fully_connected_s8_get_buffer_size(&filter_dims)` 作为
+  scratch buffer 需求来源；报告中的 Python 估算只作为无 CMSIS-NN
+  链接环境下的保守 fallback。
+- `Relu` / `Clip` 优先通过 `fc_params.activation.min/max` 融合。
+
+验收标准：
+
+- 缺少量化字段时保持 `blocked`，不得输出伪推理代码。
+- 最小 Q/DQ Fully Connected 模型可以生成包含真实 CMSIS-NN 调用的
+  `src/model.c`。
+- 生成代码在未开启 `NANOC_ENABLE_CMSIS_NN` 时仍可做 C99 smoke compile；
+  开启后由用户工程链接 CMSIS-NN 和 CMSIS-Core。
+- 对尚未实现真实渲染的 Conv/Add/Pool/Softmax 等量化算子，报告必须明确
+  保持 blocked 或后续支持，避免“映射 ok 但代码为空”。
+
 ## 8. 风险与处理策略
 
 | 风险 | 影响 | 策略 |

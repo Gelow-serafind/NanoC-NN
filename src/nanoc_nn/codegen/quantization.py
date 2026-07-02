@@ -49,10 +49,33 @@ def _missing_node_quant_fields(
     missing: list[str] = []
     if not isinstance(node_quant, dict) or mapping.node_name not in node_quant:
         missing.append(f"nodes.{mapping.node_name}")
+        return missing
+    node_info = node_quant[mapping.node_name]
+    if not isinstance(node_info, dict):
+        missing.append(f"nodes.{mapping.node_name}")
+        return missing
+    cmsis_nn = node_info.get("cmsis_nn")
+    if not isinstance(cmsis_nn, dict):
+        missing.append(f"nodes.{mapping.node_name}.cmsis_nn")
+        return missing
+    for field in (
+        "input_offset",
+        "filter_offset",
+        "output_offset",
+        "multiplier",
+        "shift",
+        "activation_min",
+        "activation_max",
+    ):
+        if field not in cmsis_nn:
+            missing.append(f"nodes.{mapping.node_name}.cmsis_nn.{field}")
     if not isinstance(tensor_quant, dict):
         missing.append("tensors")
         return missing
-    for tensor_name in [*mapping.inputs, *mapping.outputs]:
-        if tensor_name and tensor_name not in tensor_quant:
-            missing.append(f"tensors.{tensor_name}")
+    inputs = node_info.get("inputs", {})
+    outputs = node_info.get("outputs", {})
+    if not isinstance(inputs, dict):
+        missing.append(f"nodes.{mapping.node_name}.inputs")
+    if not isinstance(outputs, dict):
+        missing.append(f"nodes.{mapping.node_name}.outputs")
     return missing

@@ -93,7 +93,11 @@ python -m nanoc_nn.codegen \
   --flash-budget 512K
 ```
 
-当前第一版已经实现 converter 输出目录到 CMSIS-NN C 工程骨架的生成闭环。由于 converter 暂未导出 int8 量化 section，CMSIS-NN s8 runtime 调用会被报告为 `blocked`，但工程结构、报告、静态内存估算和 C99 smoke compile 已经可以执行。
+当前已经实现 converter 输出目录到 CMSIS-NN C 工程的生成闭环。float32
+模型或缺少量化 section 的模型仍会报告为 `blocked`；带 Q/DQ、per-tensor
+量化、`Gemm(transB=1)` 的最小 Fully Connected 路径可以生成真实
+`arm_fully_connected_s8()` 调用、int8 权重和 int32 bias。Conv/Add/Pool
+等其它量化算子的真实渲染仍按 blocked 处理，避免出现“映射成功但代码为空”的假象。
 
 ## 计划输出
 
@@ -119,8 +123,9 @@ generated/
 - 运行期主布局以 CMSIS-NN 的 NHWC 为准。
 - 卷积优先生成 `arm_convolve_wrapper_s8`。
 - 深度卷积优先生成 `arm_depthwise_conv_wrapper_s8`。
-- 全连接优先生成 `arm_fully_connected_wrapper_s8`。
-- 静态临时 buffer 使用 CMSIS-NN buffer size getter 或其 Python bindings 计算。
+- 全连接第一版生成 `arm_fully_connected_s8` per-tensor 路径。
+- FC s8 生成代码会调用 `arm_fully_connected_s8_get_buffer_size()` 校验 scratch
+  buffer；其它算子的临时 buffer 仍是保守估算。
 - BatchNormalization 初期只支持生成期折叠，不能折叠时阻塞生成。
 - 生成报告必须给出 SRAM/Flash 估算，帮助判断能否部署到目标 STM32/GD32 型号。
 - 生成的 `main.c` 仅用于 smoke test；真实固件中用户应调用 `model.h` 暴露的推理接口。

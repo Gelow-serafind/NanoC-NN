@@ -16,11 +16,15 @@ RUNTIME_ACTIONS = {
     "Transpose": ("direct_api", "arm_transpose_s8", True),
 }
 
+RENDERED_RUNTIME_OPS = {"Gemm", "MatMul"}
+
 FOLDED_ACTIONS = {
     "Cast": "generation-time dtype/shape helper",
     "Constant": "generation-time constant",
+    "DequantizeLinear": "generation-time quantization boundary",
     "Flatten": "generation-time shape fold",
     "Gather": "generation-time shape/index helper",
+    "QuantizeLinear": "generation-time quantization boundary",
     "Reshape": "generation-time shape fold",
     "Shape": "generation-time shape helper",
     "Slice": "generation-time shape/slice helper",
@@ -116,6 +120,19 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
             reason=(
                 "CMSIS-NN s8 runtime path requires quantization parameters, but converter output "
                 "does not contain a quantization section"
+            ),
+            needs_quantization=True,
+            needs_scratch=needs_scratch,
+            layout_note=layout_note,
+        )
+    if node.op_type not in RENDERED_RUNTIME_OPS:
+        return _mapping(
+            node,
+            status="blocked",
+            action=action,
+            reason=(
+                "quantization is present, but this runtime op does not yet have a real "
+                "CMSIS-NN renderer in generator.py"
             ),
             needs_quantization=True,
             needs_scratch=needs_scratch,

@@ -60,6 +60,7 @@ def _summary_markdown(model_info: ModelInfo) -> str:
     lines.extend(_tensor_section("输出", model_info.outputs))
     lines.extend(_initializer_section(model_info))
     lines.extend(_node_section(model_info))
+    lines.extend(_quantization_section(model_info))
     lines.extend(_message_section("警告", model_info.warnings))
     lines.extend(_message_section("错误", model_info.errors))
     lines.extend(
@@ -138,6 +139,35 @@ def _node_section(model_info: ModelInfo) -> list[str]:
     return lines
 
 
+def _quantization_section(model_info: ModelInfo) -> list[str]:
+    quantization = model_info.quantization
+    lines = [
+        "## 量化信息",
+        "",
+        f"- 是否存在量化 section：`{str(bool(quantization)).lower()}`",
+    ]
+    if not quantization:
+        lines.extend(
+            [
+                "- 当前模型未提取到 Q/DQ 量化信息；CMSIS-NN int8 codegen 将保持 blocked。",
+                "",
+            ]
+        )
+        return lines
+    tensors = quantization.get("tensors", {})
+    weights = quantization.get("weights", {})
+    nodes = quantization.get("nodes", {})
+    lines.extend(
+        [
+            f"- Tensor 量化数量：`{len(tensors) if isinstance(tensors, dict) else 0}`",
+            f"- Quantized weight 数量：`{len(weights) if isinstance(weights, dict) else 0}`",
+            f"- Node 量化数量：`{len(nodes) if isinstance(nodes, dict) else 0}`",
+            "",
+        ]
+    )
+    return lines
+
+
 def _message_section(title: str, messages: list[str]) -> list[str]:
     lines = [f"## {title}", ""]
     if not messages:
@@ -175,6 +205,7 @@ def _output_readme_markdown(model_info: ModelInfo) -> str:
         f"- 节点数量：`{len(model_info.nodes)}`",
         f"- Initializer 数量：`{len(model_info.initializers)}`",
         f"- C 权重数量：`{exported_weight_count}`",
+        f"- 量化 section：`{str(bool(model_info.quantization)).lower()}`",
         f"- 警告数量：`{warning_count}`",
         "",
         "## 建议阅读顺序",
@@ -194,10 +225,15 @@ def _output_readme_markdown(model_info: ModelInfo) -> str:
             "是后续 CMSIS-NN codegen 的主要输入。"
         ),
         "- `weights.h`：由 ONNX float32 参数 initializer 导出的 C99 权重头文件。",
+        "- Q/DQ 模型会在 `model_graph.json.quantization` 中携带 int8 codegen 所需量化资料。",
         "",
         "## 当前边界",
         "",
         "- 初期只导出 float32 参数权重，shape 常量等辅助 initializer 不写入 C 权重数组。",
+        (
+            "- 量化权重不写入 `weights.h`，由后续 CMSIS-NN codegen 从 "
+            "`model_graph.json.quantization` 消费。"
+        ),
         "- `--layout` 仅作为标注，不做自动 transpose。",
         (
             "- 当前输出目录不直接包含 `model.c`；完整 CMSIS-NN 推理代码由 "
@@ -226,6 +262,7 @@ def _report_text(model_info: ModelInfo) -> str:
         f"nodes: {len(model_info.nodes)}",
         f"initializers: {len(model_info.initializers)}",
         f"c_exportable_initializers: {len(model_info.c_exportable_initializers)}",
+        f"quantization: {'present' if model_info.quantization else 'none'}",
         f"unsupported_ops: {', '.join(unsupported_ops) if unsupported_ops else 'none'}",
         "",
         "Output files:",
