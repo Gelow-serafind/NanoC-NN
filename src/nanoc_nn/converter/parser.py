@@ -475,6 +475,7 @@ def _extract_quantization(
                 quantized_weights[quantized_input] = _quantized_weight_info(initializer, info)
 
     _propagate_passthrough_quant(nodes, tensor_quant)
+    _propagate_fused_activation_quant(nodes, tensor_quant)
 
     node_quant: dict[str, dict[str, Any]] = {}
     for node in nodes:
@@ -659,6 +660,23 @@ def _propagate_passthrough_quant(
                 changed = True
 
 
+def _propagate_fused_activation_quant(
+    nodes: list[NodeInfo],
+    tensors: dict[str, dict[str, Any]],
+) -> None:
+    for node in nodes:
+        if node.op_type not in {"Relu", "Clip"} or not node.inputs or not node.outputs:
+            continue
+        input_name = node.inputs[0]
+        output_quant = tensors.get(node.outputs[0])
+        if input_name in tensors or output_quant is None:
+            continue
+        copied = dict(output_quant)
+        copied["source"] = node.name or node.op_type
+        copied["fused_activation"] = node.op_type
+        tensors[input_name] = copied
+
+
 def _quantized_weight_info(
     initializer: InitializerInfo,
     quant_info: dict[str, Any],
@@ -718,7 +736,7 @@ def _fully_connected_quant_info(
         bias_scale = float(input_quant["scale"]) * float(weight_info["scale"])
         bias_values = _quantize_bias(bias, bias_scale, warnings)
 
-    qmin, qmax = _quantized_range(str(output_quant["zero_point_dtype"]))
+    qmin, qmax = _activation_range(output_quant)
     return {
         "op_type": node.op_type,
         "inputs": {
@@ -798,7 +816,7 @@ def _conv_quant_info(
     pads = [int(item) for item in attrs.get("pads", [0, 0, 0, 0])]
     strides = [int(item) for item in attrs.get("strides", [1, 1])]
     dilations = [int(item) for item in attrs.get("dilations", [1, 1])]
-    qmin, qmax = _quantized_range(str(output_quant["zero_point_dtype"]))
+    qmin, qmax = _activation_range(output_quant)
     return {
         "op_type": node.op_type,
         "inputs": {
@@ -962,6 +980,13 @@ def _quantized_range(dtype: str) -> tuple[int, int]:
     if dtype == "UINT8":
         return 0, 255
     return -128, 127
+
+
+def _activation_range(output_quant: dict[str, Any]) -> tuple[int, int]:
+    qmin, qmax = _quantized_range(str(output_quant["zero_point_dtype"]))
+    if output_quant.get("fused_activation") == "Relu":
+        qmin = max(qmin, int(output_quant["zero_point"]))
+    return qmin, qmax
 
 
 def _input_radius(input_integer_bits: int, input_left_shift: int) -> int:

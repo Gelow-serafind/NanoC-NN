@@ -103,7 +103,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "topology",
         ("arm_convolve_wrapper_s8", "arm_max_pool_s8", "arm_fully_connected_s8"),
     ),
-    CaseDef("NEG_001", "float32 无 Q/DQ 模型正确拒绝", "unsupported", "negative"),
+    CaseDef("NEG_001", "float32 无 Q/DQ 模型正确拒绝", "blocked", "negative"),
 ]
 
 CASE_MAP: dict[str, CaseDef] = {c.case_id: c for c in CASE_REGISTRY}

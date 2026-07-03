@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-07-03T20:09:17.724208",
+  "timestamp": "2026-07-03T22:42:57.275678",
   "mode": "target",
-  "git_commit": "5eb4453",
+  "git_commit": "eeda9a3",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "tdd/scripts/run_tests.py --mode target --generate",
   "total": 12,
-  "passed": 2,
-  "failed": 10,
+  "passed": 12,
+  "failed": 0,
   "results": [
     {
       "case_id": "CONV_001",
@@ -14,19 +14,19 @@
       "onnx_path": "tdd/models/core/conv/CONV_001.onnx",
       "output_dir": "tdd/results/tmp/CONV_001",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_convolve_wrapper_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.11
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 1.18
     },
     {
       "case_id": "CONV_002",
@@ -34,19 +34,19 @@
       "onnx_path": "tdd/models/core/conv/CONV_002.onnx",
       "output_dir": "tdd/results/tmp/CONV_002",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_convolve_wrapper_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.11
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.64
     },
     {
       "case_id": "CONV_003",
@@ -54,19 +54,19 @@
       "onnx_path": "tdd/models/core/conv/CONV_003.onnx",
       "output_dir": "tdd/results/tmp/CONV_003",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_convolve_wrapper_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.12
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.62
     },
     {
       "case_id": "CONV_004",
@@ -74,19 +74,19 @@
       "onnx_path": "tdd/models/core/conv/CONV_004.onnx",
       "output_dir": "tdd/results/tmp/CONV_004",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_convolve_wrapper_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.11
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.41
     },
     {
       "case_id": "GEMM_001",
@@ -94,19 +94,19 @@
       "onnx_path": "tdd/models/core/gemm/GEMM_001.onnx",
       "output_dir": "tdd/results/tmp/GEMM_001",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_fully_connected_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.12
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.63
     },
     {
       "case_id": "GEMM_002",
@@ -114,19 +114,19 @@
       "onnx_path": "tdd/models/core/gemm/GEMM_002.onnx",
       "output_dir": "tdd/results/tmp/GEMM_002",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_fully_connected_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.26
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.66
     },
     {
       "case_id": "GEMM_003",
@@ -134,19 +134,19 @@
       "onnx_path": "tdd/models/core/gemm/GEMM_003.onnx",
       "output_dir": "tdd/results/tmp/GEMM_003",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_fully_connected_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.13
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 3.31
     },
     {
       "case_id": "GEMM_004",
@@ -154,19 +154,19 @@
       "onnx_path": "tdd/models/core/gemm/GEMM_004.onnx",
       "output_dir": "tdd/results/tmp/GEMM_004",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_fully_connected_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.14
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.31
     },
     {
       "case_id": "MAXPOOL_001",
@@ -186,7 +186,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.38
+      "duration_sec": 0.26
     },
     {
       "case_id": "SOFTMAX_001",
@@ -206,16 +206,16 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.39
+      "duration_sec": 0.72
     },
     {
       "case_id": "NEG_001",
       "category": "negative",
       "onnx_path": "tdd/models/negative/NEG_001.onnx",
       "output_dir": "tdd/results/tmp/NEG_001",
-      "expected": "unsupported",
+      "expected": "blocked",
       "actual": "blocked",
-      "passed": false,
+      "passed": true,
       "exit_code": 2,
       "required_apis": [],
       "missing_apis": [],
@@ -223,7 +223,7 @@
       "compile_ok": false,
       "runtime_ok": false,
       "runtime_exit_code": null,
-      "error_msg": "预期 unsupported，实际 blocked",
+      "error_msg": "",
       "duration_sec": 0.13
     },
     {
@@ -232,21 +232,21 @@
       "onnx_path": "tdd/models/topology/TOPO_001.onnx",
       "output_dir": "tdd/results/tmp/TOPO_001",
       "expected": "ok",
-      "actual": "blocked",
-      "passed": false,
-      "exit_code": 2,
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
       "required_apis": [
         "arm_convolve_wrapper_s8",
         "arm_max_pool_s8",
         "arm_fully_connected_s8"
       ],
       "missing_apis": [],
-      "api_check_ok": false,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "预期 ok，实际 blocked",
-      "duration_sec": 0.12
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.61
     }
   ]
 }

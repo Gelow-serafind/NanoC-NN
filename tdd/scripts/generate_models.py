@@ -96,14 +96,14 @@ def _build_qdq_model(
 def gen_gemm_001() -> Path:
     """GEMM_001: 最小对称 FC 无 bias — [1,2] → [1,3]"""
     path = MODELS_ROOT / "core" / "gemm" / "GEMM_001.onnx"
-    gemm_node, gemm_inits = make_gemm_node(
+    gemm_nodes, gemm_inits = make_gemm_node(
         "gemm", ["input_dq"], ["output"], weight_shape=[3, 2], with_bias=False
     )
     _build_qdq_model(
         graph_name="gemm_001",
         input_shape=[1, 2], input_scale=0.01, input_zp=0,
         output_shape=[1, 3], output_scale=0.05, output_zp=0,
-        runtime_nodes=[gemm_node],
+        runtime_nodes=gemm_nodes,
         runtime_initializers=gemm_inits,
         save_path=path,
     )
@@ -113,14 +113,14 @@ def gen_gemm_001() -> Path:
 def gen_gemm_002() -> Path:
     """GEMM_002: 非对称输入 zp=10 含 bias — [1,4] → [1,8]"""
     path = MODELS_ROOT / "core" / "gemm" / "GEMM_002.onnx"
-    gemm_node, gemm_inits = make_gemm_node(
+    gemm_nodes, gemm_inits = make_gemm_node(
         "gemm", ["input_dq"], ["output"], weight_shape=[8, 4], with_bias=True
     )
     _build_qdq_model(
         graph_name="gemm_002",
         input_shape=[1, 4], input_scale=0.01, input_zp=10,
         output_shape=[1, 8], output_scale=0.05, output_zp=0,
-        runtime_nodes=[gemm_node],
+        runtime_nodes=gemm_nodes,
         runtime_initializers=gemm_inits,
         save_path=path,
     )
@@ -130,14 +130,14 @@ def gen_gemm_002() -> Path:
 def gen_gemm_003() -> Path:
     """GEMM_003: 非 4 对齐维度 13→7"""
     path = MODELS_ROOT / "core" / "gemm" / "GEMM_003.onnx"
-    gemm_node, gemm_inits = make_gemm_node(
+    gemm_nodes, gemm_inits = make_gemm_node(
         "gemm", ["input_dq"], ["output"], weight_shape=[7, 13], with_bias=True
     )
     _build_qdq_model(
         graph_name="gemm_003",
         input_shape=[1, 13], input_scale=0.03, input_zp=0,
         output_shape=[1, 7], output_scale=0.04, output_zp=0,
-        runtime_nodes=[gemm_node],
+        runtime_nodes=gemm_nodes,
         runtime_initializers=gemm_inits,
         save_path=path,
     )
@@ -147,14 +147,14 @@ def gen_gemm_003() -> Path:
 def gen_gemm_004() -> Path:
     """GEMM_004: 中等规模 64→32"""
     path = MODELS_ROOT / "core" / "gemm" / "GEMM_004.onnx"
-    gemm_node, gemm_inits = make_gemm_node(
+    gemm_nodes, gemm_inits = make_gemm_node(
         "gemm", ["input_dq"], ["output"], weight_shape=[32, 64], with_bias=True
     )
     _build_qdq_model(
         graph_name="gemm_004",
         input_shape=[1, 64], input_scale=0.01, input_zp=0,
         output_shape=[1, 32], output_scale=0.02, output_zp=0,
-        runtime_nodes=[gemm_node],
+        runtime_nodes=gemm_nodes,
         runtime_initializers=gemm_inits,
         save_path=path,
     )
@@ -168,7 +168,7 @@ def gen_gemm_004() -> Path:
 def gen_conv_001() -> Path:
     """CONV_001: 1×1 pointwise 单通道 — [1,1,4,4] → [1,1,4,4]"""
     path = MODELS_ROOT / "core" / "conv" / "CONV_001.onnx"
-    conv_node, conv_inits = make_conv_node(
+    conv_nodes, conv_inits = make_conv_node(
         "conv", ["input_dq"], ["output"],
         weight_shape=[1, 1, 1, 1], kernel_shape=[1, 1],
         strides=[1, 1], pads=[0, 0, 0, 0], with_bias=True,
@@ -177,7 +177,7 @@ def gen_conv_001() -> Path:
         graph_name="conv_001",
         input_shape=[1, 1, 4, 4], input_scale=0.01, input_zp=0,
         output_shape=[1, 1, 4, 4], output_scale=0.05, output_zp=0,
-        runtime_nodes=[conv_node],
+        runtime_nodes=conv_nodes,
         runtime_initializers=conv_inits,
         save_path=path,
     )
@@ -187,7 +187,7 @@ def gen_conv_001() -> Path:
 def gen_conv_002() -> Path:
     """CONV_002: 3×3 标准 SAME padding — [1,3,8,8] → [1,8,8,8]"""
     path = MODELS_ROOT / "core" / "conv" / "CONV_002.onnx"
-    conv_node, conv_inits = make_conv_node(
+    conv_nodes, conv_inits = make_conv_node(
         "conv", ["input_dq"], ["output"],
         weight_shape=[8, 3, 3, 3], kernel_shape=[3, 3],
         strides=[1, 1], pads=[1, 1, 1, 1], with_bias=True,
@@ -196,7 +196,7 @@ def gen_conv_002() -> Path:
         graph_name="conv_002",
         input_shape=[1, 3, 8, 8], input_scale=0.01, input_zp=0,
         output_shape=[1, 8, 8, 8], output_scale=0.05, output_zp=0,
-        runtime_nodes=[conv_node],
+        runtime_nodes=conv_nodes,
         runtime_initializers=conv_inits,
         save_path=path,
     )
@@ -206,7 +206,7 @@ def gen_conv_002() -> Path:
 def gen_conv_003() -> Path:
     """CONV_003: stride=2 下采样 — [1,4,8,8] → [1,8,4,4]"""
     path = MODELS_ROOT / "core" / "conv" / "CONV_003.onnx"
-    conv_node, conv_inits = make_conv_node(
+    conv_nodes, conv_inits = make_conv_node(
         "conv", ["input_dq"], ["output"],
         weight_shape=[8, 4, 3, 3], kernel_shape=[3, 3],
         strides=[2, 2], pads=[1, 1, 1, 1], with_bias=True,
@@ -215,7 +215,7 @@ def gen_conv_003() -> Path:
         graph_name="conv_003",
         input_shape=[1, 4, 8, 8], input_scale=0.01, input_zp=0,
         output_shape=[1, 8, 4, 4], output_scale=0.03, output_zp=0,
-        runtime_nodes=[conv_node],
+        runtime_nodes=conv_nodes,
         runtime_initializers=conv_inits,
         save_path=path,
     )
@@ -225,7 +225,7 @@ def gen_conv_003() -> Path:
 def gen_conv_004() -> Path:
     """CONV_004: 非对称输入 zp=12 — [1,3,8,8] → [1,8,8,8]"""
     path = MODELS_ROOT / "core" / "conv" / "CONV_004.onnx"
-    conv_node, conv_inits = make_conv_node(
+    conv_nodes, conv_inits = make_conv_node(
         "conv", ["input_dq"], ["output"],
         weight_shape=[8, 3, 3, 3], kernel_shape=[3, 3],
         strides=[1, 1], pads=[1, 1, 1, 1], with_bias=True,
@@ -234,7 +234,7 @@ def gen_conv_004() -> Path:
         graph_name="conv_004",
         input_shape=[1, 3, 8, 8], input_scale=0.01, input_zp=12,
         output_shape=[1, 8, 8, 8], output_scale=0.05, output_zp=0,
-        runtime_nodes=[conv_node],
+        runtime_nodes=conv_nodes,
         runtime_initializers=conv_inits,
         save_path=path,
     )
@@ -310,12 +310,12 @@ def gen_topo_001() -> Path:
     initializers.extend(in_inits)
     value_infos.extend(in_vis)
 
-    conv_node, conv_inits = make_conv_node(
+    conv_nodes, conv_inits = make_conv_node(
         "conv", ["input_dq"], ["conv_out"],
         weight_shape=[8, 3, 3, 3], kernel_shape=[3, 3],
         strides=[1, 1], pads=[1, 1, 1, 1], with_bias=True,
     )
-    nodes.append(conv_node)
+    nodes.extend(conv_nodes)
     initializers.extend(conv_inits)
 
     relu_node = make_relu_node("relu", ["conv_out"], ["relu_out"])
@@ -372,10 +372,10 @@ def gen_topo_001() -> Path:
     initializers.extend(fc_dq_inits)
     value_infos.extend(fc_dq_vis)
 
-    gemm_node, gemm_inits = make_gemm_node(
+    gemm_nodes, gemm_inits = make_gemm_node(
         "fc", ["flat_out_dq_dq"], ["fc_out"], weight_shape=[10, 128], with_bias=True
     )
-    nodes.append(gemm_node)
+    nodes.extend(gemm_nodes)
     initializers.extend(gemm_inits)
 
     out_nodes, out_inits, out_vis = make_qdq_wrapper(

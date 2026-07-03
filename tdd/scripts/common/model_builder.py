@@ -168,7 +168,7 @@ def make_gemm_node(
     transB: int = 1,
     alpha: float = 1.0,
     beta: float = 1.0,
-) -> tuple[helper.NodeProto, list[helper.TensorProto]]:
+) -> tuple[list[helper.NodeProto], list[helper.TensorProto]]:
     """创建一个 Gemm 节点及其权重/bias initializer。
 
     Args:
@@ -180,15 +180,30 @@ def make_gemm_node(
         transB: B 矩阵是否转置, 默认 1。
     """
     initializers: list[helper.TensorProto] = []
-    w_name = f"{name}.weight"
+    w_q_name = f"{name}.weight.q"
+    w_scale_name = f"{name}.weight.scale"
+    w_zp_name = f"{name}.weight.zero_point"
+    w_dq_name = f"{name}.weight.dq"
     b_name = f"{name}.bias"
 
-    # 确定性权重
-    rng = np.random.RandomState(hash(name) % (2**31))
-    weight_arr = (rng.randn(*weight_shape) * 0.1).astype(np.float32)
-    initializers.append(numpy_helper.from_array(weight_arr, name=w_name))
+    rng = np.random.RandomState(_stable_seed(name))
+    weight_arr = rng.randint(-8, 9, size=weight_shape).astype(np.int8)
+    initializers.extend(
+        [
+            numpy_helper.from_array(weight_arr, name=w_q_name),
+            numpy_helper.from_array(np.array(0.02, dtype=np.float32), name=w_scale_name),
+            numpy_helper.from_array(np.array(0, dtype=np.int8), name=w_zp_name),
+        ]
+    )
 
-    node_inputs = [inputs[0], w_name]
+    weight_dq = helper.make_node(
+        "DequantizeLinear",
+        [w_q_name, w_scale_name, w_zp_name],
+        [w_dq_name],
+        name=f"{name}_weight_dequant",
+    )
+
+    node_inputs = [inputs[0], w_dq_name]
     if with_bias:
         out_features = weight_shape[0]
         bias_arr = (rng.randn(out_features) * 0.01).astype(np.float32)
@@ -207,7 +222,7 @@ def make_gemm_node(
         alpha=alpha,
         beta=beta,
     )
-    return node, initializers
+    return [weight_dq, node], initializers
 
 
 def make_conv_node(
@@ -221,7 +236,7 @@ def make_conv_node(
     group: int = 1,
     dilations: list[int] | None = None,
     with_bias: bool = True,
-) -> tuple[helper.NodeProto, list[helper.TensorProto]]:
+) -> tuple[list[helper.NodeProto], list[helper.TensorProto]]:
     """创建一个 Conv 节点及其权重/bias initializer。
 
     Args:
@@ -244,14 +259,30 @@ def make_conv_node(
         dilations = [1, 1]
 
     initializers: list[helper.TensorProto] = []
-    w_name = f"{name}.weight"
+    w_q_name = f"{name}.weight.q"
+    w_scale_name = f"{name}.weight.scale"
+    w_zp_name = f"{name}.weight.zero_point"
+    w_dq_name = f"{name}.weight.dq"
     b_name = f"{name}.bias"
 
-    rng = np.random.RandomState(hash(name) % (2**31))
-    weight_arr = (rng.randn(*weight_shape) * 0.1).astype(np.float32)
-    initializers.append(numpy_helper.from_array(weight_arr, name=w_name))
+    rng = np.random.RandomState(_stable_seed(name))
+    weight_arr = rng.randint(-8, 9, size=weight_shape).astype(np.int8)
+    initializers.extend(
+        [
+            numpy_helper.from_array(weight_arr, name=w_q_name),
+            numpy_helper.from_array(np.array(0.02, dtype=np.float32), name=w_scale_name),
+            numpy_helper.from_array(np.array(0, dtype=np.int8), name=w_zp_name),
+        ]
+    )
 
-    node_inputs = [inputs[0], w_name]
+    weight_dq = helper.make_node(
+        "DequantizeLinear",
+        [w_q_name, w_scale_name, w_zp_name],
+        [w_dq_name],
+        name=f"{name}_weight_dequant",
+    )
+
+    node_inputs = [inputs[0], w_dq_name]
     kwargs: dict = {
         "kernel_shape": kernel_shape,
         "strides": strides,
@@ -266,7 +297,14 @@ def make_conv_node(
         node_inputs.append(b_name)
 
     node = helper.make_node("Conv", node_inputs, outputs, name=name, **kwargs)
-    return node, initializers
+    return [weight_dq, node], initializers
+
+
+def _stable_seed(name: str) -> int:
+    seed = 0
+    for char in name:
+        seed = (seed * 131 + ord(char)) % (2**31 - 1)
+    return seed or 1
 
 
 def make_maxpool_node(
