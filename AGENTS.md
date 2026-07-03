@@ -106,6 +106,7 @@
 - 生成的 C 头文件需要能被 C99 编译器包含。
 - codegen 生成物后续需要优先用 Arm GNU Toolchain/Arm Compiler/FVP 或目标开发板验证，PC 端检查只能作为早期 smoke test。
 - 对高风险逻辑补测试，包括 shape 处理、权重命名、属性解析和 C 数组导出。
+- **生成物优先于报告状态**：不得仅凭 `codegen_report.txt`、`pipeline_report.md` 或 CLI 输出中的 `status: ok` 宣称转换成功。`ok` 交付必须检查 `cmsis-codegen/src/model.c`：`nanoc_model_run()` 中应存在真实 CMSIS-NN 调用路径，C 预处理结构完整，不得只有 `Generated execution trace`、fallback stub、孤立 `#else/#endif` 或空运行路径，并且应通过 C99 smoke compile。报告为 `ok` 但生成物不可编译或不可推理，属于严重假阳性，优先级高于普通 blocked/unsupported，必须先沉淀测试或验证规则再继续扩展能力。
 - **TDD 回归与能力集保护**：任何 converter 或 codegen 改动后，必须执行 `python tdd/scripts/run_tests.py` 确认全部测试用例结果符合预期。该命令同时更新 `tdd/CAPABILITIES.md`。若已确认能力（之前 PASS 的用例）出现退化，视为严重缺陷，不得提交。新增算子支持时，必须同步新增或激活对应的 TDD 测试用例，用例通过后能力集自动扩展。
 
 ## TDD 操作流程

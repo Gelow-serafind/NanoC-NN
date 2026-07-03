@@ -112,6 +112,28 @@ TDD 执行分为两种模式：
 
 对 `blocked` / `unsupported` 用例，PASS 表示 pipeline 明确拒绝并返回非零，而不是崩溃或静默产出可交付代码。
 
+### 生成物优先原则
+
+报告不是最终事实源，生成物才是最终事实源。任何一次 `ok` 判定都必须以
+`cmsis-codegen/src/model.c` 和实际编译结果为准，而不能只看 `codegen_report.txt`
+或 `pipeline_report.md` 中的状态字段。
+
+一次 `ok` 生成物至少必须满足：
+
+- `nanoc_model_status()` 返回 `ok`，且 `nanoc_model_run()` 中存在真实运行路径。
+- `nanoc_model_run()` 内部必须包含该模型运行期节点对应的 CMSIS-NN 调用，不能只有
+  `Generated execution trace` 注释或 fallback stub。
+- C 预处理结构必须完整，不能出现孤立的 `#else`、`#endif`、缺失 `#if` 等语法结构错误。
+- C99 smoke compile 必须通过；未执行 compile 时，只能称为“分析通过”或“生成候选”，
+  不能称为“正确生成”。
+- 对多分支网络，必须检查生成代码是否按 tensor name 读取历史中间张量；不能把
+  线性 `current_input/current_output` 误认为残差或 concat 已正确实现。
+
+如果报告显示 `ok`，但 `model.c` 为空运行路径、stub、语法错误、缺少必要 CMSIS-NN
+调用或无法编译，这属于**严重假阳性**。严重假阳性优先级高于普通 blocked/unsupported：
+必须先把它沉淀为测试用例或验证规则，再继续扩展算子能力。严禁把报告状态直接等同于
+产品能力。
+
 ### 能力集演进的具体场景
 
 下面这个例子说明能力集在实际产品维护中如何运转：
