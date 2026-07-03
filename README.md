@@ -27,6 +27,20 @@
 - 生成代码不在运行期动态分配内存，激活缓冲区、权重、临时 buffer 均由生成阶段静态规划。
 - C 端推理结果与 Python/ONNX Runtime 或量化参考实现完成精度对齐。
 
+## 开发方法论
+
+本项目采用**测试驱动开发**作为核心开发方法。
+
+我们不是神经网络的专家，我们在做的是一个面向未知输入空间的代码生成器——我们不知道市场上究竟会出现什么样的 ONNX 模型。因此，我们通过不断构造测试模型、执行代码生成器、观察结果、修复缺陷的方式，逐步扩展能力边界。**代码生成器的能力边界 = 测试集覆盖的边界**。
+
+- 每个通过的测试用例，是我们对外多承诺了一种能力
+- 每个被正确拒绝的测试用例，是我们对自己边界的一次精确划定
+- 所有历史测试用例必须持续通过——新功能不能打破旧功能
+
+**迭代起点是测试用例，不是代码。** 每次开发迭代从审视已有测试用例开始——发现缺口、新增测试、执行测试（预期失败）、根据测试报告做开发。测试报告就是开发任务单。
+
+测试资产和具体计划位于 `tdd/` 目录，纲领性说明见 `tdd/README.md`。
+
 ## 目录结构
 
 ```text
@@ -42,6 +56,18 @@ NanoC-NN/
 │   ├── converter/
 │   ├── codegen/
 │   └── pipeline/
+├── tdd/                            ← 测试驱动开发资产
+│   ├── README.md                   ← 开发纲领
+│   ├── STATUS.md                   ← 【入口】当前状态总览
+│   ├── cases/                      ← 测试用例规格（永久资产）
+│   │   ├── core/                   ← 原子算子测试
+│   │   ├── topology/               ← 组合拓扑测试
+│   │   ├── extension/              ← 驱动扩展测试
+│   │   └── negative/               ← 负向测试
+│   ├── scripts/                    ← 模型生成与执行脚本
+│   ├── models/                     ← 生成的 ONNX 模型（gitignore）
+│   ├── results/                    ← 执行结果
+│   └── iterations/                 ← 迭代记录（开发历史）
 ├── docs/
 │   ├── project/
 │   ├── converter/
@@ -128,6 +154,7 @@ conda run -n nanoc-onnx-examples nanoc-onnx-to-cmsis \
 ## 开发约定
 
 - 仓库协作规则见 `AGENTS.md`。
+- **开发方法论见 `tdd/README.md`——测试驱动开发是本项目的核心开发纪律。**
 - 总体路线见 `docs/project/roadmap.md`，项目章程见 `docs/project/charter.md`。
 - converter 计划见 `docs/converter/plan.md`，codegen 计划见 `docs/codegen/plan.md`。
 - 文档优先使用中文。

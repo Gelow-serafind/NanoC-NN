@@ -1,0 +1,128 @@
+{
+  "timestamp": "2026-07-03T16:19:28.126394",
+  "total": 12,
+  "passed": 2,
+  "failed": 10,
+  "results": [
+    {
+      "case_id": "CONV_001",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\conv\\CONV_001.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.5
+    },
+    {
+      "case_id": "CONV_002",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\conv\\CONV_002.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.52
+    },
+    {
+      "case_id": "CONV_003",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\conv\\CONV_003.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.48
+    },
+    {
+      "case_id": "CONV_004",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\conv\\CONV_004.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.69
+    },
+    {
+      "case_id": "GEMM_001",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\gemm\\GEMM_001.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.48
+    },
+    {
+      "case_id": "GEMM_002",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\gemm\\GEMM_002.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.52
+    },
+    {
+      "case_id": "GEMM_003",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\gemm\\GEMM_003.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.67
+    },
+    {
+      "case_id": "GEMM_004",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\gemm\\GEMM_004.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.77
+    },
+    {
+      "case_id": "MAXPOOL_001",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\maxpool\\MAXPOOL_001.onnx",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "error_msg": "",
+      "duration_sec": 1.39
+    },
+    {
+      "case_id": "SOFTMAX_001",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\core\\softmax\\SOFTMAX_001.onnx",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "error_msg": "",
+      "duration_sec": 1.86
+    },
+    {
+      "case_id": "NEG_001",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\negative\\NEG_001.onnx",
+      "expected": "unsupported",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=unsupported, got=blocked",
+      "duration_sec": 1.05
+    },
+    {
+      "case_id": "TOPO_001",
+      "onnx_path": "E:\\.desktop\\NanoC-NN\\tdd\\models\\topology\\TOPO_001.onnx",
+      "expected": "ok",
+      "actual": "blocked",
+      "passed": false,
+      "exit_code": 2,
+      "error_msg": "expected=ok, got=blocked",
+      "duration_sec": 0.69
+    }
+  ]
+}

@@ -52,3 +52,8 @@ compile_commands.json
 # Logs
 *.log
 
+# TDD generated artifacts
+tdd/models/
+tdd/results/history/
+tdd/results/tmp/
+
