@@ -4,6 +4,10 @@
 
 验证 stride>1 时的输出 shape 推导正确性和 CMSIS-NN stride 参数映射。
 
+## 来源
+
+内部探索：覆盖 Conv2D 下采样路径和输出 shape 边界。
+
 ## 网络结构
 
 ```

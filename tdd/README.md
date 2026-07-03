@@ -93,6 +93,25 @@
 
 **CAPABILITIES.md 是只读输出，不是手写文档。** 它的内容完全由测试结果决定。人不能声称能力——只有通过测试才能声称能力。
 
+### target 与 baseline
+
+TDD 执行分为两种模式：
+
+- `target`：执行全部目标用例，生成 `CAPABILITIES.md`，失败项就是下一轮开发任务单。
+- `baseline`：只执行已经纳入稳定回归门禁的用例，用于确认已承诺能力没有退化。
+
+`target` 可以失败，因为它承载未来能力；`baseline` 不应失败，因为它保护当前已经确认的能力。只有全量 `target` 执行才会重写 `CAPABILITIES.md`，避免单个用例或分类测试把能力集误缩小。
+
+### PASS 的含义
+
+对 `ok` 用例，PASS 不只是 codegen 报告为 `ok`。测试执行器还会检查：
+
+- 生成的 `model.c` 包含用例要求的 CMSIS-NN API。
+- 生成 C 工程可以通过 C99 smoke compile。
+- smoke binary 可以启动且不崩溃、不超时。默认 host smoke 会关闭真实 CMSIS-NN 调用，因此返回 `NANOC_STATUS_BLOCKED` 也属于正常保护行为。
+
+对 `blocked` / `unsupported` 用例，PASS 表示 pipeline 明确拒绝并返回非零，而不是崩溃或静默产出可交付代码。
+
 ### 能力集演进的具体场景
 
 下面这个例子说明能力集在实际产品维护中如何运转：
@@ -176,6 +195,15 @@
 
 ```
 每次迭代 = 审视测试用例 → 发现缺口 → 新增测试 → 执行（预期失败）→ 按报告修代码 → 全量回归 → 下一轮
+```
+
+常用命令：
+
+```bash
+python tdd/scripts/run_tests.py --validate-only
+python tdd/scripts/run_tests.py --mode baseline --generate
+python tdd/scripts/run_tests.py --mode target --generate
+python tdd/scripts/run_tests.py --case GEMM_001 --generate
 ```
 
 具体的测试用例规格见 `tdd/cases/`，当前能力集见 `tdd/CAPABILITIES.md`，迭代记录见 `tdd/iterations/`。本文件不会改变——因为开发理念不会改变。

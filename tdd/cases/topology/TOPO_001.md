@@ -4,6 +4,10 @@
 
 验证经典 CNN 分类链路的全链路数据流正确性，包括算子间 buffer 切换、NCHW→NHWC 布局处理、Flatten 折叠后 FC 输入维度推导。
 
+## 来源
+
+内部探索：把 Conv、Relu、Pool、Flatten 和 FC 串成最小 CNN 分类主链路。
+
 ## 网络结构
 
 ```

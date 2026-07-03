@@ -4,6 +4,10 @@
 
 验证非对称输入量化时 `input_offset = -zero_point` 是否正确传入 CMSIS-NN，以及 bias int32 量化系数是否正确计算。
 
+## 来源
+
+内部探索：覆盖 Fully Connected int8 路径中非对称输入和 bias 的常见组合。
+
 ## 网络结构
 
 ```

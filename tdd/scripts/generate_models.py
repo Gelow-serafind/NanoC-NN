@@ -14,14 +14,13 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import onnx
 from onnx import TensorProto, helper, numpy_helper
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPT_DIR))
 
-from cases_registry import CASE_MAP
-from common.model_builder import (
+from cases_registry import CASE_MAP  # noqa: E402
+from common.model_builder import (  # noqa: E402
     build_and_save,
     make_conv_node,
     make_flatten_node,
@@ -491,7 +490,7 @@ def main() -> None:
         if not matched:
             print(f"无匹配用例: {args.category}")
             sys.exit(1)
-        for case_id, gen_fn in sorted(matched.items()):
+        for _case_id, gen_fn in sorted(matched.items()):
             path = gen_fn()
             print(f"  生成: {path}")
     else:

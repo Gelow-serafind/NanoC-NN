@@ -4,6 +4,10 @@
 
 验证标准 3×3 卷积的完整参数映射，包括 SAME padding 计算、多通道权重布局转换、multiplier/shift 数组生成。
 
+## 来源
+
+内部探索：覆盖 CNN 中最高频的 3x3 SAME padding Conv2D 形态。
+
 ## 网络结构
 
 ```

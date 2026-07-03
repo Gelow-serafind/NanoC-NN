@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-07-03T20:09:08.336855",
+  "mode": "baseline",
+  "git_commit": "5eb4453",
+  "platform": "Darwin 25.2.0 (arm64)",
+  "command": "tdd/scripts/run_tests.py --mode baseline --generate",
+  "total": 2,
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "MAXPOOL_001",
+      "category": "core/maxpool",
+      "onnx_path": "tdd/models/core/maxpool/MAXPOOL_001.onnx",
+      "output_dir": "tdd/results/tmp/MAXPOOL_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_max_pool_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.77
+    },
+    {
+      "case_id": "SOFTMAX_001",
+      "category": "core/softmax",
+      "onnx_path": "tdd/models/core/softmax/SOFTMAX_001.onnx",
+      "output_dir": "tdd/results/tmp/SOFTMAX_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_softmax_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.35
+    }
+  ]
+}

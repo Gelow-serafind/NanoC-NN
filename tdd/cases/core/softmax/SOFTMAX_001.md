@@ -4,6 +4,10 @@
 
 验证 Softmax 的 multiplier/shift/diff_min 参数计算和 CMSIS-NN 调用生成。
 
+## 来源
+
+内部探索：建立分类输出端 Softmax int8 路径的最小稳定能力。
+
 ## 网络结构
 
 ```

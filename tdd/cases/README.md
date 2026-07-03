@@ -101,3 +101,18 @@ Q/DQ Input → [算子序列] → Q/DQ Output
 - "开发这个能力需要做什么？" → 执行用例，观察失败报告，按报告修复
 
 **禁止反向操作**：不允许先改代码再补用例来证明它。先有能力定义（用例），后有能力实现（代码修复）。
+
+## 规格校验
+
+新增或修改用例后，必须运行：
+
+```bash
+python tdd/scripts/run_tests.py --validate-only
+```
+
+校验会检查：
+
+- `cases/`、`cases_registry.py`、`generate_models.py` 中的用例 ID 是否一致。
+- 每个规格文件是否包含必需章节。
+- 规格中的 `codegen status` 是否与 registry 中的 expected 一致。
+- 规格路径是否与 registry 中的分类一致。

@@ -71,18 +71,18 @@
 ## 如何操作
 
 ```bash
-# 生成全部测试模型
-python tdd/scripts/generate_models.py
+# 校验 TDD 用例规格
+python tdd/scripts/run_tests.py --validate-only
 
-# 执行全部测试（更新 CAPABILITIES.md + results/latest.json）
-python tdd/scripts/run_tests.py
+# 生成并执行稳定回归门禁
+python tdd/scripts/run_tests.py --mode baseline --generate
 
-# 生成 + 执行一步到位
-python tdd/scripts/run_tests.py --generate
+# 生成并执行全部目标用例（更新 CAPABILITIES.md + results/latest.json）
+python tdd/scripts/run_tests.py --mode target --generate
 
 # 只执行单个用例
-python tdd/scripts/run_tests.py --case GEMM_001
+python tdd/scripts/run_tests.py --case GEMM_001 --generate
 
 # 只执行某一类
-python tdd/scripts/run_tests.py --category core/gemm
+python tdd/scripts/run_tests.py --category core/gemm --generate
 ```

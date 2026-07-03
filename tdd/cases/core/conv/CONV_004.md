@@ -4,6 +4,10 @@
 
 验证非对称输入量化时 Conv 的 input_offset 是否正确设置为 -zero_point。
 
+## 来源
+
+内部探索：覆盖 Conv2D int8 非对称输入量化路径。
+
 ## 网络结构
 
 ```

@@ -8,12 +8,10 @@ Q/DQ int8 量化 ONNX 模型, 供各阶段测试脚本复用。
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 import onnx
 from onnx import TensorProto, helper, numpy_helper
-
 
 # ---------------------------------------------------------------------------
 # 公共常量
