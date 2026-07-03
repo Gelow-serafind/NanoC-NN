@@ -157,8 +157,13 @@ def _quantization_section(model_info: ModelInfo) -> list[str]:
     tensors = quantization.get("tensors", {})
     weights = quantization.get("weights", {})
     nodes = quantization.get("nodes", {})
+    contract = quantization.get("int8_contract", {})
+    contract_status = (
+        contract.get("status", "unknown") if isinstance(contract, dict) else "unknown"
+    )
     lines.extend(
         [
+            f"- int8 合同状态：`{contract_status}`",
             f"- Tensor 量化数量：`{len(tensors) if isinstance(tensors, dict) else 0}`",
             f"- Quantized weight 数量：`{len(weights) if isinstance(weights, dict) else 0}`",
             f"- Node 量化数量：`{len(nodes) if isinstance(nodes, dict) else 0}`",
@@ -263,6 +268,7 @@ def _report_text(model_info: ModelInfo) -> str:
         f"initializers: {len(model_info.initializers)}",
         f"c_exportable_initializers: {len(model_info.c_exportable_initializers)}",
         f"quantization: {'present' if model_info.quantization else 'none'}",
+        f"int8_contract: {_int8_contract_status(model_info.quantization)}",
         f"unsupported_ops: {', '.join(unsupported_ops) if unsupported_ops else 'none'}",
         "",
         "Output files:",
@@ -296,6 +302,15 @@ def _report_text(model_info: ModelInfo) -> str:
         lines.append("- none")
     lines.append("")
     return "\n".join(lines)
+
+
+def _int8_contract_status(quantization: dict[str, Any]) -> str:
+    if not quantization:
+        return "none"
+    contract = quantization.get("int8_contract")
+    if not isinstance(contract, dict):
+        return "missing"
+    return str(contract.get("status", "unknown"))
 
 
 def _escape(value: str) -> str:

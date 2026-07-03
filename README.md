@@ -74,6 +74,38 @@ conda run -n nanoc-onnx-examples nanoc onnx-to-cmsis \
   --flash-budget 512K
 ```
 
+当前主链路面向可交付的 int8 CMSIS-NN 代码生成：只有 codegen 状态为 `ok`
+时命令返回 0；若模型缺少 Q/DQ int8 量化信息、存在缺失算子或尚未实现的
+renderer，命令会返回非 0，并在输出目录保留报告。调试时如需保留 blocked
+骨架并让命令返回成功，可显式添加 `--allow-blocked-output`。
+
+## 当前支持白名单
+
+当前“ONNX 输入 -> converter 解析 -> CMSIS-NN codegen 生成可推理 C 代码”链路
+仅对以下白名单模型形态承诺 `ok` 产物：
+
+- 输入模型必须是 ONNX Q/DQ int8 量化模型，量化边界使用 `QuantizeLinear` /
+  `DequantizeLinear`。
+- 支持 per-tensor int8 权重和激活量化、固定 shape、batch size 1。
+- 支持默认 `NCHW` 布局输入，由 codegen 映射到 CMSIS-NN 使用的 NHWC dims。
+- `Conv` 仅支持 2D Conv，权重形状为 `[O, I, H, W]`，`group = 1`，
+  `dilation = [1, 1]`，生成 `arm_convolve_wrapper_s8()`。
+- `Gemm` / Fully Connected 仅支持 Q/DQ int8 全连接，`Gemm(transB=1)`，
+  权重形状为 `[out_features, in_features]`，生成 `arm_fully_connected_s8()`。
+- `MaxPool` 支持 int8 s8 pooling，输入输出量化参数需一致，生成
+  `arm_max_pool_s8()`。
+- `AveragePool` / `GlobalAveragePool` 支持 int8 s8 average pooling，输入输出量化
+  参数需一致，生成 `arm_avgpool_s8()`。
+- `Softmax` 支持 int8 s8 softmax，生成 `arm_softmax_s8()`。
+- `QuantizeLinear`、`DequantizeLinear`、`Flatten`、`Reshape`、`Transpose`、`Relu`
+  作为生成期折叠、量化透传或 activation 融合处理，不单独生成运行期调用。
+
+典型可成功网络形态：
+
+```text
+Q/DQ input -> Conv2D -> Pool -> Flatten -> Gemm/FullyConnected -> Softmax -> Q/DQ output
+```
+
 默认会在 ONNX 所在目录生成：
 
 ```text

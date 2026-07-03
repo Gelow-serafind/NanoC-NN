@@ -94,10 +94,39 @@ python -m nanoc_nn.codegen \
 ```
 
 当前已经实现 converter 输出目录到 CMSIS-NN C 工程的生成闭环。float32
-模型或缺少量化 section 的模型仍会报告为 `blocked`；带 Q/DQ、per-tensor
-量化、`Gemm(transB=1)` 的最小 Fully Connected 路径可以生成真实
-`arm_fully_connected_s8()` 调用、int8 权重和 int32 bias。Conv/Add/Pool
-等其它量化算子的真实渲染仍按 blocked 处理，避免出现“映射成功但代码为空”的假象。
+模型或缺少量化 section 的模型仍会报告为 `blocked`。当前交付成功路径仅面向
+Q/DQ int8 白名单模型：`Gemm(transB=1)` / Fully Connected、普通 2D
+`Conv(group=1, dilation=[1, 1])`、MaxPool、AveragePool、GlobalAveragePool 和
+Softmax 可以生成真实 CMSIS-NN 调用。超出白名单的算子或形态仍按 blocked /
+unsupported 处理，避免出现“映射成功但代码为空”的假象。
+
+## 当前支持白名单
+
+当前“ONNX 输入 -> converter 解析 -> CMSIS-NN codegen 生成可推理 C 代码”链路仅
+对以下模型形态承诺 `ok` 产物：
+
+- 输入模型必须是 ONNX Q/DQ int8 量化模型，量化边界使用 `QuantizeLinear` /
+  `DequantizeLinear`。
+- 支持 per-tensor int8 权重和激活量化、固定 shape、batch size 1。
+- 支持默认 `NCHW` 布局输入，由 codegen 映射到 CMSIS-NN 使用的 NHWC dims。
+- `Conv` 仅支持 2D Conv，权重形状为 `[O, I, H, W]`，`group = 1`，
+  `dilation = [1, 1]`，生成 `arm_convolve_wrapper_s8()`；权重从 ONNX `OIHW`
+  重排为 CMSIS-NN `OHWI`。
+- `Gemm` / Fully Connected 仅支持 Q/DQ int8 全连接，`Gemm(transB=1)`，
+  权重形状为 `[out_features, in_features]`，生成 `arm_fully_connected_s8()`。
+- `MaxPool` 支持 int8 s8 pooling，输入输出量化参数需一致，生成
+  `arm_max_pool_s8()`。
+- `AveragePool` / `GlobalAveragePool` 支持 int8 s8 average pooling，输入输出量化
+  参数需一致，生成 `arm_avgpool_s8()`。
+- `Softmax` 支持 int8 s8 softmax，生成 `arm_softmax_s8()`。
+- `QuantizeLinear`、`DequantizeLinear`、`Flatten`、`Reshape`、`Transpose`、`Relu`
+  作为生成期折叠、量化透传或 activation 融合处理，不单独生成运行期调用。
+
+典型可成功网络形态：
+
+```text
+Q/DQ input -> Conv2D -> Pool -> Flatten -> Gemm/FullyConnected -> Softmax -> Q/DQ output
+```
 
 ## 计划输出
 
@@ -162,6 +191,10 @@ conda run -n nanoc-onnx-examples nanoc onnx-to-cmsis \
   --sram-budget 128K \
   --flash-budget 512K
 ```
+
+默认交付语义是：只有 `status: ok` 的生成结果返回 0。若存在缺失量化字段、
+缺失算子、缺失 renderer 或预算阻塞，CLI 会返回非 0，同时保留 `reports/`
+用于定位原因。只有调试骨架和报告时才建议显式添加 `--allow-blocked-output`。
 
 也可以继续使用仓库根目录下的兼容脚本：
 

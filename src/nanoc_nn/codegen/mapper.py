@@ -16,7 +16,15 @@ RUNTIME_ACTIONS = {
     "Transpose": ("direct_api", "arm_transpose_s8", True),
 }
 
-RENDERED_RUNTIME_OPS = {"Gemm", "MatMul"}
+RENDERED_RUNTIME_OPS = {
+    "AveragePool",
+    "Conv",
+    "Gemm",
+    "GlobalAveragePool",
+    "MatMul",
+    "MaxPool",
+    "Softmax",
+}
 
 FOLDED_ACTIONS = {
     "Cast": "generation-time dtype/shape helper",
@@ -98,7 +106,15 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
         )
 
     if node.op_type == "Conv" and _is_depthwise_conv(node):
-        base = ("wrapper_api", "arm_depthwise_conv_wrapper_s8", True)
+        return _mapping(
+            node,
+            status="blocked",
+            action="arm_depthwise_conv_wrapper_s8",
+            reason="depthwise/grouped Conv needs a dedicated CMSIS-NN renderer",
+            needs_quantization=True,
+            needs_scratch=True,
+            layout_note=layout_note,
+        )
     else:
         base = RUNTIME_ACTIONS.get(node.op_type)
 
@@ -112,6 +128,16 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
         )
 
     status, action, needs_scratch = base
+    if node.op_type == "Conv" and _conv_has_unsupported_shape(node):
+        return _mapping(
+            node,
+            status="blocked",
+            action=action,
+            reason="first Conv renderer supports groups=1 and dilation=[1, 1] only",
+            needs_quantization=True,
+            needs_scratch=needs_scratch,
+            layout_note=layout_note,
+        )
     if not graph.has_quantization:
         return _mapping(
             node,
@@ -201,6 +227,21 @@ def _is_depthwise_conv(node: NodeSpec) -> bool:
     if not isinstance(out_channels, int) or not isinstance(in_per_group, int):
         return group > 1
     return group > 1 and in_per_group == 1 and out_channels % group == 0
+
+
+def _conv_has_unsupported_shape(node: NodeSpec) -> bool:
+    if node.op_type != "Conv":
+        return False
+    group = int(node.normalized_attributes.get("group", node.attributes.get("group", 1)))
+    dilations = node.normalized_attributes.get(
+        "dilations",
+        node.attributes.get("dilations", [1, 1]),
+    )
+    if group != 1:
+        return True
+    if not isinstance(dilations, list) or len(dilations) < 2:
+        return True
+    return [int(dilations[0]), int(dilations[1])] != [1, 1]
 
 
 def _weight_shape(node: NodeSpec) -> list[int | str | None] | None:

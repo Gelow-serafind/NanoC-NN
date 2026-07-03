@@ -125,7 +125,8 @@ def write_pipeline_report(result: PipelineResult) -> None:
     runtime_note = (
         "- Codegen 状态为 `ok` 时，生成物已包含当前支持范围内的真实 CMSIS-NN 调用。"
         if codegen.status == "ok"
-        else "- C99 smoke compile 通过只代表生成工程语法可编译，不代表 blocked 节点已可真实推理。"
+        else "- 当前状态不是 `ok`，CLI 默认按交付失败处理；C99 smoke compile 通过也只代表"
+        "生成工程语法可编译，不代表 blocked 节点已可真实推理。"
     )
     lines = [
         "# NanoC-NN ONNX 到 CMSIS-NN Pipeline 报告",

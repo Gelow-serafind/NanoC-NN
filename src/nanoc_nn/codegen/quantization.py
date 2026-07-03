@@ -2,6 +2,108 @@ from __future__ import annotations
 
 from .model import ModelGraph, OpMapping, QuantizationIssue
 
+REQUIRED_NODE_QUANT_FIELDS = {
+    "Conv": {
+        "cmsis_nn": {
+            "api",
+            "input_offset",
+            "output_offset",
+            "multiplier",
+            "shift",
+            "activation_min",
+            "activation_max",
+            "stride",
+            "padding",
+            "dilation",
+            "groups",
+            "scratch_getter",
+            "weight_layout",
+            "cmsis_weight_layout",
+        },
+        "weights": {"weight", "bias", "bias_values"},
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "Gemm": {
+        "cmsis_nn": {
+            "api",
+            "input_offset",
+            "filter_offset",
+            "output_offset",
+            "multiplier",
+            "shift",
+            "activation_min",
+            "activation_max",
+            "scratch_getter",
+        },
+        "weights": {"weight", "bias", "bias_values"},
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "MatMul": {
+        "cmsis_nn": {
+            "api",
+            "input_offset",
+            "filter_offset",
+            "output_offset",
+            "multiplier",
+            "shift",
+            "activation_min",
+            "activation_max",
+            "scratch_getter",
+        },
+        "weights": {"weight", "bias", "bias_values"},
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "MaxPool": {
+        "cmsis_nn": {
+            "api",
+            "stride",
+            "padding",
+            "kernel_shape",
+            "activation_min",
+            "activation_max",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "AveragePool": {
+        "cmsis_nn": {
+            "api",
+            "stride",
+            "padding",
+            "kernel_shape",
+            "activation_min",
+            "activation_max",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "GlobalAveragePool": {
+        "cmsis_nn": {
+            "api",
+            "stride",
+            "padding",
+            "kernel_shape",
+            "activation_min",
+            "activation_max",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "Softmax": {
+        "cmsis_nn": {
+            "api",
+            "multiplier",
+            "shift",
+            "diff_min",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+}
+
 
 def analyze_quantization(
     graph: ModelGraph,
@@ -24,6 +126,18 @@ def analyze_quantization(
         return issues
 
     quantization = graph.quantization or {}
+    contract = quantization.get("int8_contract")
+    if isinstance(contract, dict) and contract.get("status") not in {None, "ok"}:
+        issues.append(
+            QuantizationIssue(
+                node_name="__model__",
+                onnx_op="model",
+                requirement=(
+                    "converter int8 contract is "
+                    f"{contract.get('status')}: {_contract_issue_summary(contract)}"
+                ),
+            )
+        )
     tensor_quant = quantization.get("tensors", {})
     node_quant = quantization.get("nodes", {})
     for mapping in mappings:
@@ -58,15 +172,11 @@ def _missing_node_quant_fields(
     if not isinstance(cmsis_nn, dict):
         missing.append(f"nodes.{mapping.node_name}.cmsis_nn")
         return missing
-    for field in (
-        "input_offset",
-        "filter_offset",
-        "output_offset",
-        "multiplier",
-        "shift",
-        "activation_min",
-        "activation_max",
-    ):
+    rules = REQUIRED_NODE_QUANT_FIELDS.get(mapping.onnx_op, {})
+    cmsis_fields = rules.get("cmsis_nn", set())
+    if not isinstance(cmsis_fields, set):
+        cmsis_fields = set()
+    for field in sorted(cmsis_fields):
         if field not in cmsis_nn:
             missing.append(f"nodes.{mapping.node_name}.cmsis_nn.{field}")
     if not isinstance(tensor_quant, dict):
@@ -74,8 +184,35 @@ def _missing_node_quant_fields(
         return missing
     inputs = node_info.get("inputs", {})
     outputs = node_info.get("outputs", {})
-    if not isinstance(inputs, dict):
+    if rules.get("inputs") == "non_empty_dict" and (
+        not isinstance(inputs, dict) or not inputs
+    ):
         missing.append(f"nodes.{mapping.node_name}.inputs")
-    if not isinstance(outputs, dict):
+    if rules.get("outputs") == "non_empty_dict" and (
+        not isinstance(outputs, dict) or not outputs
+    ):
         missing.append(f"nodes.{mapping.node_name}.outputs")
+    weights = node_info.get("weights", {})
+    weight_fields = rules.get("weights", set())
+    if isinstance(weight_fields, set):
+        if not isinstance(weights, dict):
+            missing.append(f"nodes.{mapping.node_name}.weights")
+        else:
+            for field in sorted(weight_fields):
+                if field not in weights:
+                    missing.append(f"nodes.{mapping.node_name}.weights.{field}")
     return missing
+
+
+def _contract_issue_summary(contract: dict) -> str:
+    issues = contract.get("issues")
+    if not isinstance(issues, list) or not issues:
+        return "no detail"
+    first = issues[0]
+    if not isinstance(first, dict):
+        return "invalid issue detail"
+    node = first.get("node", "unknown")
+    reason = first.get("reason", "unknown reason")
+    extra = len(issues) - 1
+    suffix = f"; plus {extra} more" if extra > 0 else ""
+    return f"{node}: {reason}{suffix}"
