@@ -7,12 +7,7 @@ from torch import nn
 class IsOver10Net(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(1, 8),
-            nn.ReLU(),
-            nn.Linear(8, 2),
-        )
+        self.classifier = nn.Linear(1, 2)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x)
-
+        return self.classifier(x)

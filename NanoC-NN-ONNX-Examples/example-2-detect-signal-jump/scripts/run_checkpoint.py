@@ -5,9 +5,7 @@ import csv
 from pathlib import Path
 
 import torch
-
 from network import SignalJumpNet
-
 
 WINDOW_SIZE = 10
 CLASS_NAMES = ["no_jump", "up_jump", "down_jump"]

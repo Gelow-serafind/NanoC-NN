@@ -40,7 +40,19 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["cmake"],
         help="generated project style",
     )
-    parser.add_argument("--strict", action="store_true", help="fail on unsupported cases")
+    parser.add_argument(
+        "--allow-blocked-output",
+        action="store_true",
+        help=(
+            "return success even when generation is blocked/unsupported; intended only "
+            "for debug reports and skeleton output"
+        ),
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="stop immediately on unsupported cases instead of writing debug reports",
+    )
     parser.add_argument("--verbose", action="store_true", help="print detailed diagnostics")
     return parser
 
@@ -76,10 +88,17 @@ def main(argv: list[str] | None = None) -> int:
     print(f"nodes: {len(result.model_graph.nodes)}")
     print(f"blocked_or_unsupported: {len(result.blocking_mappings)}")
     print(f"reports: {result.out_dir / 'reports'}")
+    if result.status != "ok" and not args.allow_blocked_output:
+        print(
+            "delivery status: failed; use --allow-blocked-output only when you need "
+            "debug reports or skeleton output"
+        )
     if args.verbose:
         for mapping in result.mappings:
             print(
                 f"- {mapping.index}:{mapping.node_name} {mapping.onnx_op} "
                 f"=> {mapping.status} ({mapping.cmsis_action})"
             )
-    return 0 if result.status == "ok" or not args.strict else 2
+    if result.status == "ok" or args.allow_blocked_output:
+        return 0
+    return 2

@@ -57,7 +57,8 @@ example-2-detect-signal-jump/
     ├── checkpoints/
     │   └── signal_jump.pt
     └── onnx/
-        └── signal_jump.onnx
+        ├── signal_jump.onnx
+        └── signal_jump.int8.onnx
 ```
 
 `scripts/network.py` 专门展示网络结构。阅读这个文件即可直接看到本样例使用的 1D CNN。
@@ -78,11 +79,13 @@ conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-
 2. 训练一个简单 1D CNN。
 3. 输出训练准确率和测试准确率。
 4. 保存 checkpoint 到 `outputs/checkpoints/signal_jump.pt`。
-5. 导出 ONNX 文件到 `outputs/onnx/signal_jump.onnx`。
+5. 导出 float32 ONNX 文件到 `outputs/onnx/signal_jump.onnx`。
+6. 导出 Q/DQ int8 ONNX 文件到 `outputs/onnx/signal_jump.int8.onnx`。
 
 ## 使用 PyTorch checkpoint 推理
 
-默认读取 `data/inference/input_windows.csv` 中的所有窗口：
+默认读取 `data/inference/input_windows.csv` 中的所有窗口，并使用
+`outputs/onnx/signal_jump.int8.onnx`：
 
 ```bash
 conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_checkpoint.py
@@ -120,6 +123,27 @@ conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-
 conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_onnx.py --input-csv NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/data/inference/input_windows.csv
 ```
 
+如果需要对比 float32 ONNX，可显式指定 `--onnx`：
+
+```bash
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/scripts/run_onnx.py --onnx NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/outputs/onnx/signal_jump.onnx --window 9,9,9,1,1,1,1,1,1,1
+```
+
+## 链路测试
+
+本样例的 int8 ONNX 用于覆盖 Q/DQ、Conv、Relu、Flatten、Gemm 的解析链路。
+当前 codegen 对 Conv 的真实 CMSIS-NN 渲染仍会报告为 blocked，这是预期结果；
+它适合作为后续 Conv s8 支持开发的测试输入。
+
+```bash
+conda run -n nanoc-onnx-examples python tools/onnx_to_cmsis_pipeline.py \
+  --model NanoC-NN-ONNX-Examples/example-2-detect-signal-jump/outputs/onnx/signal_jump.int8.onnx \
+  --layout NCHW \
+  --target cortex-m4 \
+  --sram-budget 128K \
+  --flash-budget 256K
+```
+
 ## 模型结构
 
 ```text
@@ -132,5 +156,6 @@ Input(1, 10)
   -> Linear(64, 3)
 ```
 
-导出的 ONNX 模型使用固定 batch size `1` 的示例输入，后续 converter 可据此测试 `Conv`、`Relu`、`Flatten`、`Gemm` 等算子解析。
-
+导出的 int8 ONNX 使用 Q/DQ 形式保存量化边界，后续 converter 可据此测试
+`QuantizeLinear`、`DequantizeLinear`、`Conv`、`Relu`、`Flatten`、`Gemm`
+等算子解析。

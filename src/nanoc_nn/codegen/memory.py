@@ -42,7 +42,9 @@ def plan_memory(
                 )
             )
     activation_buffers = _two_largest_activation_buffers(activation_candidates)
-    scratch_buffers = [_scratch_buffer(mapping) for mapping in mappings if mapping.needs_scratch]
+    scratch_buffers = [
+        _scratch_buffer(mapping, options) for mapping in mappings if mapping.needs_scratch
+    ]
 
     weight_flash_bytes = _estimate_weight_flash(graph, weights_header_size)
     total_sram = (
@@ -57,7 +59,10 @@ def plan_memory(
     flash_budget = parse_budget(options.flash_budget)
     notes = [
         "activation and scratch sizes are conservative first-version estimates",
-        "CMSIS-NN buffer size getters are not linked yet; reports must be rechecked on target",
+        (
+            "generated FC s8 code calls CMSIS-NN buffer size getters at runtime; "
+            "non-FC scratch sizes remain conservative estimates"
+        ),
     ]
     if graph.layout == "NCHW":
         notes.append("converter layout is NCHW while CMSIS-NN runtime is NHWC")
@@ -117,7 +122,22 @@ def _two_largest_activation_buffers(candidates: list[BufferPlan]) -> list[Buffer
     ]
 
 
-def _scratch_buffer(mapping: OpMapping) -> BufferPlan:
+def _scratch_buffer(mapping: OpMapping, options: CodegenOptions) -> BufferPlan:
+    if "fully_connected" in mapping.cmsis_action:
+        output_channels = _largest_last_dim(mapping.output_shapes)
+        if options.resolved_backend == "mve":
+            estimate = max(1, output_channels * 4)
+        else:
+            estimate = 1
+        return BufferPlan(
+            name=f"scratch:{mapping.index}:{mapping.node_name}",
+            size_bytes=estimate,
+            reason=(
+                "reserved for arm_fully_connected_s8_get_buffer_size; generated C "
+                "checks the official CMSIS-NN getter at runtime"
+            ),
+        )
+
     largest_input = 0
     for shape in mapping.input_shapes.values():
         elements = element_count_from_shape(shape)
@@ -134,6 +154,14 @@ def _scratch_buffer(mapping: OpMapping) -> BufferPlan:
         size_bytes=estimate,
         reason=f"heuristic scratch estimate for {mapping.cmsis_action}",
     )
+
+
+def _largest_last_dim(shape_map: dict[str, list[int | str | None]]) -> int:
+    largest = 0
+    for shape in shape_map.values():
+        if shape and isinstance(shape[-1], int):
+            largest = max(largest, shape[-1])
+    return largest
 
 
 def _estimate_weight_flash(graph: ModelGraph, weights_header_size: int) -> int:

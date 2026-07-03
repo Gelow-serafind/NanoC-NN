@@ -82,10 +82,15 @@ nanoc-onnx-converter \
 - `Cast`
 - `BatchNormalization`
 - `GlobalAveragePool`
+- `QuantizeLinear` / `DequantizeLinear`
 
 `weights.h` 只导出 float32 参数权重；`Reshape` shape、axis 等辅助 initializer 会保留在结构报告中，但不会作为 C 权重数组导出。
 
-后续为了服务 CMSIS-NN 代码生成，converter 需要继续补充量化参数提取、layout 约束记录和更稳定的 `model_graph.json` schema。
+当前已支持第一版 ONNX Q/DQ 量化提取：per-tensor int8/uint8 的 scale、
+zero point、量化权重、int32 bias 和 Fully Connected 所需
+multiplier/shift 会写入 `model_graph.json.quantization`。该能力先服务
+`Gemm(transB=1)` 到 CMSIS-NN `arm_fully_connected_s8()` 的代码生成；Conv、
+Add、Pool 等其它量化算子的完整参数重写仍是后续工作。
 
 ## 计划文档
 

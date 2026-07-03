@@ -117,6 +117,7 @@ class ModelInfo:
     nodes: list[NodeInfo]
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    quantization: dict[str, Any] = field(default_factory=dict)
 
     @property
     def c_exportable_initializers(self) -> list[InitializerInfo]:
@@ -137,6 +138,8 @@ class ModelInfo:
             "nodes": [item.to_json() for item in self.nodes],
             "warnings": self.warnings,
             "errors": self.errors,
+            "schema_version": "1.1",
+            "quantization": self.quantization,
             "unsupported_ops": sorted(
                 {node.op_type for node in self.nodes if node.status == "unsupported"}
             ),

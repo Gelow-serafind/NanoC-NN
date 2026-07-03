@@ -31,7 +31,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--backend", choices=["scalar", "dsp", "mve"], help="CMSIS-NN backend")
     parser.add_argument("--sram-budget", help="target SRAM budget, e.g. 128K")
     parser.add_argument("--flash-budget", help="target Flash budget, e.g. 512K")
-    parser.add_argument("--strict", action="store_true", help="fail on blocked/unsupported cases")
+    parser.add_argument(
+        "--allow-blocked-output",
+        action="store_true",
+        help=(
+            "return success even when codegen is blocked/unsupported; intended only for "
+            "debug reports and skeleton output"
+        ),
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="stop immediately on converter/codegen strict errors instead of writing debug reports",
+    )
     parser.add_argument("--verbose", action="store_true", help="print detailed diagnostics")
     parser.add_argument(
         "--no-compile",
@@ -89,13 +101,20 @@ def main(argv: list[str] | None = None) -> int:
     print(f"codegen status: {result.codegen_result.status}")
     print(f"c99 smoke compile: {result.compile_status}")
     print(f"pipeline report: {result.options.output_root / 'pipeline_report.md'}")
+    if result.codegen_result.status != "ok" and not args.allow_blocked_output:
+        print(
+            "delivery status: failed; use --allow-blocked-output only when you need "
+            "debug reports or skeleton output"
+        )
     if options.verbose:
         for mapping in result.codegen_result.mappings:
             print(
                 f"- {mapping.index}:{mapping.node_name} {mapping.onnx_op} "
                 f"=> {mapping.status} ({mapping.cmsis_action})"
             )
-    return 0
+    if result.codegen_result.status == "ok" or args.allow_blocked_output:
+        return 0
+    return 2
 
 
 def _default_cmsis_nn_root() -> Path | None:

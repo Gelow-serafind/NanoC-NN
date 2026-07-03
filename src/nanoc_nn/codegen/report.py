@@ -126,12 +126,43 @@ def quantization_report(
     issues: list[QuantizationIssue],
     graph: ModelGraph,
 ) -> str:
+    quantization = graph.quantization or {}
+    tensors = quantization.get("tensors", {}) if isinstance(quantization, dict) else {}
+    weights = quantization.get("weights", {}) if isinstance(quantization, dict) else {}
+    nodes = quantization.get("nodes", {}) if isinstance(quantization, dict) else {}
     lines = [
         "# 量化参数报告",
         "",
         f"- Converter 是否提供量化 section：`{str(graph.has_quantization).lower()}`",
+        f"- Tensor 量化数量：`{len(tensors) if isinstance(tensors, dict) else 0}`",
+        f"- Quantized weight 数量：`{len(weights) if isinstance(weights, dict) else 0}`",
+        f"- Node 量化数量：`{len(nodes) if isinstance(nodes, dict) else 0}`",
         "",
     ]
+    if isinstance(nodes, dict) and nodes:
+        lines.extend(
+            [
+                "## CMSIS-NN 节点参数",
+                "",
+                "| 节点 | API | multiplier | shift | input_offset | output_offset | activation |",
+                "| --- | --- | ---: | ---: | ---: | ---: | --- |",
+            ]
+        )
+        for node_name, node_quant in nodes.items():
+            if not isinstance(node_quant, dict):
+                continue
+            cmsis_nn = node_quant.get("cmsis_nn", {})
+            if not isinstance(cmsis_nn, dict):
+                continue
+            lines.append(
+                "| "
+                f"`{_escape(node_name)}` | `{_escape(cmsis_nn.get('api', 'unknown'))}` | "
+                f"{cmsis_nn.get('multiplier', '-')} | {cmsis_nn.get('shift', '-')} | "
+                f"{cmsis_nn.get('input_offset', '-')} | {cmsis_nn.get('output_offset', '-')} | "
+                f"`{cmsis_nn.get('activation_min', '-')}`.."
+                f"`{cmsis_nn.get('activation_max', '-')}` |"
+            )
+        lines.append("")
     if not issues:
         lines.extend(["当前未发现量化阻塞项。", ""])
         return "\n".join(lines)

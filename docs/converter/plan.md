@@ -46,7 +46,9 @@
 初期约束如下：
 
 - ONNX opset：优先支持 opset 11 到 17。超出范围时允许继续尝试解析，但必须在报告中给出警告。
-- 数据类型：权重初期仅支持 `float32`。遇到 `float16`、`int8` 或其他类型时，先报告为不支持，不做隐式转换。
+- 数据类型：`weights.h` 初期仅导出 `float32` 参数权重；Q/DQ 模型中的
+  int8/uint8 量化权重作为 `model_graph.json.quantization` 资料导出，不写入
+  float32 权重头文件。遇到其他数据类型时先报告为不支持，不做隐式转换。
 - 张量布局：初期默认并只验证 `NCHW`。`--layout` 参数仅用于文档标注和一致性检查，不对权重或激活张量做自动 transpose。
 - 模型形态：优先面向固定输入尺寸 CNN。动态 shape 模型不作为第一阶段目标。
 - Codegen 目标：converter 输出必须能被 CMSIS-NN codegen 稳定消费，字段命名和 schema 需要逐步版本化；后续字段设计优先服务 STM32、GD32 等 Cortex-M MCU 的静态内存、int8 量化和 NHWC 运行期布局。
@@ -160,6 +162,35 @@ ONNX 属性使用 `AttributeProto` 表示，类型可能是 INT、FLOAT、STRING
 - 非 `float32` 权重必须在报告中标注为不支持；严格模式下直接失败。
 - 权重数组长度必须与 ONNX initializer 元素数量一致。
 - shape 宏中不得包含动态维度或未知维度。
+
+### 3.5.1 量化 ONNX 与 Q/DQ 提取
+
+针对 CMSIS-NN 的 int8 主路径，converter 必须识别 ONNX 中的
+`QuantizeLinear` / `DequantizeLinear` 边界，并把量化信息写入
+`model_graph.json` 的 `quantization` 段。该段是 codegen 生成真实
+CMSIS-NN 调用的上游契约。
+
+第一阶段支持范围：
+
+- 支持 per-tensor int8/uint8 量化。
+- 支持从 Q/DQ 节点提取 tensor 的 `scale`、`zero_point`、`axis`、
+  量化 dtype 和来源节点。
+- 支持识别经 `DequantizeLinear` 输入运行期算子的 int8/uint8 权重。
+- 对 `Gemm` / `MatMul` 提取 Fully Connected 所需的输入、权重、输出
+  量化参数，并计算 CMSIS-NN per-tensor `multiplier` / `shift`。
+- 当存在 float32 bias 时，按 `input_scale * weight_scale` 量化为 int32
+  bias，写入 node quantization 信息。
+
+第一阶段不支持：
+
+- per-channel weight quantization。
+- Conv / DepthwiseConv 的完整量化参数重写。
+- QAT/PTQ 训练流程本身。converter 只消费已经存在 Q/DQ 的 ONNX。
+- 隐式把 float32 ONNX 自动量化为 int8 ONNX。
+
+如果模型是 float32，converter 仍然正常导出结构和 float32 权重，但
+`quantization` 段为空或缺失时，codegen 必须保持 `blocked`，不得生成
+伪可运行的 CMSIS-NN s8 调用。
 
 C 符号命名规则：
 
@@ -386,7 +417,7 @@ src/nanoc_nn/codegen/
 
 - 基础测试可通过。
 - 新用户可以根据 README 完成一次样例模型转换。
-- README 明确说明初期支持边界，避免误用到量化模型或动态 shape 模型。
+- README 明确说明初期支持边界，避免把未覆盖的量化模式或动态 shape 模型误认为已完整支持。
 
 ### M8：真实模型高频算子扩展
 
@@ -468,13 +499,18 @@ src/nanoc_nn/codegen/
 
 目标：
 
-- 解析 ONNX Q/DQ 模型中的 `QuantizeLinear`、`DequantizeLinear`、scale、zero point 等信息。
-- 将每层输入、输出、权重的量化参数写入 `model_graph.json`。
+- 解析 ONNX Q/DQ 模型中的 `QuantizeLinear`、`DequantizeLinear`、
+  scale、zero point 等信息。
+- 输出 `model_graph.json.quantization`。
+- 先覆盖 per-tensor `Gemm` / `MatMul` 的 CMSIS-NN s8 所需字段。
+- 对权重 int8 数据、bias int32 数据和 multiplier/shift 做可测试导出。
 - 对缺少量化信息的 float32 模型明确标注为非 CMSIS-NN 加速主路径。
 
 验收标准：
 
-- 一个最小 int8 ONNX 样例能导出 codegen 所需量化参数。
+- float32 ONNX 仍然可解析，但量化缺失会明确阻塞 codegen。
+- 最小 Q/DQ Fully Connected ONNX 可输出完整量化 section。
+- `model_summary.md` 和 `conversion_report.txt` 能提示量化 section 状态。
 - 缺失量化参数时报告清晰，不做隐式量化。
 - 量化参数字段能被 CMSIS-NN codegen 直接读取。
 
@@ -485,7 +521,7 @@ converter 模块初期不直接实现以下能力：
 - 自动生成完整 `model.c`，该能力由 `nanoc_nn.codegen` 承担。
 - 自动图调度与内存复用规划。
 - 全量 ONNX 算子兼容。
-- 量化模型解析。
+- 自动 QAT/PTQ 或全量量化模型兼容。
 - 非 `float32` 权重自动转换。
 - 自动 layout transpose。
 - 动态输入尺寸模型的 C 端缓冲区规划。

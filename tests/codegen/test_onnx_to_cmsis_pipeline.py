@@ -35,7 +35,7 @@ def test_pipeline_creates_converter_and_codegen_folders_next_to_onnx(
         check=False,
     )
 
-    assert completed.returncode == 0, completed.stderr
+    assert completed.returncode == 2, completed.stderr
     output_root = tmp_path / "tiny_model-nanoc-cmsis"
     assert (output_root / "converter-output" / "model_graph.json").exists()
     assert (output_root / "converter-output" / "weights.h").exists()
@@ -47,6 +47,34 @@ def test_pipeline_creates_converter_and_codegen_folders_next_to_onnx(
     report = (output_root / "pipeline_report.md").read_text(encoding="utf-8")
     assert "converter-output/" in report
     assert "cmsis-codegen/" in report
+    assert "Codegen 状态：`blocked`" in report
+
+
+def test_pipeline_debug_flag_allows_blocked_output(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "tiny_model.onnx"
+    _make_tiny_model(model_path)
+    script = Path(__file__).resolve().parents[2] / "tools" / "onnx_to_cmsis_pipeline.py"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--model",
+            str(model_path),
+            "--target",
+            "cortex-m4",
+            "--no-compile",
+            "--allow-blocked-output",
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "codegen status: blocked" in completed.stdout
 
 
 def _make_tiny_model(path: Path) -> None:

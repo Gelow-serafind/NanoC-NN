@@ -5,7 +5,6 @@ import csv
 from pathlib import Path
 
 import torch
-
 from network import IsOver10Net
 
 
@@ -19,7 +18,10 @@ def parse_args() -> argparse.Namespace:
         "--value",
         type=float,
         default=None,
-        help="Single input number to classify. If omitted, read values from data/inference/input_values.csv.",
+        help=(
+            "Single input number to classify. If omitted, read values from "
+            "data/inference/input_values.csv."
+        ),
     )
     parser.add_argument(
         "--input-csv",

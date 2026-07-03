@@ -30,7 +30,8 @@ example-1-is-over-10/
     ├── checkpoints/
     │   └── is_over_10.pt
     └── onnx/
-        └── is_over_10.onnx
+        ├── is_over_10.onnx
+        └── is_over_10.int8.onnx
 ```
 
 `data/` 和 `outputs/` 中的文件由脚本生成。
@@ -50,13 +51,15 @@ conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over
 脚本会完成：
 
 1. 生成训练集和测试集 CSV。
-2. 训练一个简单 MLP。
+2. 训练一个简单全连接分类器。
 3. 输出测试准确率。
-4. 导出 ONNX 文件到 `outputs/onnx/is_over_10.onnx`。
+4. 导出 float32 ONNX 文件到 `outputs/onnx/is_over_10.onnx`。
+5. 导出 Q/DQ int8 ONNX 文件到 `outputs/onnx/is_over_10.int8.onnx`。
 
 ## 使用 PyTorch checkpoint 推理
 
-默认读取 `data/inference/input_values.csv` 中的所有数值：
+默认读取 `data/inference/input_values.csv` 中的所有数值，并使用
+`outputs/onnx/is_over_10.int8.onnx`：
 
 ```bash
 conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_checkpoint.py
@@ -94,13 +97,31 @@ conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over
 conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_onnx.py --input-csv NanoC-NN-ONNX-Examples/example-1-is-over-10/data/inference/input_values.csv
 ```
 
+如果需要对比 float32 ONNX，可显式指定 `--onnx`：
+
+```bash
+conda run -n nanoc-onnx-examples python NanoC-NN-ONNX-Examples/example-1-is-over-10/scripts/run_onnx.py --onnx NanoC-NN-ONNX-Examples/example-1-is-over-10/outputs/onnx/is_over_10.onnx --value 11
+```
+
+## 链路测试
+
+本样例的 int8 ONNX 是当前 converter -> codegen -> CMSIS-NN FC 路径的最小闭环样例：
+
+```bash
+conda run -n nanoc-onnx-examples python tools/onnx_to_cmsis_pipeline.py \
+  --model NanoC-NN-ONNX-Examples/example-1-is-over-10/outputs/onnx/is_over_10.int8.onnx \
+  --layout NHWC \
+  --target cortex-m4 \
+  --sram-budget 64K \
+  --flash-budget 128K
+```
+
 ## 模型结构
 
 ```text
 Input(1)
-  -> Linear(1, 8)
-  -> ReLU
-  -> Linear(8, 2)
+  -> Linear(1, 2)
 ```
 
-导出的 ONNX 模型使用固定 batch size `1` 的示例输入，后续 converter 可据此测试 `Gemm`、`Relu` 等基础算子解析。
+导出的 int8 ONNX 使用 Q/DQ 形式保存量化边界，后续 converter 可据此测试
+`QuantizeLinear`、`DequantizeLinear`、`Gemm` 和 CMSIS-NN FC 代码生成。
