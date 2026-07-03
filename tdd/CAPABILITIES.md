@@ -1,10 +1,10 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-07-03T22:42:57.275678
-> Git commit: `eeda9a3`
+> 最后更新: 2026-07-03T23:05:33.652214
+> Git commit: `0647fb6`
 
-**能力集大小: 12 / 12 (100%)**
+**能力集大小: 13 / 13 (100%)**
 
 ## 已验证能力 (PASS)
 
@@ -24,6 +24,7 @@
 | SOFTMAX_001 | core/softmax | 10 分类 Softmax int8 代码生成 | 2026-07-03 |
 | NEG_001 | negative | float32 无 Q/DQ 模型正确拒绝 | 2026-07-03 |
 | TOPO_001 | topology | Conv->Relu->Pool->Flatten->FC 组合链路 | 2026-07-03 |
+| TOPO_002 | topology | Conv1d->Relu->Conv1d->Relu->Flatten->FC 时序分类链路 | 2026-07-03 |
 
 ## 未通过用例 (FAIL)
 

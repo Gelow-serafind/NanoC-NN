@@ -646,9 +646,15 @@ def _conv_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
         return None
     weight_shape = weight_info.get("shape", [])
     values = weight_info.get("values", [])
-    if not isinstance(weight_shape, list) or len(weight_shape) != 4:
+    if not isinstance(weight_shape, list) or len(weight_shape) not in {3, 4}:
         return None
-    output_channels, input_channels, kernel_h, kernel_w = [int(item) for item in weight_shape]
+    if len(weight_shape) == 3:
+        output_channels, input_channels, kernel_w = [int(item) for item in weight_shape]
+        kernel_h = 1
+    else:
+        output_channels, input_channels, kernel_h, kernel_w = [
+            int(item) for item in weight_shape
+        ]
     if (
         not isinstance(values, list)
         or len(values) != output_channels * input_channels * kernel_h * kernel_w
@@ -669,7 +675,7 @@ def _conv_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
         "output_dims": output_dims,
         "kernel_shape": [kernel_h, kernel_w],
         "output_channels": output_channels,
-        "weight_values": _reorder_oihw_to_ohwi(_int_values(values), weight_shape),
+        "weight_values": _reorder_conv_weight_to_ohwi(_int_values(values), weight_shape),
         "bias_values": quant_weights.get("bias_values", []),
         "multiplier": cmsis_nn["multiplier"],
         "shift": cmsis_nn["shift"],
@@ -813,8 +819,13 @@ def _first_shape(
 
 
 def _activation_dims(shape: list[Any] | None, layout: str) -> list[int] | None:
-    if not shape or len(shape) != 4 or not all(isinstance(item, int) for item in shape):
+    if not shape or len(shape) not in {3, 4} or not all(isinstance(item, int) for item in shape):
         return None
+    if len(shape) == 3:
+        n, c, w = [int(item) for item in shape]
+        if layout == "NHWC":
+            return [n, 1, c, w]
+        return [n, 1, w, c]
     n, d1, d2, d3 = [int(item) for item in shape]
     if layout == "NHWC":
         return [n, d1, d2, d3]
@@ -827,18 +838,29 @@ def _pair(value: object, *, default: list[int]) -> list[int]:
     return default
 
 
-def _reorder_oihw_to_ohwi(values: list[int], shape: list[Any]) -> list[int]:
-    output_channels, input_channels, kernel_h, kernel_w = [int(item) for item in shape]
+def _reorder_conv_weight_to_ohwi(values: list[int], shape: list[Any]) -> list[int]:
+    if len(shape) == 3:
+        output_channels, input_channels, kernel_w = [int(item) for item in shape]
+        kernel_h = 1
+    else:
+        output_channels, input_channels, kernel_h, kernel_w = [int(item) for item in shape]
     reordered: list[int] = []
     for output_channel in range(output_channels):
         for y in range(kernel_h):
             for x in range(kernel_w):
                 for input_channel in range(input_channels):
-                    source = (
-                        ((output_channel * input_channels + input_channel) * kernel_h + y)
-                        * kernel_w
-                        + x
-                    )
+                    if len(shape) == 3:
+                        source = (
+                            output_channel * input_channels * kernel_w
+                            + input_channel * kernel_w
+                            + x
+                        )
+                    else:
+                        source = (
+                            ((output_channel * input_channels + input_channel) * kernel_h + y)
+                            * kernel_w
+                            + x
+                        )
                     reordered.append(values[source])
     return reordered
 

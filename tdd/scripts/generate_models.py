@@ -86,6 +86,7 @@ def _build_qdq_model(
         initializers=initializers,
         save_path=save_path,
         graph_name=graph_name,
+        value_infos=value_infos,
     )
 
 
@@ -392,6 +393,128 @@ def gen_topo_001() -> Path:
         initializers=initializers,
         save_path=path,
         graph_name="topo_001",
+        value_infos=value_infos,
+    )
+    return path
+
+
+def gen_topo_002() -> Path:
+    """TOPO_002: Conv1d→Relu→Conv1d→Relu→Flatten→FC — [1,1,10] → [1,3]"""
+    path = MODELS_ROOT / "topology" / "TOPO_002.onnx"
+
+    nodes = []
+    initializers = []
+    value_infos = []
+
+    input_name = "input"
+    input_shape = [1, 1, 10]
+    output_shape = [1, 3]
+
+    inp_vi = helper.make_tensor_value_info(input_name, TensorProto.FLOAT, input_shape)
+    out_vi = helper.make_tensor_value_info("fc_out_dq", TensorProto.FLOAT, output_shape)
+
+    in_nodes, in_inits, in_vis = make_qdq_wrapper(
+        "input_qdq", input_name, input_shape, 0.02, 0, is_input=True
+    )
+    nodes.extend(in_nodes)
+    initializers.extend(in_inits)
+    value_infos.extend(in_vis)
+
+    conv1_nodes, conv1_inits = make_conv_node(
+        "conv1", ["input_dq"], ["conv1_out"],
+        weight_shape=[8, 1, 2], kernel_shape=[2],
+        strides=[1], pads=[0, 0], with_bias=True,
+    )
+    nodes.extend(conv1_nodes)
+    initializers.extend(conv1_inits)
+    value_infos.append(helper.make_tensor_value_info("conv1_out", TensorProto.FLOAT, [1, 8, 9]))
+
+    nodes.append(make_relu_node("relu1", ["conv1_out"], ["relu1_out"]))
+    value_infos.append(helper.make_tensor_value_info("relu1_out", TensorProto.FLOAT, [1, 8, 9]))
+
+    relu1_nodes, relu1_inits, relu1_vis = make_qdq_wrapper(
+        "relu1_qdq", "relu1_out", [1, 8, 9], 0.03, 0, is_input=False
+    )
+    nodes.extend(relu1_nodes)
+    initializers.extend(relu1_inits)
+    value_infos.extend(relu1_vis)
+
+    conv2_in_nodes, conv2_in_inits, conv2_in_vis = make_qdq_wrapper(
+        "conv2_in_qdq", "relu1_out_dq", [1, 8, 9], 0.03, 0, is_input=True
+    )
+    nodes.extend(conv2_in_nodes)
+    initializers.extend(conv2_in_inits)
+    value_infos.extend(conv2_in_vis)
+    value_infos.append(
+        helper.make_tensor_value_info("relu1_out_dq_dq", TensorProto.FLOAT, [1, 8, 9])
+    )
+
+    conv2_nodes, conv2_inits = make_conv_node(
+        "conv2", ["relu1_out_dq_dq"], ["conv2_out"],
+        weight_shape=[8, 8, 2], kernel_shape=[2],
+        strides=[1], pads=[0, 0], with_bias=True,
+    )
+    nodes.extend(conv2_nodes)
+    initializers.extend(conv2_inits)
+    value_infos.append(helper.make_tensor_value_info("conv2_out", TensorProto.FLOAT, [1, 8, 8]))
+
+    nodes.append(make_relu_node("relu2", ["conv2_out"], ["relu2_out"]))
+    value_infos.append(helper.make_tensor_value_info("relu2_out", TensorProto.FLOAT, [1, 8, 8]))
+
+    relu2_nodes, relu2_inits, relu2_vis = make_qdq_wrapper(
+        "relu2_qdq", "relu2_out", [1, 8, 8], 0.03, 0, is_input=False
+    )
+    nodes.extend(relu2_nodes)
+    initializers.extend(relu2_inits)
+    value_infos.extend(relu2_vis)
+
+    flatten_in_nodes, flatten_in_inits, flatten_in_vis = make_qdq_wrapper(
+        "flatten_in_qdq", "relu2_out_dq", [1, 8, 8], 0.03, 0, is_input=True
+    )
+    nodes.extend(flatten_in_nodes)
+    initializers.extend(flatten_in_inits)
+    value_infos.extend(flatten_in_vis)
+    value_infos.append(
+        helper.make_tensor_value_info("relu2_out_dq_dq", TensorProto.FLOAT, [1, 8, 8])
+    )
+
+    nodes.append(make_flatten_node("flatten", ["relu2_out_dq_dq"], ["flat_out"], axis=1))
+
+    fc_in_nodes, fc_in_inits, fc_in_vis = make_qdq_wrapper(
+        "fc_in_qdq", "flat_out", [1, 64], 0.03, 0, is_input=False
+    )
+    nodes.extend(fc_in_nodes)
+    initializers.extend(fc_in_inits)
+    value_infos.extend(fc_in_vis)
+
+    fc_dq_nodes, fc_dq_inits, fc_dq_vis = make_qdq_wrapper(
+        "fc_dq_qdq", "flat_out_dq", [1, 64], 0.03, 0, is_input=True
+    )
+    nodes.extend(fc_dq_nodes)
+    initializers.extend(fc_dq_inits)
+    value_infos.extend(fc_dq_vis)
+
+    gemm_nodes, gemm_inits = make_gemm_node(
+        "fc", ["flat_out_dq_dq"], ["fc_out"], weight_shape=[3, 64], with_bias=True
+    )
+    nodes.extend(gemm_nodes)
+    initializers.extend(gemm_inits)
+
+    out_nodes, out_inits, out_vis = make_qdq_wrapper(
+        "output_qdq", "fc_out", output_shape, 0.05, 0, is_input=False
+    )
+    nodes.extend(out_nodes)
+    initializers.extend(out_inits)
+    value_infos.extend(out_vis)
+
+    build_and_save(
+        nodes=nodes,
+        inputs=[inp_vi],
+        outputs=[out_vi],
+        initializers=initializers,
+        save_path=path,
+        graph_name="topo_002_conv1d_signal_jump",
+        value_infos=value_infos,
     )
     return path
 
@@ -453,6 +576,7 @@ _GENERATORS: dict[str, object] = {
     "MAXPOOL_001": gen_maxpool_001,
     "SOFTMAX_001": gen_softmax_001,
     "TOPO_001": gen_topo_001,
+    "TOPO_002": gen_topo_002,
     "NEG_001": gen_neg_001,
 }
 

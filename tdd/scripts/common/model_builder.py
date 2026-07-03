@@ -415,6 +415,7 @@ def build_and_save(
     save_path: Path,
     graph_name: str = "tdd_test",
     opset: int = DEFAULT_OPSET,
+    value_infos: list[helper.ValueInfoProto] | None = None,
 ) -> None:
     """组装 ONNX 模型、做 shape inference 并保存。
 
@@ -426,6 +427,7 @@ def build_and_save(
         save_path: 输出 .onnx 路径。
         graph_name: 图名称。
         opset: opset 版本。
+        value_infos: 中间张量 value_info，用于稳定 shape 合同。
     """
     graph = helper.make_graph(
         nodes,
@@ -433,6 +435,7 @@ def build_and_save(
         inputs,
         outputs,
         initializer=initializers,
+        value_info=value_infos or [],
     )
     model = helper.make_model(
         graph,

@@ -103,6 +103,13 @@ CASE_REGISTRY: list[CaseDef] = [
         "topology",
         ("arm_convolve_wrapper_s8", "arm_max_pool_s8", "arm_fully_connected_s8"),
     ),
+    CaseDef(
+        "TOPO_002",
+        "Conv1d->Relu->Conv1d->Relu->Flatten->FC 时序分类链路",
+        "ok",
+        "topology",
+        ("arm_convolve_wrapper_s8", "arm_fully_connected_s8"),
+    ),
     CaseDef("NEG_001", "float32 无 Q/DQ 模型正确拒绝", "blocked", "negative"),
 ]
 

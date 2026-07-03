@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-07-03T22:42:57.275678",
+  "timestamp": "2026-07-03T23:05:33.652214",
   "mode": "target",
-  "git_commit": "eeda9a3",
+  "git_commit": "0647fb6",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "tdd/scripts/run_tests.py --mode target --generate",
-  "total": 12,
-  "passed": 12,
+  "total": 13,
+  "passed": 13,
   "failed": 0,
   "results": [
     {
@@ -26,7 +26,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 1.18
+      "duration_sec": 0.56
     },
     {
       "case_id": "CONV_002",
@@ -46,7 +46,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.64
+      "duration_sec": 0.56
     },
     {
       "case_id": "CONV_003",
@@ -66,7 +66,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.62
+      "duration_sec": 0.54
     },
     {
       "case_id": "CONV_004",
@@ -86,7 +86,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.41
+      "duration_sec": 0.34
     },
     {
       "case_id": "GEMM_001",
@@ -106,7 +106,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.63
+      "duration_sec": 0.56
     },
     {
       "case_id": "GEMM_002",
@@ -126,7 +126,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.66
+      "duration_sec": 0.59
     },
     {
       "case_id": "GEMM_003",
@@ -146,7 +146,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 3.31
+      "duration_sec": 0.56
     },
     {
       "case_id": "GEMM_004",
@@ -166,7 +166,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.31
+      "duration_sec": 0.57
     },
     {
       "case_id": "MAXPOOL_001",
@@ -186,7 +186,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.26
+      "duration_sec": 0.54
     },
     {
       "case_id": "SOFTMAX_001",
@@ -206,7 +206,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.72
+      "duration_sec": 0.56
     },
     {
       "case_id": "NEG_001",
@@ -246,7 +246,28 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.61
+      "duration_sec": 0.51
+    },
+    {
+      "case_id": "TOPO_002",
+      "category": "topology",
+      "onnx_path": "tdd/models/topology/TOPO_002.onnx",
+      "output_dir": "tdd/results/tmp/TOPO_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_convolve_wrapper_s8",
+        "arm_fully_connected_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.33
     }
   ]
 }

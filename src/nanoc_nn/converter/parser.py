@@ -793,9 +793,9 @@ def _conv_quant_info(
     if input_quant is None or output_quant is None or weight_info is None:
         return None
     weight_shape = weight_info.get("shape", [])
-    if not isinstance(weight_shape, list) or len(weight_shape) != 4:
+    if not isinstance(weight_shape, list) or len(weight_shape) not in {3, 4}:
         warnings.append(
-            f"node '{node.name}' is quantized Conv but weight shape is not OIHW rank-4."
+            f"node '{node.name}' is quantized Conv but weight shape is not OIW/OIHW."
         )
         return None
     output_channels = int(weight_shape[0])
@@ -813,9 +813,21 @@ def _conv_quant_info(
         bias_values = [0] * output_channels
 
     attrs = node.normalized_attributes
-    pads = [int(item) for item in attrs.get("pads", [0, 0, 0, 0])]
-    strides = [int(item) for item in attrs.get("strides", [1, 1])]
-    dilations = [int(item) for item in attrs.get("dilations", [1, 1])]
+    raw_pads = [int(item) for item in attrs.get("pads", [0, 0, 0, 0])]
+    raw_strides = [int(item) for item in attrs.get("strides", [1, 1])]
+    raw_dilations = [int(item) for item in attrs.get("dilations", [1, 1])]
+    if len(weight_shape) == 3:
+        pads = [0, raw_pads[0] if raw_pads else 0, 0, raw_pads[1] if len(raw_pads) > 1 else 0]
+        strides = [1, raw_strides[0] if raw_strides else 1]
+        dilations = [1, raw_dilations[0] if raw_dilations else 1]
+        weight_layout = "OIW"
+        cmsis_weight_layout = "OHWI(height=1)"
+    else:
+        pads = raw_pads
+        strides = raw_strides
+        dilations = raw_dilations
+        weight_layout = "OIHW"
+        cmsis_weight_layout = "OHWI"
     qmin, qmax = _activation_range(output_quant)
     return {
         "op_type": node.op_type,
@@ -852,8 +864,8 @@ def _conv_quant_info(
             "dilation": dilations,
             "groups": int(attrs.get("group", 1)),
             "scratch_getter": "arm_convolve_wrapper_s8_get_buffer_size",
-            "weight_layout": "OIHW",
-            "cmsis_weight_layout": "OHWI",
+            "weight_layout": weight_layout,
+            "cmsis_weight_layout": cmsis_weight_layout,
         },
     }
 

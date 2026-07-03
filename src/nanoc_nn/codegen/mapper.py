@@ -239,9 +239,9 @@ def _conv_has_unsupported_shape(node: NodeSpec) -> bool:
     )
     if group != 1:
         return True
-    if not isinstance(dilations, list) or len(dilations) < 2:
+    if not isinstance(dilations, list) or len(dilations) not in {1, 2}:
         return True
-    return [int(dilations[0]), int(dilations[1])] != [1, 1]
+    return any(int(item) != 1 for item in dilations)
 
 
 def _weight_shape(node: NodeSpec) -> list[int | str | None] | None:
