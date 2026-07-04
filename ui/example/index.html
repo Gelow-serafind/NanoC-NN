@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NanoC-NN Converter UI Example</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <div class="eyebrow">NanoC-NN Converter</div>
+        <h1>ONNX 到 CMSIS-NN C 工程</h1>
+      </div>
+      <div class="header-actions">
+        <button class="icon-button" title="打开报告">📄</button>
+        <button class="icon-button" title="设置">⚙</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <aside class="panel import-panel">
+        <div class="panel-title">
+          <h2>导入模型</h2>
+          <span>Step 1</span>
+        </div>
+
+        <label class="dropzone">
+          <input type="file" accept=".onnx">
+          <strong>选择 ONNX 文件</strong>
+          <small>支持 int8 Q/DQ 或 QLinear ONNX</small>
+        </label>
+
+        <div class="model-card">
+          <div class="file-icon">ONNX</div>
+          <div>
+            <strong>mnist-12-int8.onnx</strong>
+            <span>48 KB · opset 12 · QLinear</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>
+            输出目录
+            <input value="./outputs/mnist-cmsis" aria-label="输出目录">
+          </label>
+          <label>
+            符号前缀
+            <input value="mnist_int8" aria-label="符号前缀">
+          </label>
+        </div>
+
+        <button class="primary full">解析 ONNX</button>
+      </aside>
+
+      <section class="panel graph-panel">
+        <div class="panel-title">
+          <h2>网络解析</h2>
+          <span>Step 2</span>
+        </div>
+
+        <div class="model-summary">
+          <div>
+            <span>输入</span>
+            <strong>float32 [1, 1, 28, 28]</strong>
+          </div>
+          <div>
+            <span>输出</span>
+            <strong>float32 [1, 10]</strong>
+          </div>
+          <div>
+            <span>节点</span>
+            <strong>11</strong>
+          </div>
+          <div>
+            <span>布局</span>
+            <strong>NCHW</strong>
+          </div>
+        </div>
+
+        <div class="graph-canvas" aria-label="网络结构预览">
+          <div class="node input">Input</div>
+          <div class="edge"></div>
+          <div class="node quant">Quantize</div>
+          <div class="edge"></div>
+          <div class="node conv">QLinearConv</div>
+          <div class="edge"></div>
+          <div class="node pool">MaxPool</div>
+          <div class="edge"></div>
+          <div class="node conv">QLinearConv</div>
+          <div class="edge"></div>
+          <div class="node reshape">Reshape</div>
+          <div class="edge"></div>
+          <div class="node fc">QLinearMatMul</div>
+          <div class="edge"></div>
+          <div class="node add">QLinearAdd</div>
+          <div class="edge"></div>
+          <div class="node output">Output</div>
+        </div>
+
+        <div class="tables">
+          <article class="table-card">
+            <h3>算子映射</h3>
+            <table>
+              <thead>
+                <tr><th>ONNX</th><th>CMSIS-NN</th><th>状态</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>QLinearConv</td><td>arm_convolve_wrapper_s8</td><td><span class="badge ok">ok</span></td></tr>
+                <tr><td>MaxPool</td><td>arm_max_pool_s8</td><td><span class="badge ok">ok</span></td></tr>
+                <tr><td>QLinearMatMul</td><td>arm_fully_connected_per_channel_s8</td><td><span class="badge ok">ok</span></td></tr>
+                <tr><td>QLinearAdd</td><td>arm_elementwise_add_s8</td><td><span class="badge ok">ok</span></td></tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="table-card">
+            <h3>量化摘要</h3>
+            <table>
+              <thead>
+                <tr><th>项目</th><th>结果</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>输入量化</td><td>uint8 -> int8 runtime</td></tr>
+                <tr><td>权重量化</td><td>per-channel</td></tr>
+                <tr><td>FC requant</td><td>multiplier / shift arrays</td></tr>
+                <tr><td>饱和率</td><td>0.00</td></tr>
+              </tbody>
+            </table>
+          </article>
+        </div>
+      </section>
+
+      <aside class="panel export-panel">
+        <div class="panel-title">
+          <h2>平台与导出</h2>
+          <span>Step 3</span>
+        </div>
+
+        <div class="field-group">
+          <label>
+            Cortex-M 内核
+            <select>
+              <option>Cortex-M4</option>
+              <option>Cortex-M3</option>
+              <option>Cortex-M7</option>
+              <option>Cortex-M33</option>
+              <option>Cortex-M55</option>
+            </select>
+          </label>
+          <label>
+            Backend
+            <select>
+              <option>Auto</option>
+              <option>Scalar</option>
+              <option>DSP</option>
+              <option>MVE</option>
+            </select>
+          </label>
+          <label>
+            SRAM Budget
+            <input placeholder="例如 128K，可留空">
+          </label>
+          <label>
+            Flash Budget
+            <input placeholder="例如 512K，可留空">
+          </label>
+        </div>
+
+        <div class="status-box ok">
+          <span>Codegen</span>
+          <strong>ok</strong>
+          <small>生成语义通过，可导出 C 工程</small>
+        </div>
+
+        <div class="memory-box">
+          <div>
+            <span>Estimated SRAM</span>
+            <strong>16.2 KB</strong>
+          </div>
+          <div>
+            <span>Estimated Flash</span>
+            <strong>2.3 KB</strong>
+          </div>
+        </div>
+
+        <button class="primary full">生成 C 工程</button>
+        <button class="secondary full">运行 ONNX-vs-C 测试</button>
+
+        <div class="output-list">
+          <h3>导出文件</h3>
+          <a>include/model.h</a>
+          <a>include/model_weights.h</a>
+          <a>src/model.c</a>
+          <a>reports/op_mapping.md</a>
+          <a>reports/memory_plan.md</a>
+        </div>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

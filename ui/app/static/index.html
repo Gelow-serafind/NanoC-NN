@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NanoC-NN UI</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <div class="eyebrow">NanoC-NN Converter</div>
+        <h1>ONNX 到 CMSIS-NN C 工程</h1>
+      </div>
+      <div class="header-actions">
+        <button id="regressionBtn" class="secondary">稳定回归</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <aside class="panel import-panel">
+        <div class="panel-title">
+          <h2>导入模型</h2>
+          <span>Step 1</span>
+        </div>
+
+        <label class="dropzone" id="dropzone">
+          <input id="fileInput" type="file" accept=".onnx">
+          <strong>选择 ONNX 文件</strong>
+          <small>或直接使用下方示例模型</small>
+        </label>
+
+        <div class="sample-actions">
+          <button class="secondary" data-sample="mnist">MNIST 示例</button>
+          <button class="secondary" data-sample="squeezenet">SqueezeNet 示例</button>
+        </div>
+
+        <div class="model-card" id="modelCard">
+          <div class="file-icon">ONNX</div>
+          <div>
+            <strong id="modelName">未选择模型</strong>
+            <span id="modelMeta">等待导入</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>
+            输出目录
+            <input id="outRoot" value="ui/work/last-output" aria-label="输出目录">
+          </label>
+          <label>
+            符号前缀
+            <input id="prefix" value="nanoc_model" aria-label="符号前缀">
+          </label>
+        </div>
+      </aside>
+
+      <section class="panel graph-panel">
+        <div class="panel-title">
+          <h2>网络解析</h2>
+          <span>Step 2</span>
+        </div>
+
+        <div class="model-summary">
+          <div>
+            <span>输入</span>
+            <strong id="inputSummary">-</strong>
+          </div>
+          <div>
+            <span>输出</span>
+            <strong id="outputSummary">-</strong>
+          </div>
+          <div>
+            <span>节点</span>
+            <strong id="nodeCount">-</strong>
+          </div>
+          <div>
+            <span>量化</span>
+            <strong id="quantHint">-</strong>
+          </div>
+        </div>
+
+        <div class="graph-canvas" id="graphCanvas" aria-label="网络结构预览">
+          <div class="empty-state">导入 ONNX 后显示网络结构</div>
+        </div>
+
+        <div class="tables">
+          <article class="table-card">
+            <h3>算子统计</h3>
+            <div class="scroll-table">
+              <table>
+                <thead>
+                  <tr><th>ONNX Op</th><th>数量</th></tr>
+                </thead>
+                <tbody id="opTable">
+                  <tr><td>-</td><td>-</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="table-card">
+            <h3>转换日志</h3>
+            <pre id="logBox">等待运行转换。</pre>
+          </article>
+        </div>
+      </section>
+
+      <aside class="panel export-panel">
+        <div class="panel-title">
+          <h2>平台与导出</h2>
+          <span>Step 3</span>
+        </div>
+
+        <div class="field-group">
+          <label>
+            Cortex-M 内核
+            <select id="target">
+              <option value="cortex-m4">Cortex-M4</option>
+              <option value="cortex-m3">Cortex-M3</option>
+              <option value="cortex-m7">Cortex-M7</option>
+              <option value="cortex-m33">Cortex-M33</option>
+              <option value="cortex-m55">Cortex-M55</option>
+            </select>
+          </label>
+          <label>
+            Backend
+            <select id="backend">
+              <option value="auto">Auto</option>
+              <option value="scalar">Scalar</option>
+              <option value="dsp">DSP</option>
+              <option value="mve">MVE</option>
+            </select>
+          </label>
+          <label>
+            SRAM Budget
+            <input id="sramBudget" placeholder="例如 128K，可留空">
+          </label>
+          <label>
+            Flash Budget
+            <input id="flashBudget" placeholder="例如 512K，可留空">
+          </label>
+        </div>
+
+        <div class="status-box neutral" id="statusBox">
+          <span>Codegen</span>
+          <strong id="codegenStatus">idle</strong>
+          <small id="statusText">导入模型后开始转换</small>
+        </div>
+
+        <button id="convertBtn" class="primary full">生成 C 工程</button>
+
+        <div class="output-list">
+          <h3>报告</h3>
+          <div id="reportsList" class="link-list">
+            <span class="muted">暂无报告</span>
+          </div>
+        </div>
+
+        <div class="output-list">
+          <h3>生成文件</h3>
+          <div id="filesList" class="link-list">
+            <span class="muted">暂无文件</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="panel file-viewer">
+      <div class="panel-title">
+        <h2 id="fileTitle">文件预览</h2>
+        <span id="jobInfo">无任务</span>
+      </div>
+      <pre id="fileContent">点击报告或生成文件后在这里预览。</pre>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
