@@ -104,6 +104,32 @@ REQUIRED_NODE_QUANT_FIELDS = {
     },
 }
 
+REQUIRED_NODE_QUANT_FIELDS["QLinearConv"] = REQUIRED_NODE_QUANT_FIELDS["Conv"]
+REQUIRED_NODE_QUANT_FIELDS["QLinearMatMul"] = REQUIRED_NODE_QUANT_FIELDS["MatMul"]
+REQUIRED_NODE_QUANT_FIELDS["QLinearGlobalAveragePool"] = REQUIRED_NODE_QUANT_FIELDS[
+    "GlobalAveragePool"
+]
+REQUIRED_NODE_QUANT_FIELDS["QLinearAdd"] = {
+    "cmsis_nn": {
+        "api",
+        "input_1_offset",
+        "input_1_multiplier",
+        "input_1_shift",
+        "input_2_offset",
+        "input_2_multiplier",
+        "input_2_shift",
+        "left_shift",
+        "output_offset",
+        "output_multiplier",
+        "output_shift",
+        "activation_min",
+        "activation_max",
+        "block_size",
+    },
+    "inputs": "non_empty_dict",
+    "outputs": "non_empty_dict",
+}
+
 
 def analyze_quantization(
     graph: ModelGraph,

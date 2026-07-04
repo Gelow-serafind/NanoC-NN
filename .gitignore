@@ -48,7 +48,18 @@ compile_commands.json
 *.onnx
 *.npz
 *.npy
+!tdd/fixtures/
+!tdd/fixtures/onnx/
+!tdd/fixtures/onnx/*.onnx
+
+/tmp
+/stm32_example
 
 # Logs
 *.log
 
+# TDD generated artifacts
+tdd/models/
+tdd/work/
+tdd/results/history/
+tdd/results/tmp/

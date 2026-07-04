@@ -28,15 +28,26 @@ SUPPORTED_OPS = {
     "Conv",
     "Flatten",
     "Gemm",
+    "Gather",
     "GlobalAveragePool",
     "MatMul",
     "MaxPool",
+    "Concat",
+    "Mul",
+    "QLinearAdd",
+    "QLinearConv",
+    "QLinearGlobalAveragePool",
+    "QLinearMatMul",
     "DequantizeLinear",
+    "Dropout",
     "QuantizeLinear",
     "Relu",
     "Reshape",
+    "Shape",
+    "Slice",
     "Softmax",
     "Transpose",
+    "Unsqueeze",
 }
 SUPPORTED_OPSET_MIN = 11
 SUPPORTED_OPSET_MAX = 17
@@ -48,10 +59,17 @@ PARAMETER_INITIALIZER_INPUTS = {
     "DequantizeLinear": {0},
     "Gemm": {1, 2},
     "MatMul": {1},
+    "QLinearAdd": {3},
+    "QLinearConv": {3, 8},
+    "QLinearMatMul": {3},
     "QuantizeLinear": {0},
 }
 AUXILIARY_INITIALIZER_INPUTS = {
     "DequantizeLinear": {1, 2},
+    "QLinearAdd": {1, 2, 4, 5, 6, 7},
+    "QLinearConv": {1, 2, 4, 5, 6, 7},
+    "QLinearGlobalAveragePool": {1, 2, 3, 4},
+    "QLinearMatMul": {1, 2, 4, 5, 6, 7},
     "QuantizeLinear": {1, 2},
     "Reshape": {1},
 }
@@ -115,6 +133,7 @@ def parse_model(options: ConversionOptions) -> ModelInfo:
     ]
 
     nodes = _parse_nodes(graph, value_info_by_name, initializer_name_set, initializers, warnings)
+    _backfill_node_shapes(nodes)
     quantization = _extract_quantization(graph, initializers, nodes, warnings)
 
     unsupported_ops = sorted({node.op_type for node in nodes if node.status == "unsupported"})
@@ -296,6 +315,168 @@ def _shapes_for_names(
     return shape_map
 
 
+def _backfill_node_shapes(nodes: list[NodeInfo]) -> None:
+    shapes: dict[str, list[int | str | None]] = {}
+    for node in nodes:
+        for name, shape in node.input_shapes.items():
+            if shape:
+                shapes.setdefault(name, shape)
+        for name, shape in node.output_shapes.items():
+            if shape:
+                shapes.setdefault(name, shape)
+    changed = True
+    while changed:
+        changed = False
+        for node in nodes:
+            for name in node.inputs:
+                if name not in node.input_shapes and name in shapes:
+                    node.input_shapes[name] = shapes[name]
+                    changed = True
+            for name in node.outputs:
+                if name not in node.output_shapes and name in shapes:
+                    node.output_shapes[name] = shapes[name]
+                    changed = True
+            inferred_outputs = _infer_node_output_shapes(node)
+            for name, shape in inferred_outputs.items():
+                if name in node.output_shapes or not shape:
+                    continue
+                node.output_shapes[name] = shape
+                shapes[name] = shape
+                changed = True
+            for name, shape in node.output_shapes.items():
+                if shape and name not in shapes:
+                    shapes[name] = shape
+                    changed = True
+
+
+def _infer_node_output_shapes(node: NodeInfo) -> dict[str, list[int | str | None]]:
+    if not node.outputs:
+        return {}
+    if node.op_type in {"Conv", "QLinearConv"}:
+        shape = _infer_conv_output_shape(node)
+        return {node.outputs[0]: shape} if shape else {}
+    if node.op_type in {"GlobalAveragePool", "QLinearGlobalAveragePool"}:
+        input_shape = _first_input_shape(node)
+        if input_shape and len(input_shape) == 4:
+            return {node.outputs[0]: [input_shape[0], input_shape[1], 1, 1]}
+    if node.op_type == "Concat":
+        shape = _infer_concat_output_shape(node)
+        return {node.outputs[0]: shape} if shape else {}
+    if node.op_type in {
+        "Add",
+        "QLinearAdd",
+        "Relu",
+        "Clip",
+        "Dropout",
+        "QuantizeLinear",
+        "DequantizeLinear",
+    }:
+        input_shape = _first_input_shape(node)
+        return {node.outputs[0]: list(input_shape)} if input_shape else {}
+    if node.op_type in {"Flatten", "Reshape", "Transpose"} and node.outputs:
+        shape = next(iter(node.output_shapes.values()), None)
+        return {node.outputs[0]: list(shape)} if shape else {}
+    return {}
+
+
+def _infer_conv_output_shape(node: NodeInfo) -> list[int | str | None] | None:
+    input_name = node.inputs[0] if node.inputs else ""
+    weight_index = 3 if node.op_type == "QLinearConv" else 1
+    weight_name = node.inputs[weight_index] if len(node.inputs) > weight_index else ""
+    input_shape = node.input_shapes.get(input_name)
+    weight_shape = node.input_shapes.get(weight_name)
+    if not input_shape or not weight_shape:
+        return None
+    if len(input_shape) not in {3, 4} or len(weight_shape) not in {3, 4}:
+        return None
+    if not all(isinstance(dim, int) and dim > 0 for dim in input_shape):
+        return None
+    if not all(isinstance(dim, int) and dim > 0 for dim in weight_shape):
+        return None
+
+    attrs = node.normalized_attributes
+    strides = _as_int_list(attrs.get("strides"), [1, 1])
+    pads = _as_int_list(attrs.get("pads"), [0, 0, 0, 0])
+    dilations = _as_int_list(attrs.get("dilations"), [1, 1])
+    output_channels = int(weight_shape[0])
+    if len(input_shape) == 3:
+        batch, _, input_w = [int(dim) for dim in input_shape]
+        kernel_w = int(weight_shape[-1])
+        stride_w = int(strides[-1] if strides else 1)
+        dilation_w = int(dilations[-1] if dilations else 1)
+        pad_left = int(pads[0] if pads else 0)
+        pad_right = int(pads[1] if len(pads) > 1 else pad_left)
+        output_w = _conv_extent(input_w, kernel_w, stride_w, dilation_w, pad_left, pad_right)
+        return [batch, output_channels, output_w] if output_w is not None else None
+
+    batch, _, input_h, input_w = [int(dim) for dim in input_shape]
+    _, _, kernel_h, kernel_w = [int(dim) for dim in weight_shape]
+    stride_h = int(strides[0] if strides else 1)
+    stride_w = int(strides[1] if len(strides) > 1 else stride_h)
+    dilation_h = int(dilations[0] if dilations else 1)
+    dilation_w = int(dilations[1] if len(dilations) > 1 else dilation_h)
+    pad_top = int(pads[0] if pads else 0)
+    pad_left = int(pads[1] if len(pads) > 1 else pad_top)
+    pad_bottom = int(pads[2] if len(pads) > 2 else pad_top)
+    pad_right = int(pads[3] if len(pads) > 3 else pad_left)
+    output_h = _conv_extent(input_h, kernel_h, stride_h, dilation_h, pad_top, pad_bottom)
+    output_w = _conv_extent(input_w, kernel_w, stride_w, dilation_w, pad_left, pad_right)
+    if output_h is None or output_w is None:
+        return None
+    return [batch, output_channels, output_h, output_w]
+
+
+def _first_input_shape(node: NodeInfo) -> list[int | str | None] | None:
+    for name in node.inputs:
+        shape = node.input_shapes.get(name)
+        if shape:
+            return shape
+    return None
+
+
+def _infer_concat_output_shape(node: NodeInfo) -> list[int | str | None] | None:
+    input_shapes = [node.input_shapes.get(name) for name in node.inputs]
+    if not input_shapes or any(not shape for shape in input_shapes):
+        return None
+    rank = len(input_shapes[0] or [])
+    if rank == 0 or any(len(shape or []) != rank for shape in input_shapes):
+        return None
+    axis = int(node.normalized_attributes.get("axis", node.attributes.get("axis", 0)))
+    if axis < 0:
+        axis += rank
+    if axis < 0 or axis >= rank:
+        return None
+    output = list(input_shapes[0] or [])
+    concat_dim = 0
+    for shape in input_shapes:
+        dim = shape[axis] if shape else None
+        if not isinstance(dim, int):
+            return None
+        concat_dim += dim
+        for index, other_dim in enumerate(shape):
+            if index == axis:
+                continue
+            if output[index] != other_dim:
+                return None
+    output[axis] = concat_dim
+    return output
+
+
+def _conv_extent(
+    input_size: int,
+    kernel_size: int,
+    stride: int,
+    dilation: int,
+    pad_before: int,
+    pad_after: int,
+) -> int | None:
+    if stride <= 0 or dilation <= 0:
+        return None
+    effective_kernel = dilation * (kernel_size - 1) + 1
+    output = math.floor((input_size + pad_before + pad_after - effective_kernel) / stride) + 1
+    return output if output > 0 else None
+
+
 def extract_attributes(attributes: list[AttributeProto]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for attribute in attributes:
@@ -332,7 +513,7 @@ def normalize_attributes(
     attributes: dict[str, Any],
     weight_infos: list[InitializerInfo],
 ) -> dict[str, Any]:
-    if op_type == "Conv":
+    if op_type in {"Conv", "QLinearConv"}:
         weight_shape = weight_infos[0].shape if weight_infos else []
         spatial_rank = max(len(weight_shape) - 2, 0)
         kernel_shape = _as_int_list(attributes.get("kernel_shape"))
@@ -340,6 +521,7 @@ def normalize_attributes(
             kernel_shape = weight_shape[2:]
         spatial_rank = len(kernel_shape) or spatial_rank or 2
         return {
+            "auto_pad": str(attributes.get("auto_pad", "NOTSET")),
             "kernel_shape": kernel_shape,
             "strides": _as_int_list(attributes.get("strides"), [1] * spatial_rank),
             "pads": _as_int_list(attributes.get("pads"), [0] * (spatial_rank * 2)),
@@ -363,11 +545,19 @@ def normalize_attributes(
         }
     if op_type == "Flatten":
         return {"axis": int(attributes.get("axis", 1))}
-    if op_type == "Add":
+    if op_type in {"Add", "QLinearAdd"}:
         return {
             "broadcast": "numpy",
         }
     if op_type == "Constant":
+        return attributes
+    if op_type == "Concat":
+        return {"axis": int(attributes.get("axis", 0))}
+    if op_type == "Gather":
+        return {"axis": int(attributes.get("axis", 0))}
+    if op_type == "Unsqueeze":
+        return {"axes": _as_int_list(attributes.get("axes"))}
+    if op_type == "Slice":
         return attributes
     if op_type == "Transpose":
         perm = _as_int_list(attributes.get("perm"))
@@ -388,7 +578,7 @@ def normalize_attributes(
             "momentum": float(attributes.get("momentum", 0.9)),
             "training_mode": int(attributes.get("training_mode", 0)),
         }
-    if op_type == "GlobalAveragePool":
+    if op_type in {"GlobalAveragePool", "QLinearGlobalAveragePool"}:
         return {
             "spatial_axes": "all_axes_after_batch_and_channel",
         }
@@ -475,10 +665,37 @@ def _extract_quantization(
                 quantized_weights[quantized_input] = _quantized_weight_info(initializer, info)
 
     _propagate_passthrough_quant(nodes, tensor_quant)
+    _propagate_fused_activation_quant(nodes, tensor_quant)
 
     node_quant: dict[str, dict[str, Any]] = {}
     for node in nodes:
-        if node.op_type in {"Gemm", "MatMul"}:
+        if node.op_type == "QLinearConv":
+            qlinear_conv_quant = _qlinear_conv_quant_info(node, initializer_by_name, warnings)
+            if qlinear_conv_quant is not None:
+                node_quant[node.name] = qlinear_conv_quant
+                _attach_qlinear_node_tensors(tensor_quant, qlinear_conv_quant, node.name)
+                _attach_qlinear_node_weight(quantized_weights, qlinear_conv_quant)
+        elif node.op_type == "QLinearMatMul":
+            qlinear_fc_quant = _qlinear_matmul_quant_info(node, initializer_by_name, warnings)
+            if qlinear_fc_quant is not None:
+                node_quant[node.name] = qlinear_fc_quant
+                _attach_qlinear_node_tensors(tensor_quant, qlinear_fc_quant, node.name)
+                _attach_qlinear_node_weight(quantized_weights, qlinear_fc_quant)
+        elif node.op_type == "QLinearAdd":
+            qlinear_add_quant = _qlinear_add_quant_info(node, initializer_by_name, warnings)
+            if qlinear_add_quant is not None:
+                node_quant[node.name] = qlinear_add_quant
+                _attach_qlinear_node_tensors(tensor_quant, qlinear_add_quant, node.name)
+                _attach_qlinear_node_weight(quantized_weights, qlinear_add_quant)
+        elif node.op_type == "QLinearGlobalAveragePool":
+            qlinear_pool_quant = _qlinear_global_avgpool_quant_info(
+                node,
+                initializer_by_name,
+            )
+            if qlinear_pool_quant is not None:
+                node_quant[node.name] = qlinear_pool_quant
+                _attach_qlinear_node_tensors(tensor_quant, qlinear_pool_quant, node.name)
+        elif node.op_type in {"Gemm", "MatMul"}:
             fc_quant = _fully_connected_quant_info(
                 node,
                 initializer_by_name,
@@ -536,6 +753,10 @@ def _int8_contract(
         "GlobalAveragePool",
         "MatMul",
         "MaxPool",
+        "QLinearAdd",
+        "QLinearConv",
+        "QLinearGlobalAveragePool",
+        "QLinearMatMul",
         "Softmax",
     }
     runtime_nodes = [
@@ -605,13 +826,18 @@ def _qdq_info(
     if scale_array.size != 1 or zero_array.size != 1:
         return None
     attrs = extract_attributes(node.attribute)
+    zero_point_value = int(zero_array[0])
+    zero_point_dtype = zero_point.elem_type
+    if zero_point_dtype == "UINT8":
+        zero_point_value -= 128
+        zero_point_dtype = "INT8"
     return {
         "op_type": node.op_type,
         "input": node.input[0],
         "output": node.output[0] if node.output else "",
         "scale": float(scale_array[0]),
-        "zero_point": int(zero_array[0]),
-        "zero_point_dtype": zero_point.elem_type,
+        "zero_point": zero_point_value,
+        "zero_point_dtype": zero_point_dtype,
         "scale_tensor": scale.name,
         "zero_point_tensor": zero_point.name,
         "axis": None if "axis" not in attrs else int(attrs["axis"]),
@@ -640,7 +866,7 @@ def _propagate_passthrough_quant(
     nodes: list[NodeInfo],
     tensors: dict[str, dict[str, Any]],
 ) -> None:
-    passthrough_ops = {"Flatten", "Reshape", "Transpose"}
+    passthrough_ops = {"Dropout", "Flatten", "Reshape", "Transpose"}
     changed = True
     while changed:
         changed = False
@@ -659,6 +885,23 @@ def _propagate_passthrough_quant(
                 changed = True
 
 
+def _propagate_fused_activation_quant(
+    nodes: list[NodeInfo],
+    tensors: dict[str, dict[str, Any]],
+) -> None:
+    for node in nodes:
+        if node.op_type not in {"Relu", "Clip"} or not node.inputs or not node.outputs:
+            continue
+        input_name = node.inputs[0]
+        output_quant = tensors.get(node.outputs[0])
+        if input_name in tensors or output_quant is None:
+            continue
+        copied = dict(output_quant)
+        copied["source"] = node.name or node.op_type
+        copied["fused_activation"] = node.op_type
+        tensors[input_name] = copied
+
+
 def _quantized_weight_info(
     initializer: InitializerInfo,
     quant_info: dict[str, Any],
@@ -673,6 +916,490 @@ def _quantized_weight_info(
         "zero_point": quant_info["zero_point"],
         "values": [int(item) for item in values.tolist()],
     }
+
+
+def _attach_qlinear_node_tensors(
+    tensors: dict[str, dict[str, Any]],
+    node_quant: dict[str, Any],
+    source: str,
+) -> None:
+    for section in ("inputs", "outputs"):
+        values = node_quant.get(section, {})
+        if not isinstance(values, dict):
+            continue
+        for tensor_name, quant in values.items():
+            if tensor_name not in tensors and isinstance(quant, dict):
+                copied = dict(quant)
+                copied["source"] = source
+                tensors[tensor_name] = copied
+
+
+def _attach_qlinear_node_weight(
+    weights: dict[str, dict[str, Any]],
+    node_quant: dict[str, Any],
+) -> None:
+    quant_weights = node_quant.get("weights", {})
+    if not isinstance(quant_weights, dict):
+        return
+    weight_name = str(quant_weights.get("weight", ""))
+    weight_info = quant_weights.get("weight_info")
+    if weight_name and isinstance(weight_info, dict):
+        weights[weight_name] = weight_info
+
+
+def _qlinear_conv_quant_info(
+    node: NodeInfo,
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 8:
+        return None
+    x, x_scale, x_zp, w, w_scale, w_zp, y_scale, y_zp = node.inputs[:8]
+    bias_name = node.inputs[8] if len(node.inputs) > 8 else ""
+    input_quant = _qlinear_quant(initializer_by_name, x_scale, x_zp)
+    weight_quant = _qlinear_quant(initializer_by_name, w_scale, w_zp, activation=False)
+    output_quant = _qlinear_quant(initializer_by_name, y_scale, y_zp)
+    weight_initializer = initializer_by_name.get(w)
+    if (
+        input_quant is None
+        or weight_quant is None
+        or output_quant is None
+        or weight_initializer is None
+    ):
+        return None
+    weight_values = _qlinear_int_values(weight_initializer)
+    weight_shape = list(weight_initializer.shape)
+    if len(weight_shape) not in {3, 4}:
+        warnings.append(f"node '{node.name}' QLinearConv weight shape is not OIW/OIHW.")
+        return None
+    output_channels = int(weight_shape[0])
+    multipliers, shifts, real_multipliers = _per_channel_requant(
+        input_quant["scale"],
+        weight_quant["scale"],
+        output_quant["scale"],
+        output_channels,
+    )
+    bias_values = _qlinear_bias_values(
+        initializer_by_name.get(bias_name),
+        expected=output_channels,
+    )
+
+    attrs = node.normalized_attributes
+    raw_pads = [int(item) for item in attrs.get("pads", [0, 0, 0, 0])]
+    raw_strides = [int(item) for item in attrs.get("strides", [1, 1])]
+    raw_dilations = [int(item) for item in attrs.get("dilations", [1, 1])]
+    raw_pads = _effective_conv_pads(node, weight_shape, raw_pads, raw_strides, raw_dilations)
+    if len(weight_shape) == 3:
+        pads = [
+            0,
+            raw_pads[0] if raw_pads else 0,
+            0,
+            raw_pads[1] if len(raw_pads) > 1 else 0,
+        ]
+        strides = [1, raw_strides[0] if raw_strides else 1]
+        dilations = [1, raw_dilations[0] if raw_dilations else 1]
+        weight_layout = "OIW"
+        cmsis_weight_layout = "OHWI(height=1)"
+    else:
+        pads = raw_pads
+        strides = raw_strides
+        dilations = raw_dilations
+        weight_layout = "OIHW"
+        cmsis_weight_layout = "OHWI"
+
+    qmin, qmax = _activation_range(output_quant)
+    return {
+        "op_type": node.op_type,
+        "inputs": {
+            x: input_quant,
+            w: {
+                "quantized_initializer": w,
+                "scale": weight_quant["scale"],
+                "zero_point": weight_quant["zero_point"],
+                "zero_point_dtype": weight_quant["zero_point_dtype"],
+            },
+        },
+        "outputs": {node.outputs[0]: output_quant} if node.outputs else {},
+        "weights": {
+            "weight": w,
+            "bias": bias_name,
+            "bias_values": bias_values,
+            "weight_info": {
+                "name": w,
+                "elem_type": "INT8",
+                "shape": weight_shape,
+                "element_count": len(weight_values),
+                "scale": weight_quant["scale"],
+                "zero_point": weight_quant["zero_point"],
+                "values": weight_values,
+            },
+        },
+        "cmsis_nn": {
+            "api": "arm_convolve_wrapper_s8",
+            "real_multiplier": real_multipliers,
+            "input_offset": -int(input_quant["zero_point"]),
+            "output_offset": int(output_quant["zero_point"]),
+            "multiplier": multipliers,
+            "shift": shifts,
+            "shift_semantics": (
+                "CMSIS-NN arm_nn_requantize shift; positive is left shift, "
+                "negative is right shift"
+            ),
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "stride": strides,
+            "padding": [pads[1], pads[0]] if len(pads) >= 4 else [0, 0],
+            "dilation": dilations,
+            "groups": int(attrs.get("group", 1)),
+            "scratch_getter": "arm_convolve_wrapper_s8_get_buffer_size",
+            "weight_layout": weight_layout,
+            "cmsis_weight_layout": cmsis_weight_layout,
+        },
+    }
+
+
+def _qlinear_matmul_quant_info(
+    node: NodeInfo,
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 8:
+        return None
+    x, x_scale, x_zp, w, w_scale, w_zp, y_scale, y_zp = node.inputs[:8]
+    input_quant = _qlinear_quant(initializer_by_name, x_scale, x_zp)
+    weight_quant = _qlinear_quant(initializer_by_name, w_scale, w_zp, activation=False)
+    output_quant = _qlinear_quant(initializer_by_name, y_scale, y_zp)
+    weight_initializer = initializer_by_name.get(w)
+    if (
+        input_quant is None
+        or weight_quant is None
+        or output_quant is None
+        or weight_initializer is None
+    ):
+        return None
+    if len(weight_initializer.shape) != 2:
+        warnings.append(f"node '{node.name}' QLinearMatMul weight is not rank-2.")
+        return None
+    input_size, output_size = [int(item) for item in weight_initializer.shape]
+    raw_values = _qlinear_int_values(weight_initializer)
+    weight_scales = _repeat_scales(weight_quant["scale"], output_size)
+    transposed_values = []
+    for out_index in range(output_size):
+        for in_index in range(input_size):
+            transposed_values.append(raw_values[in_index * output_size + out_index])
+    multipliers, shifts, real_multipliers = _per_channel_requant(
+        input_quant["scale"],
+        weight_scales,
+        output_quant["scale"],
+        output_size,
+    )
+    qmin, qmax = _activation_range(output_quant)
+    return {
+        "op_type": node.op_type,
+        "inputs": {
+            x: input_quant,
+            w: {
+                "quantized_initializer": w,
+                "scale": weight_quant["scale"],
+                "zero_point": weight_quant["zero_point"],
+                "zero_point_dtype": weight_quant["zero_point_dtype"],
+            },
+        },
+        "outputs": {node.outputs[0]: output_quant} if node.outputs else {},
+        "weights": {
+            "weight": w,
+            "bias": "",
+            "bias_values": [0] * output_size,
+            "weight_info": {
+                "name": w,
+                "elem_type": "INT8",
+                "shape": [output_size, input_size],
+                "element_count": len(transposed_values),
+                "scale": weight_quant["scale"],
+                "zero_point": 0,
+                "values": transposed_values,
+            },
+        },
+        "cmsis_nn": {
+            "api": "arm_fully_connected_per_channel_s8",
+            "real_multiplier": real_multipliers,
+            "input_offset": -int(input_quant["zero_point"]),
+            "filter_offset": 0,
+            "output_offset": int(output_quant["zero_point"]),
+            "multiplier": multipliers,
+            "shift": shifts,
+            "shift_semantics": (
+                "CMSIS-NN arm_nn_requantize shift; positive is left shift, "
+                "negative is right shift"
+            ),
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "scratch_getter": "arm_fully_connected_s8_get_buffer_size",
+        },
+    }
+
+
+def _qlinear_add_quant_info(
+    node: NodeInfo,
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 8:
+        return None
+    a, a_scale, a_zp, b, b_scale, b_zp, y_scale, y_zp = node.inputs[:8]
+    input_1_quant = _qlinear_quant(initializer_by_name, a_scale, a_zp)
+    input_2_quant = _qlinear_quant(initializer_by_name, b_scale, b_zp)
+    output_quant = _qlinear_quant(initializer_by_name, y_scale, y_zp)
+    if input_1_quant is None or input_2_quant is None or output_quant is None:
+        return None
+    input_2_initializer = initializer_by_name.get(b)
+    weight_info = None
+    if input_2_initializer is not None:
+        values = _qlinear_int_values(input_2_initializer)
+        weight_info = {
+            "name": b,
+            "elem_type": "INT8",
+            "shape": list(input_2_initializer.shape),
+            "element_count": len(values),
+            "scale": input_2_quant["scale"],
+            "zero_point": input_2_quant["zero_point"],
+            "values": values,
+        }
+    block_size = 1
+    output_shape = next(iter(node.output_shapes.values()), [])
+    for dim in output_shape:
+        if isinstance(dim, int) and dim > 0:
+            block_size *= dim
+    if block_size <= 0:
+        warnings.append(f"node '{node.name}' QLinearAdd output shape is dynamic.")
+        return None
+    left_shift = 0
+    input_1_multiplier, input_1_shift = _quantize_multiplier(
+        float(input_1_quant["scale"]) / float(output_quant["scale"])
+    )
+    input_2_multiplier, input_2_shift = _quantize_multiplier(
+        float(input_2_quant["scale"]) / float(output_quant["scale"])
+    )
+    output_multiplier, output_shift = _quantize_multiplier(1.0)
+    qmin, qmax = _activation_range(output_quant)
+    weights = {"weight": "", "bias": "", "bias_values": []}
+    if weight_info is not None:
+        weights["weight"] = b
+        weights["weight_info"] = weight_info
+    return {
+        "op_type": node.op_type,
+        "inputs": {a: input_1_quant, b: input_2_quant},
+        "outputs": {node.outputs[0]: output_quant} if node.outputs else {},
+        "weights": weights,
+        "cmsis_nn": {
+            "api": "arm_elementwise_add_s8",
+            "input_1_offset": -int(input_1_quant["zero_point"]),
+            "input_1_multiplier": input_1_multiplier,
+            "input_1_shift": input_1_shift,
+            "input_2_offset": -int(input_2_quant["zero_point"]),
+            "input_2_multiplier": input_2_multiplier,
+            "input_2_shift": input_2_shift,
+            "left_shift": left_shift,
+            "output_offset": int(output_quant["zero_point"]),
+            "output_multiplier": output_multiplier,
+            "output_shift": output_shift,
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "block_size": block_size,
+            "constant_input": b if weight_info is not None else "",
+        },
+    }
+
+
+def _qlinear_global_avgpool_quant_info(
+    node: NodeInfo,
+    initializer_by_name: dict[str, InitializerInfo],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 5:
+        return None
+    x, x_scale, x_zp, y_scale, y_zp = node.inputs[:5]
+    input_quant = _qlinear_quant(initializer_by_name, x_scale, x_zp)
+    output_quant = _qlinear_quant(initializer_by_name, y_scale, y_zp)
+    if input_quant is None or output_quant is None:
+        return None
+    input_shape = node.input_shapes.get(x, [])
+    if len(input_shape) != 4:
+        return None
+    qmin, qmax = _activation_range(output_quant)
+    return {
+        "op_type": node.op_type,
+        "inputs": {x: input_quant},
+        "outputs": {node.outputs[0]: output_quant} if node.outputs else {},
+        "cmsis_nn": {
+            "api": "arm_avgpool_s8",
+            "stride": [int(input_shape[2]), int(input_shape[3])],
+            "padding": [0, 0],
+            "kernel_shape": [int(input_shape[2]), int(input_shape[3])],
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "scratch_getter": "arm_avgpool_s8_get_buffer_size",
+        },
+    }
+
+
+def _qlinear_quant(
+    initializer_by_name: dict[str, InitializerInfo],
+    scale_name: str,
+    zero_point_name: str,
+    *,
+    activation: bool = True,
+) -> dict[str, Any] | None:
+    scale = initializer_by_name.get(scale_name)
+    zero_point = initializer_by_name.get(zero_point_name)
+    if scale is None or zero_point is None:
+        return None
+    scale_array = np.asarray(scale.array, dtype=np.float64).reshape(-1)
+    zero_array = np.asarray(zero_point.array).reshape(-1)
+    if scale_array.size == 0 or zero_array.size == 0:
+        return None
+    scale_value: float | list[float]
+    zero_value: int | list[int]
+    if scale_array.size == 1:
+        scale_value = float(scale_array[0])
+    else:
+        scale_value = [float(item) for item in scale_array.tolist()]
+    if zero_array.size == 1:
+        zero_value = int(zero_array[0])
+    else:
+        zero_value = [int(item) for item in zero_array.tolist()]
+    dtype = zero_point.elem_type
+    if activation and dtype == "UINT8":
+        zero_value = _shift_uint8_zero_point(zero_value)
+        dtype = "INT8"
+    return {
+        "scale": scale_value,
+        "zero_point": zero_value,
+        "zero_point_dtype": dtype,
+        "scale_tensor": scale.name,
+        "zero_point_tensor": zero_point.name,
+        "axis": 0 if scale_array.size > 1 else None,
+        "source": "qlinear",
+    }
+
+
+def _shift_uint8_zero_point(value: int | list[int]) -> int | list[int]:
+    if isinstance(value, list):
+        return [int(item) - 128 for item in value]
+    return int(value) - 128
+
+
+def _qlinear_int_values(initializer: InitializerInfo) -> list[int]:
+    values = np.asarray(initializer.array).reshape(-1)
+    if initializer.elem_type == "UINT8":
+        return [int(item) - 128 for item in values.tolist()]
+    return [int(item) for item in values.tolist()]
+
+
+def _qlinear_bias_values(
+    bias: InitializerInfo | None,
+    *,
+    expected: int,
+) -> list[int]:
+    if bias is None:
+        return [0] * expected
+    values = [int(item) for item in np.asarray(bias.array).reshape(-1).tolist()]
+    if len(values) == expected:
+        return values
+    return (values + [0] * expected)[:expected]
+
+
+def _effective_conv_pads(
+    node: NodeInfo,
+    weight_shape: list[int],
+    raw_pads: list[int],
+    strides: list[int],
+    dilations: list[int],
+) -> list[int]:
+    """Return explicit ONNX pads, deriving SAME_* auto_pad when needed."""
+    auto_pad = str(node.normalized_attributes.get("auto_pad", "NOTSET")).upper()
+    if auto_pad in {"", "NOTSET"}:
+        return raw_pads
+    if auto_pad == "VALID":
+        return [0] * (2 if len(weight_shape) == 3 else 4)
+    if auto_pad not in {"SAME_UPPER", "SAME_LOWER"}:
+        return raw_pads
+
+    input_name = node.inputs[0] if node.inputs else ""
+    output_name = node.outputs[0] if node.outputs else ""
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if len(weight_shape) == 3:
+        if len(input_shape) != 3 or len(output_shape) != 3:
+            return raw_pads
+        input_sizes = [int(input_shape[2])]
+        output_sizes = [int(output_shape[2])]
+        kernel_sizes = [int(weight_shape[2])]
+    elif len(weight_shape) == 4:
+        if len(input_shape) != 4 or len(output_shape) != 4:
+            return raw_pads
+        input_sizes = [int(input_shape[2]), int(input_shape[3])]
+        output_sizes = [int(output_shape[2]), int(output_shape[3])]
+        kernel_sizes = [int(weight_shape[2]), int(weight_shape[3])]
+    else:
+        return raw_pads
+
+    before: list[int] = []
+    after: list[int] = []
+    for index, (input_size, output_size, kernel_size) in enumerate(
+        zip(input_sizes, output_sizes, kernel_sizes, strict=True)
+    ):
+        stride = int(strides[index] if index < len(strides) else strides[-1] if strides else 1)
+        dilation = int(
+            dilations[index] if index < len(dilations) else dilations[-1] if dilations else 1
+        )
+        effective_kernel = dilation * (kernel_size - 1) + 1
+        total_pad = max((output_size - 1) * stride + effective_kernel - input_size, 0)
+        if auto_pad == "SAME_UPPER":
+            pad_before = total_pad // 2
+            pad_after = total_pad - pad_before
+        else:
+            pad_after = total_pad // 2
+            pad_before = total_pad - pad_after
+        before.append(pad_before)
+        after.append(pad_after)
+
+    return [*before, *after]
+
+
+def _per_channel_requant(
+    input_scale: float | list[float],
+    weight_scale: float | list[float],
+    output_scale: float | list[float],
+    channels: int,
+) -> tuple[list[int], list[int], list[float]]:
+    input_scales = _repeat_scales(input_scale, channels)
+    weight_scales = _repeat_scales(weight_scale, channels)
+    output_scales = _repeat_scales(output_scale, channels)
+    multipliers: list[int] = []
+    shifts: list[int] = []
+    real_multipliers: list[float] = []
+    for in_scale, w_scale, out_scale in zip(
+        input_scales,
+        weight_scales,
+        output_scales,
+        strict=True,
+    ):
+        real = float(in_scale) * float(w_scale) / float(out_scale)
+        multiplier, shift = _quantize_multiplier(real)
+        real_multipliers.append(real)
+        multipliers.append(multiplier)
+        shifts.append(shift)
+    return multipliers, shifts, real_multipliers
+
+
+def _repeat_scales(value: float | list[float], count: int) -> list[float]:
+    if isinstance(value, list):
+        if len(value) == count:
+            return [float(item) for item in value]
+        if len(value) == 1:
+            return [float(value[0])] * count
+        return [float(value[min(index, len(value) - 1)]) for index in range(count)]
+    return [float(value)] * count
 
 
 def _fully_connected_quant_info(
@@ -718,7 +1445,7 @@ def _fully_connected_quant_info(
         bias_scale = float(input_quant["scale"]) * float(weight_info["scale"])
         bias_values = _quantize_bias(bias, bias_scale, warnings)
 
-    qmin, qmax = _quantized_range(str(output_quant["zero_point_dtype"]))
+    qmin, qmax = _activation_range(output_quant)
     return {
         "op_type": node.op_type,
         "inputs": {
@@ -775,9 +1502,9 @@ def _conv_quant_info(
     if input_quant is None or output_quant is None or weight_info is None:
         return None
     weight_shape = weight_info.get("shape", [])
-    if not isinstance(weight_shape, list) or len(weight_shape) != 4:
+    if not isinstance(weight_shape, list) or len(weight_shape) not in {3, 4}:
         warnings.append(
-            f"node '{node.name}' is quantized Conv but weight shape is not OIHW rank-4."
+            f"node '{node.name}' is quantized Conv but weight shape is not OIW/OIHW."
         )
         return None
     output_channels = int(weight_shape[0])
@@ -795,10 +1522,23 @@ def _conv_quant_info(
         bias_values = [0] * output_channels
 
     attrs = node.normalized_attributes
-    pads = [int(item) for item in attrs.get("pads", [0, 0, 0, 0])]
-    strides = [int(item) for item in attrs.get("strides", [1, 1])]
-    dilations = [int(item) for item in attrs.get("dilations", [1, 1])]
-    qmin, qmax = _quantized_range(str(output_quant["zero_point_dtype"]))
+    raw_pads = [int(item) for item in attrs.get("pads", [0, 0, 0, 0])]
+    raw_strides = [int(item) for item in attrs.get("strides", [1, 1])]
+    raw_dilations = [int(item) for item in attrs.get("dilations", [1, 1])]
+    raw_pads = _effective_conv_pads(node, weight_shape, raw_pads, raw_strides, raw_dilations)
+    if len(weight_shape) == 3:
+        pads = [0, raw_pads[0] if raw_pads else 0, 0, raw_pads[1] if len(raw_pads) > 1 else 0]
+        strides = [1, raw_strides[0] if raw_strides else 1]
+        dilations = [1, raw_dilations[0] if raw_dilations else 1]
+        weight_layout = "OIW"
+        cmsis_weight_layout = "OHWI(height=1)"
+    else:
+        pads = raw_pads
+        strides = raw_strides
+        dilations = raw_dilations
+        weight_layout = "OIHW"
+        cmsis_weight_layout = "OHWI"
+    qmin, qmax = _activation_range(output_quant)
     return {
         "op_type": node.op_type,
         "inputs": {
@@ -834,8 +1574,8 @@ def _conv_quant_info(
             "dilation": dilations,
             "groups": int(attrs.get("group", 1)),
             "scratch_getter": "arm_convolve_wrapper_s8_get_buffer_size",
-            "weight_layout": "OIHW",
-            "cmsis_weight_layout": "OHWI",
+            "weight_layout": weight_layout,
+            "cmsis_weight_layout": cmsis_weight_layout,
         },
     }
 
@@ -851,17 +1591,27 @@ def _pool_quant_info(
     output_name = node.outputs[0]
     input_quant = tensor_quant.get(input_name)
     output_quant = tensor_quant.get(output_name)
-    if input_quant is None or output_quant is None:
+    if input_quant is None:
         return None
-    if (
+    if output_quant is None:
+        output_quant = dict(input_quant)
+        output_quant["source"] = node.name or node.op_type
+    quantization_differs = (
         float(input_quant["scale"]) != float(output_quant["scale"])
         or int(input_quant["zero_point"]) != int(output_quant["zero_point"])
-    ):
+    )
+    if quantization_differs and node.op_type not in {"AveragePool", "GlobalAveragePool"}:
         warnings.append(
             f"node '{node.name}' is {node.op_type} but input/output quantization differs; "
             "CMSIS-NN s8 pooling does not requantize in this renderer."
         )
         return None
+    requant_multiplier = 0
+    requant_shift = 0
+    if quantization_differs:
+        requant_multiplier, requant_shift = _quantize_multiplier(
+            float(input_quant["scale"]) / float(output_quant["scale"])
+        )
     attrs = node.normalized_attributes
     input_shape = next(iter(node.input_shapes.values()), [])
     kernel_shape = attrs.get("kernel_shape", [])
@@ -894,6 +1644,11 @@ def _pool_quant_info(
             "scratch_getter": "arm_avgpool_s8_get_buffer_size"
             if api == "arm_avgpool_s8"
             else None,
+            "requantize_output": quantization_differs,
+            "requantize_multiplier": requant_multiplier,
+            "requantize_shift": requant_shift,
+            "requantize_input_zero_point": int(input_quant["zero_point"]),
+            "requantize_output_zero_point": int(output_quant["zero_point"]),
         },
     }
 
@@ -962,6 +1717,13 @@ def _quantized_range(dtype: str) -> tuple[int, int]:
     if dtype == "UINT8":
         return 0, 255
     return -128, 127
+
+
+def _activation_range(output_quant: dict[str, Any]) -> tuple[int, int]:
+    qmin, qmax = _quantized_range(str(output_quant["zero_point_dtype"]))
+    if output_quant.get("fused_activation") == "Relu":
+        qmin = max(qmin, int(output_quant["zero_point"]))
+    return qmin, qmax
 
 
 def _input_radius(input_integer_bits: int, input_left_shift: int) -> int:

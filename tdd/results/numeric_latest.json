@@ -1,0 +1,237 @@
+{
+  "timestamp": "2026-07-05T00:46:46.674551",
+  "git_commit": "735fd53",
+  "platform": "Darwin 25.2.0 (arm64)",
+  "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py --generate",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "TOPO_003",
+      "dataset_id": "mnist_synthetic_smoke",
+      "onnx_path": "tdd/work/models/topology/TOPO_003.onnx",
+      "output_dir": "tdd/work/numeric/TOPO_003",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 10,
+      "top1_matches": 10,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "blank",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "match": true,
+          "c_int8": [
+            -16,
+            -16,
+            -16,
+            -16,
+            -16,
+            -16,
+            -16,
+            -16,
+            -16,
+            -16
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "vertical_center",
+          "label": null,
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "match": true,
+          "c_int8": [
+            -47,
+            49,
+            -40,
+            -35,
+            3,
+            -38,
+            -41,
+            -12,
+            -28,
+            -33
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "diagonal",
+          "label": null,
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "match": true,
+          "c_int8": [
+            -47,
+            4,
+            -1,
+            -9,
+            -18,
+            -8,
+            -36,
+            -15,
+            -14,
+            -41
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "anti_diagonal",
+          "label": null,
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "match": true,
+          "c_int8": [
+            -22,
+            35,
+            -19,
+            -90,
+            11,
+            -50,
+            -4,
+            -4,
+            -17,
+            -58
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "horizontal_center",
+          "label": null,
+          "onnx_top1": 4,
+          "c_top1": 4,
+          "match": true,
+          "c_int8": [
+            -53,
+            -56,
+            20,
+            -26,
+            37,
+            18,
+            -51,
+            29,
+            0,
+            -41
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "cross",
+          "label": null,
+          "onnx_top1": 4,
+          "c_top1": 4,
+          "match": true,
+          "c_int8": [
+            -85,
+            -12,
+            15,
+            -42,
+            62,
+            -27,
+            -59,
+            19,
+            20,
+            -55
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "box",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "match": true,
+          "c_int8": [
+            45,
+            -64,
+            -2,
+            -17,
+            -50,
+            -10,
+            -27,
+            -1,
+            -51,
+            -29
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "top_arc",
+          "label": null,
+          "onnx_top1": 7,
+          "c_top1": 7,
+          "match": true,
+          "c_int8": [
+            20,
+            -53,
+            -23,
+            -28,
+            -61,
+            -21,
+            -69,
+            54,
+            -37,
+            5
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "bottom_arc",
+          "label": null,
+          "onnx_top1": 6,
+          "c_top1": 6,
+          "match": true,
+          "c_int8": [
+            10,
+            -63,
+            -21,
+            -27,
+            -3,
+            -1,
+            24,
+            -41,
+            -18,
+            -24
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "two_columns",
+          "label": null,
+          "onnx_top1": 4,
+          "c_top1": 4,
+          "match": true,
+          "c_int8": [
+            -8,
+            17,
+            -30,
+            -108,
+            64,
+            -33,
+            -22,
+            20,
+            -46,
+            -59
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.9
+    }
+  ]
+}
