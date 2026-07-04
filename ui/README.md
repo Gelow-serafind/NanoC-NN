@@ -2,6 +2,8 @@
 
 本目录用于承载 NanoC-NN 图形化界面的设计、原型和后续实现。当前阶段先定义 UI 应该服务的用户流程与功能边界，不急于选框架或写界面代码。
 
+当前正式桌面路线选择 **PySide6 / Qt for Python**，目标是做成 Windows 与 macOS 风格一致的工程工具界面，接近 STM32CubeMX 一类软件。`ui/app/` 保留为早期网页验证版，`ui/desktop_pyside6/` 是后续主线。
+
 ## UI 的定位
 
 NanoC-NN 的核心能力是：
