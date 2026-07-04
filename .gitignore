@@ -48,6 +48,11 @@ compile_commands.json
 *.onnx
 *.npz
 *.npy
+!tdd/fixtures/
+!tdd/fixtures/onnx/
+!tdd/fixtures/onnx/*.onnx
+
+/tmp
 
 # Logs
 *.log
@@ -56,4 +61,3 @@ compile_commands.json
 tdd/models/
 tdd/results/history/
 tdd/results/tmp/
-

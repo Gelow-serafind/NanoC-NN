@@ -10,6 +10,7 @@ tdd/scripts/generate_models.py — 根据 cases/ 规格批量生成 ONNX 测试�
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -33,6 +34,7 @@ from common.model_builder import (  # noqa: E402
 
 TDD_ROOT = _SCRIPT_DIR.parent
 MODELS_ROOT = TDD_ROOT / "models"
+FIXTURES_ROOT = TDD_ROOT / "fixtures"
 
 
 # ---------------------------------------------------------------------------
@@ -519,6 +521,17 @@ def gen_topo_002() -> Path:
     return path
 
 
+def gen_topo_003() -> Path:
+    """TOPO_003: 真实 MNIST QLinear int8 模型。"""
+    path = MODELS_ROOT / "topology" / "TOPO_003.onnx"
+    source = FIXTURES_ROOT / "onnx" / "mnist-12-int8.onnx"
+    if not source.exists():
+        raise FileNotFoundError(f"missing fixture: {source}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, path)
+    return path
+
+
 # ---------------------------------------------------------------------------
 # NEGATIVE 用例生成
 # ---------------------------------------------------------------------------
@@ -561,6 +574,160 @@ def gen_neg_001() -> Path:
 
 
 # ---------------------------------------------------------------------------
+# QLINEAR 用例生成
+# ---------------------------------------------------------------------------
+
+def gen_qlinear_num_001() -> Path:
+    """QLINEAR_NUM_001: 最小 QLinearConv uint8 输入数值精度。
+
+    模型结构:
+        float[1,1,2,2] → Q(scale=1,zp=0,uint8) → QLinearConv(1×1,1ch) → DQ(scale=0.01,zp=112)
+    权重: [[[[42]]]] (int8), w_scale=0.02, w_zp=0
+    """
+    path = MODELS_ROOT / "core" / "qlinear" / "QLINEAR_NUM_001.onnx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    input_name = "input"
+    output_name = "output"
+
+    x_scale_init = numpy_helper.from_array(np.array([1.0], dtype=np.float32), name="x_scale")
+    x_zp_init = numpy_helper.from_array(np.array([0], dtype=np.uint8), name="x_zp")
+    w_scale_init = numpy_helper.from_array(np.array([0.02], dtype=np.float32), name="w_scale")
+    w_zp_init = numpy_helper.from_array(np.array([0], dtype=np.uint8), name="w_zp")
+    y_scale_init = numpy_helper.from_array(np.array([0.01], dtype=np.float32), name="y_scale")
+    y_zp_init = numpy_helper.from_array(np.array([112], dtype=np.uint8), name="y_zp")
+
+    weight_arr = np.array([42], dtype=np.int8).reshape(1, 1, 1, 1)
+    weight_init = numpy_helper.from_array(weight_arr, name="weight")
+
+    initializers = [
+        x_scale_init, x_zp_init,
+        w_scale_init, w_zp_init,
+        y_scale_init, y_zp_init,
+        weight_init,
+    ]
+
+    nodes = [
+        helper.make_node(
+            "QuantizeLinear",
+            [input_name, "x_scale", "x_zp"],
+            ["input_q"],
+            name="input_quant",
+        ),
+        helper.make_node(
+            "QLinearConv",
+            ["input_q", "x_scale", "x_zp", "weight", "w_scale", "w_zp", "y_scale", "y_zp"],
+            ["conv_out"],
+            name="conv",
+            kernel_shape=[1, 1],
+            strides=[1, 1],
+            pads=[0, 0, 0, 0],
+            group=1,
+        ),
+        helper.make_node(
+            "DequantizeLinear",
+            ["conv_out", "y_scale", "y_zp"],
+            [output_name],
+            name="output_dequant",
+        ),
+    ]
+
+    inp_vi = helper.make_tensor_value_info(input_name, TensorProto.FLOAT, [1, 1, 2, 2])
+    out_vi = helper.make_tensor_value_info(output_name, TensorProto.FLOAT, [1, 1, 2, 2])
+
+    build_and_save(
+        nodes=nodes,
+        inputs=[inp_vi],
+        outputs=[out_vi],
+        initializers=initializers,
+        save_path=path,
+        graph_name="qlinear_num_001",
+    )
+    return path
+
+
+def gen_qlinear_num_002() -> Path:
+    """QLINEAR_NUM_002: 多通道 QLinearConv + bias + per-channel scale。
+
+    模型结构:
+        float[1,2,2,2] → Q(scale=0.01,zp=128) → QLinearConv(2ch→2ch, bias, per-ch scale) → DQ(scale=0.005,zp=128)
+    """
+    path = MODELS_ROOT / "core" / "qlinear" / "QLINEAR_NUM_002.onnx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    input_name = "input"
+    output_name = "output"
+
+    x_scale_init = numpy_helper.from_array(np.array([0.01], dtype=np.float32), name="x_scale")
+    x_zp_init = numpy_helper.from_array(np.array([128], dtype=np.uint8), name="x_zp")
+    w_scale_init = numpy_helper.from_array(np.array([0.02, 0.03], dtype=np.float32), name="w_scale")
+    w_zp_init = numpy_helper.from_array(np.array([0, 0], dtype=np.int8), name="w_zp")
+    y_scale_init = numpy_helper.from_array(np.array([0.005], dtype=np.float32), name="y_scale")
+    y_zp_init = numpy_helper.from_array(np.array([128], dtype=np.uint8), name="y_zp")
+
+    weight_arr = np.array([2, 1, 3, -1], dtype=np.int8).reshape(2, 2, 1, 1)
+    weight_init = numpy_helper.from_array(weight_arr, name="weight")
+    bias_arr = np.array([5, -5], dtype=np.int32)
+    bias_init = numpy_helper.from_array(bias_arr, name="bias")
+
+    initializers = [
+        x_scale_init, x_zp_init, w_scale_init, w_zp_init,
+        y_scale_init, y_zp_init, weight_init, bias_init,
+    ]
+
+    nodes = [
+        helper.make_node("QuantizeLinear", [input_name, "x_scale", "x_zp"], ["input_q"], name="input_quant"),
+        helper.make_node("QLinearConv",
+            ["input_q", "x_scale", "x_zp", "weight", "w_scale", "w_zp", "y_scale", "y_zp", "bias"],
+            ["conv_out"], name="conv",
+            kernel_shape=[1, 1], strides=[1, 1], pads=[0, 0, 0, 0], group=1),
+        helper.make_node("DequantizeLinear", ["conv_out", "y_scale", "y_zp"], [output_name], name="output_dequant"),
+    ]
+
+    inp_vi = helper.make_tensor_value_info(input_name, TensorProto.FLOAT, [1, 2, 2, 2])
+    out_vi = helper.make_tensor_value_info(output_name, TensorProto.FLOAT, [1, 2, 2, 2])
+
+    build_and_save(
+        nodes=nodes, inputs=[inp_vi], outputs=[out_vi],
+        initializers=initializers, save_path=path, graph_name="qlinear_num_002",
+    )
+    return path
+def gen_qlinear_num_003() -> Path:
+    """QLINEAR_NUM_003: 高通道 5×5 QLinearConv (仿 MNIST Conv1)。"""
+    path = MODELS_ROOT / "core" / "qlinear" / "QLINEAR_NUM_003.onnx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rng = np.random.RandomState(42)
+    out_ch, in_ch, kh, kw = 8, 1, 5, 5
+    input_name, output_name = "input", "output"
+    x_scale_init = numpy_helper.from_array(np.array([1.0], dtype=np.float32), name="x_scale")
+    x_zp_init = numpy_helper.from_array(np.array([0], dtype=np.uint8), name="x_zp")
+    w_scales = np.array([0.008, 0.0045, 0.0077, 0.0038, 0.0054, 0.0058, 0.0044, 0.0045], dtype=np.float32)
+    w_scale_init = numpy_helper.from_array(w_scales, name="w_scale")
+    w_zp_init = numpy_helper.from_array(np.zeros(8, dtype=np.int8), name="w_zp")
+    y_scale_init = numpy_helper.from_array(np.array([3.68], dtype=np.float32), name="y_scale")
+    y_zp_init = numpy_helper.from_array(np.array([0], dtype=np.uint8), name="y_zp")
+    weight_arr = (rng.randn(out_ch, in_ch, kh, kw) * 20).clip(-128, 127).astype(np.int8)
+    weight_init = numpy_helper.from_array(weight_arr, name="weight")
+    bias_arr = (rng.randn(out_ch) * 50).astype(np.int32)
+    bias_init = numpy_helper.from_array(bias_arr, name="bias")
+    initializers = [x_scale_init, x_zp_init, w_scale_init, w_zp_init,
+                    y_scale_init, y_zp_init, weight_init, bias_init]
+    nodes = [
+        helper.make_node("QuantizeLinear", [input_name, "x_scale", "x_zp"], ["input_q"], name="iq"),
+        helper.make_node("QLinearConv",
+            ["input_q", "x_scale", "x_zp", "weight", "w_scale", "w_zp", "y_scale", "y_zp", "bias"],
+            ["conv_out"], name="conv", kernel_shape=[5,5], strides=[1,1], pads=[0,0,0,0], group=1),
+        helper.make_node("DequantizeLinear", ["conv_out", "y_scale", "y_zp"], [output_name], name="odq"),
+    ]
+    inp_vi = helper.make_tensor_value_info(input_name, TensorProto.FLOAT, [1, 1, 8, 8])
+    out_vi = helper.make_tensor_value_info(output_name, TensorProto.FLOAT, [1, 8, 4, 4])
+    build_and_save(nodes=nodes, inputs=[inp_vi], outputs=[out_vi],
+                   initializers=initializers, save_path=path, graph_name="qlinear_num_003")
+    return path
+
+
+
+# ---------------------------------------------------------------------------
 # 生成函数映射（必须与 cases_registry.CASE_MAP 中的 case_id 保持一一对应）
 # ---------------------------------------------------------------------------
 
@@ -577,8 +744,13 @@ _GENERATORS: dict[str, object] = {
     "SOFTMAX_001": gen_softmax_001,
     "TOPO_001": gen_topo_001,
     "TOPO_002": gen_topo_002,
+    "TOPO_003": gen_topo_003,
+    "QLINEAR_NUM_001": gen_qlinear_num_001,
+    "QLINEAR_NUM_002": gen_qlinear_num_002,
+    "QLINEAR_NUM_003": gen_qlinear_num_003,
     "NEG_001": gen_neg_001,
 }
+
 
 
 def _check_registry_sync() -> None:

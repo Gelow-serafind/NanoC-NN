@@ -5,24 +5,33 @@ from .model import ModelGraph, NodeSpec, OpMapping, element_count_from_shape
 RUNTIME_ACTIONS = {
     "Add": ("direct_api", "arm_elementwise_add_s8", True),
     "AveragePool": ("direct_api", "arm_avgpool_s8", True),
-    "Concat": ("direct_api", "arm_concatenation_s8_x/y/z/w", True),
+    "Concat": ("direct_api", "arm_concatenation_s8_x/y/z/w", False),
     "Conv": ("wrapper_api", "arm_convolve_wrapper_s8", True),
     "Gemm": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
     "GlobalAveragePool": ("direct_api", "arm_avgpool_s8", True),
     "MatMul": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
     "MaxPool": ("direct_api", "arm_max_pool_s8", True),
     "Mul": ("direct_api", "arm_elementwise_mul_s8", True),
+    "QLinearAdd": ("direct_api", "arm_elementwise_add_s8", True),
+    "QLinearConv": ("wrapper_api", "arm_convolve_wrapper_s8", True),
+    "QLinearGlobalAveragePool": ("direct_api", "arm_avgpool_s8", True),
+    "QLinearMatMul": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
     "Softmax": ("direct_api", "arm_softmax_s8", True),
     "Transpose": ("direct_api", "arm_transpose_s8", True),
 }
 
 RENDERED_RUNTIME_OPS = {
     "AveragePool",
+    "Concat",
     "Conv",
     "Gemm",
     "GlobalAveragePool",
     "MatMul",
     "MaxPool",
+    "QLinearAdd",
+    "QLinearConv",
+    "QLinearGlobalAveragePool",
+    "QLinearMatMul",
     "Softmax",
 }
 
@@ -30,6 +39,7 @@ FOLDED_ACTIONS = {
     "Cast": "generation-time dtype/shape helper",
     "Constant": "generation-time constant",
     "DequantizeLinear": "generation-time quantization boundary",
+    "Dropout": "generation-time inference no-op",
     "Flatten": "generation-time shape fold",
     "Gather": "generation-time shape/index helper",
     "QuantizeLinear": "generation-time quantization boundary",
@@ -84,6 +94,15 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
             layout_note=layout_note,
         )
 
+    if node.op_type == "Concat" and _is_shape_helper_concat(node):
+        return _mapping(
+            node,
+            status="folded",
+            action="generation-time shape concat",
+            reason="shape-only Concat feeds tensor shape construction",
+            layout_note=layout_note,
+        )
+
     if node.op_type in FUSED_ACTIONS:
         return _mapping(
             node,
@@ -105,12 +124,12 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
             layout_note=layout_note,
         )
 
-    if node.op_type == "Conv" and _is_depthwise_conv(node):
+    if node.op_type in {"Conv", "QLinearConv"} and _is_depthwise_conv(node):
         return _mapping(
             node,
-            status="blocked",
+            status="wrapper_api",
             action="arm_depthwise_conv_wrapper_s8",
-            reason="depthwise/grouped Conv needs a dedicated CMSIS-NN renderer",
+            reason="required quantization section is present",
             needs_quantization=True,
             needs_scratch=True,
             layout_note=layout_note,
@@ -128,7 +147,17 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
         )
 
     status, action, needs_scratch = base
-    if node.op_type == "Conv" and _conv_has_unsupported_shape(node):
+    if node.op_type == "Concat":
+        return _mapping(
+            node,
+            status=status,
+            action=action,
+            reason="int8 concat copies already-quantized tensor bytes without arithmetic",
+            needs_quantization=False,
+            needs_scratch=needs_scratch,
+            layout_note=layout_note,
+        )
+    if node.op_type in {"Conv", "QLinearConv"} and _conv_has_unsupported_shape(node):
         return _mapping(
             node,
             status="blocked",
@@ -177,7 +206,7 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
 
 
 def _potential_action(node: NodeSpec) -> tuple[str, str, bool] | None:
-    if node.op_type == "Conv" and _is_depthwise_conv(node):
+    if node.op_type in {"Conv", "QLinearConv"} and _is_depthwise_conv(node):
         return ("wrapper_api", "arm_depthwise_conv_wrapper_s8", True)
     if node.op_type in FOLDED_ACTIONS:
         return ("folded", FOLDED_ACTIONS[node.op_type], False)
@@ -217,7 +246,7 @@ def _mapping(
 
 
 def _is_depthwise_conv(node: NodeSpec) -> bool:
-    if node.op_type != "Conv":
+    if node.op_type not in {"Conv", "QLinearConv"}:
         return False
     group = int(node.normalized_attributes.get("group", node.attributes.get("group", 1)))
     weight_shape = _weight_shape(node)
@@ -230,7 +259,7 @@ def _is_depthwise_conv(node: NodeSpec) -> bool:
 
 
 def _conv_has_unsupported_shape(node: NodeSpec) -> bool:
-    if node.op_type != "Conv":
+    if node.op_type not in {"Conv", "QLinearConv"}:
         return False
     group = int(node.normalized_attributes.get("group", node.attributes.get("group", 1)))
     dilations = node.normalized_attributes.get(
@@ -272,5 +301,12 @@ def _has_rank4_output(node: NodeSpec) -> bool:
         if element_count_from_shape(shape) is not None and len(shape) == 4:
             return True
         if len(shape) == 4:
+            return True
+    return False
+
+
+def _is_shape_helper_concat(node: NodeSpec) -> bool:
+    for shape in node.output_shapes.values():
+        if len(shape) <= 1:
             return True
     return False

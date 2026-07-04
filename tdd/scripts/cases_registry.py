@@ -110,6 +110,40 @@ CASE_REGISTRY: list[CaseDef] = [
         "topology",
         ("arm_convolve_wrapper_s8", "arm_fully_connected_s8"),
     ),
+    CaseDef(
+        "TOPO_003",
+        "真实 MNIST QLinear int8 分类链路",
+        "ok",
+        "topology",
+        (
+            "arm_convolve_wrapper_s8",
+            "arm_max_pool_s8",
+            "arm_fully_connected_s8",
+            "arm_elementwise_add_s8",
+        ),
+        regression=True,
+    ),
+    CaseDef(
+        "QLINEAR_NUM_001",
+        "QLinearConv uint8 输入数值精度 (CMSIS-NN vs ONNX)",
+        "ok",
+        "core/qlinear",
+        ("arm_convolve_wrapper_s8",),
+    ),
+    CaseDef(
+        "QLINEAR_NUM_002",
+        "多通道 QLinearConv + bias + per-channel scale",
+        "ok",
+        "core/qlinear",
+        ("arm_convolve_wrapper_s8",),
+    ),
+    CaseDef(
+        "QLINEAR_NUM_003",
+        "高通道 QLinearConv 5×5 per-channel (仿 MNIST Conv1)",
+        "ok",
+        "core/qlinear",
+        ("arm_convolve_wrapper_s8",),
+    ),
     CaseDef("NEG_001", "float32 无 Q/DQ 模型正确拒绝", "blocked", "negative"),
 ]
 
