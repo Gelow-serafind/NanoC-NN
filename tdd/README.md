@@ -121,6 +121,7 @@ TDD 执行分为两种模式：
 - 若 ONNX 与 C 输出差异超过用例阈值，即使结构验收 PASS，也不能宣称该完整网络转换正确。
 
 对 `blocked` / `unsupported` 用例，PASS 表示 pipeline 明确拒绝并返回非零，而不是崩溃或静默产出可交付代码。
+对 `oversize` 用例，PASS 表示生成语义本身没有进入 blocked/unsupported，但给定目标内核、SRAM/Flash 预算无法承载该模型。
 
 ### 生成物优先原则
 
@@ -175,6 +176,7 @@ TDD 执行分为两种模式：
 
 - **预期通过**（`ok`）：代码生成器必须正确生成可编译、可运行的 C 代码。
 - **预期拒绝**（`blocked` / `unsupported`）：代码生成器必须明确报错，而不是静默产出错误代码或崩溃。
+- **平台超限**（`oversize`）：代码生成器完成语义检查后，由目标平台预算门禁明确拦截。
 
 第二类同样重要。一个代码生成器如果不能正确拒绝它不支持的输入，那它生成的代码就不可信。"知道自己不能做什么"和"知道自己能做什么"一样关键。
 
@@ -235,6 +237,7 @@ TDD 执行分为两种模式：
 python tdd/scripts/run_tests.py --validate-only
 python tdd/scripts/run_tests.py --mode baseline --generate
 python tdd/scripts/run_tests.py --mode target --generate
+python tdd/scripts/run_regression.py --generate
 python tdd/scripts/run_tests.py --case GEMM_001 --generate
 ```
 

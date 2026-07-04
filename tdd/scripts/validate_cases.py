@@ -7,6 +7,7 @@ tdd/scripts/validate_cases.py — TDD 用例规格一致性校验。
 from __future__ import annotations
 
 import ast
+import re
 import sys
 from pathlib import Path
 
@@ -28,8 +29,9 @@ REQUIRED_SECTIONS = (
     "## 边界/风险",
 )
 
-VALID_EXPECTED = {"ok", "blocked", "unsupported"}
+VALID_EXPECTED = {"ok", "blocked", "unsupported", "oversize"}
 VALID_SOURCES = {"内部探索", "用户反馈", "缺陷复现"}
+CASE_FILE_RE = re.compile(r"^[A-Z]+(?:_[A-Z]+)*_[0-9]{3}$")
 
 
 def main() -> int:
@@ -37,7 +39,7 @@ def main() -> int:
     case_files = {
         path.stem: path
         for path in CASES_ROOT.rglob("*.md")
-        if path.name != "README.md"
+        if path.name != "README.md" and CASE_FILE_RE.match(path.stem)
     }
     registry_ids = set(CASE_MAP)
     generator_ids = _read_generator_ids()

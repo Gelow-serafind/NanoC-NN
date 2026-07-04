@@ -140,6 +140,13 @@ CASE_REGISTRY: list[CaseDef] = [
         ),
     ),
     CaseDef(
+        "NET_001",
+        "真实 SqueezeNet 1.0 int8 图像分类网络导入评估",
+        "blocked",
+        "networks",
+        regression=False,
+    ),
+    CaseDef(
         "QLINEAR_NUM_001",
         "QLinearConv uint8 输入数值精度 (CMSIS-NN vs ONNX)",
         "ok",

@@ -53,6 +53,7 @@ compile_commands.json
 !tdd/fixtures/onnx/*.onnx
 
 /tmp
+/stm32_example
 
 # Logs
 *.log

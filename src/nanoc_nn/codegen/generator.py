@@ -35,7 +35,7 @@ def generate_project(options: CodegenOptions) -> GenerationResult:
     status = _status(codegen_input.model_graph, mappings, quantization_issues, memory_plan)
     if options.strict and status != "ok":
         raise CodegenError(
-            "strict mode rejected generation because mappings, quantization, or budgets are blocked"
+            "strict mode rejected generation because mappings, quantization, rendering, or target budgets are not deliverable"
         )
 
     options.out_dir.mkdir(parents=True, exist_ok=True)
@@ -75,9 +75,9 @@ def _status(
     if not _renderer_is_complete(graph, mappings):
         return "blocked"
     if memory_plan.sram_budget_status == "over_budget":
-        return "blocked"
+        return "oversize"
     if memory_plan.flash_budget_status == "over_budget":
-        return "blocked"
+        return "oversize"
     return "ok"
 
 
@@ -163,7 +163,8 @@ def _model_h(memory_plan: MemoryPlan) -> str:
             "typedef enum nanoc_status_t {",
             "    NANOC_STATUS_OK = 0,",
             "    NANOC_STATUS_BLOCKED = 2,",
-            "    NANOC_STATUS_UNSUPPORTED = 3",
+            "    NANOC_STATUS_UNSUPPORTED = 3,",
+            "    NANOC_STATUS_OVERSIZE = 4",
             "} nanoc_status_t;",
             "",
             "const char *nanoc_model_status(void);",
@@ -209,6 +210,7 @@ def _model_c(
         "ok": "NANOC_STATUS_OK",
         "blocked": "NANOC_STATUS_BLOCKED",
         "unsupported": "NANOC_STATUS_UNSUPPORTED",
+        "oversize": "NANOC_STATUS_OVERSIZE",
     }.get(status, "NANOC_STATUS_BLOCKED")
     lines = [
         "#include \"model.h\"",

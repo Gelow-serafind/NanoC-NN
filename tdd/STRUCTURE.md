@@ -66,8 +66,9 @@ TDD 测试分三层：
 | 规格校验 | `run_tests.py --validate-only` | case、registry、模型生成器一致 |
 | 结构验收 | `run_tests.py --mode target --generate` | converter/codegen、CMSIS-NN API、C99 smoke compile/run |
 | 数值验收 | `run_numeric_tests.py --case <ID> --generate` | ONNX Runtime 输出与生成 C 输出对比 |
+| 稳定回归 | `run_regression.py --generate` | baseline 结构验收 + 已登记 numeric 验收 |
 
-结构验收只能说明“生成物存在并可启动”，不能说明“推理结果正确”。完整网络能力必须进入数值验收。
+结构验收只能说明“生成物存在并可启动”，不能说明“推理结果正确”。完整网络能力必须进入数值验收。常规 ONNX 能力测试默认关注代码生成完整性和数值正确性，不把某个具体 MCU 的 SRAM/Flash 预算作为通用能力门槛；目标平台预算拦截应通过显式传入预算触发，并以 `oversize` 表达。
 
 ## 完整网络测试
 

@@ -107,10 +107,6 @@ def run_pipeline(onnx_path: Path, tmp_dir: Path) -> tuple[int, str, str]:
         str(onnx_path),
         "--target",
         "cortex-m4",
-        "--sram-budget",
-        "256K",
-        "--flash-budget",
-        "1M",
         "--out-root",
         str(tmp_dir),
         "--no-compile",
@@ -158,6 +154,8 @@ def detect_status(tmp_dir: Path, exit_code: int, stdout: str, stderr: str) -> st
 
     stderr_lower = stderr.lower()
     if exit_code != 0:
+        if "oversize" in stderr_lower:
+            return "oversize"
         if "unsupported" in stderr_lower or "not supported" in stderr_lower:
             return "unsupported"
         if "blocked" in stderr_lower:

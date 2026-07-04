@@ -57,6 +57,8 @@ def codegen_report(result: GenerationResult, options: CodegenOptions) -> str:
         f"schema_errors: {issue_counts.get('error', 0)}",
         f"sram_bytes_estimated: {result.memory_plan.total_sram_bytes}",
         f"flash_bytes_estimated: {result.memory_plan.total_flash_bytes}",
+        f"sram_budget_status: {result.memory_plan.sram_budget_status}",
+        f"flash_budget_status: {result.memory_plan.flash_budget_status}",
         "",
         "Generated files:",
     ]
@@ -221,7 +223,7 @@ def target_report(memory: MemoryPlan, options: CodegenOptions) -> str:
             "- 若报告中存在 `blocked`，生成物只能作为结构化工程骨架和移植准备，"
             "不代表可运行 int8 推理。"
         ),
-        "- 若 SRAM/Flash 超预算，应先缩小模型或启用更严格的量化/内存复用策略。",
+        "- 若状态为 `oversize`，说明代码生成语义已通过，但当前目标预算不满足，应更换目标、提高预算、缩小模型或优化内存复用。",
         "- Cortex-M0/M3 默认使用 scalar，性能风险较高；M4/M7/M33 可考虑 DSP；M55/M85 可考虑 MVE。",
         "",
     ]

@@ -534,6 +534,21 @@ def gen_topo_003() -> Path:
 
 
 # ---------------------------------------------------------------------------
+# NETWORK 用例生成
+# ---------------------------------------------------------------------------
+
+def gen_net_001() -> Path:
+    """NET_001: 真实 SqueezeNet 1.0 int8 ONNX 导入评估。"""
+    path = MODELS_ROOT / "networks" / "NET_001.onnx"
+    source = FIXTURES_ROOT / "onnx" / "squeezenet1.0-12-int8.onnx"
+    if not source.exists():
+        raise FileNotFoundError(f"missing fixture: {source}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, path)
+    return path
+
+
+# ---------------------------------------------------------------------------
 # NEGATIVE 用例生成
 # ---------------------------------------------------------------------------
 
@@ -746,6 +761,7 @@ _GENERATORS: dict[str, object] = {
     "TOPO_001": gen_topo_001,
     "TOPO_002": gen_topo_002,
     "TOPO_003": gen_topo_003,
+    "NET_001": gen_net_001,
     "QLINEAR_NUM_001": gen_qlinear_num_001,
     "QLINEAR_NUM_002": gen_qlinear_num_002,
     "QLINEAR_NUM_003": gen_qlinear_num_003,

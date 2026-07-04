@@ -1,18 +1,18 @@
 {
-  "timestamp": "2026-07-03T20:09:08.336855",
+  "timestamp": "2026-07-05T00:46:45.147997",
   "mode": "baseline",
-  "git_commit": "5eb4453",
+  "git_commit": "735fd53",
   "platform": "Darwin 25.2.0 (arm64)",
-  "command": "tdd/scripts/run_tests.py --mode baseline --generate",
-  "total": 2,
-  "passed": 2,
+  "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_tests.py --mode baseline --generate",
+  "total": 3,
+  "passed": 3,
   "failed": 0,
   "results": [
     {
       "case_id": "MAXPOOL_001",
       "category": "core/maxpool",
-      "onnx_path": "tdd/models/core/maxpool/MAXPOOL_001.onnx",
-      "output_dir": "tdd/results/tmp/MAXPOOL_001",
+      "onnx_path": "tdd/work/models/core/maxpool/MAXPOOL_001.onnx",
+      "output_dir": "tdd/work/structural/MAXPOOL_001",
       "expected": "ok",
       "actual": "ok",
       "passed": true,
@@ -26,13 +26,13 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.77
+      "duration_sec": 0.34
     },
     {
       "case_id": "SOFTMAX_001",
       "category": "core/softmax",
-      "onnx_path": "tdd/models/core/softmax/SOFTMAX_001.onnx",
-      "output_dir": "tdd/results/tmp/SOFTMAX_001",
+      "onnx_path": "tdd/work/models/core/softmax/SOFTMAX_001.onnx",
+      "output_dir": "tdd/work/structural/SOFTMAX_001",
       "expected": "ok",
       "actual": "ok",
       "passed": true,
@@ -46,7 +46,30 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.35
+      "duration_sec": 0.38
+    },
+    {
+      "case_id": "TOPO_003",
+      "category": "topology",
+      "onnx_path": "tdd/work/models/topology/TOPO_003.onnx",
+      "output_dir": "tdd/work/structural/TOPO_003",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_convolve_wrapper_s8",
+        "arm_max_pool_s8",
+        "arm_fully_connected_per_channel_s8",
+        "arm_elementwise_add_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.61
     }
   ]
 }

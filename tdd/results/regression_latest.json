@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-07-05T00:46:44.887841",
+  "git_commit": "735fd53",
+  "platform": "Darwin 25.2.0 (arm64)",
+  "command": "tdd/scripts/run_regression.py --generate",
+  "passed": true,
+  "steps": [
+    {
+      "name": "structural",
+      "command": [
+        "/Users/tiedan/anaconda3/envs/nanoc-onnx-examples/bin/python",
+        "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_tests.py",
+        "--mode",
+        "baseline",
+        "--generate"
+      ],
+      "exit_code": 0,
+      "report_path": "tdd/results/latest.json"
+    },
+    {
+      "name": "numeric",
+      "command": [
+        "/Users/tiedan/anaconda3/envs/nanoc-onnx-examples/bin/python",
+        "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py",
+        "--generate"
+      ],
+      "exit_code": 0,
+      "report_path": "tdd/results/numeric_latest.json"
+    }
+  ]
+}
