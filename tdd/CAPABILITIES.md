@@ -1,8 +1,8 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-07-04T18:18:02.931915
-> Git commit: `acd9da1`
+> 最后更新: 2026-07-04T21:04:02.157463
+> Git commit: `0529b4b`
 
 **能力集大小: 17 / 17 (100%)**
 

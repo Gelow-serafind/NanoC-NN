@@ -9,6 +9,7 @@ tdd/
 ├── cases/                 # 永久：测试需求规格
 ├── fixtures/              # 永久：真实 ONNX、数据集、期望输出、外部问题样本
 ├── scripts/               # 永久：生成、结构测试、数值测试脚本
+├── tools/                 # 永久：TDD 辅助工具，如数据集采集 UI
 ├── iterations/            # 永久：每轮 TDD 迭代记录
 ├── results/               # 半永久：测试报告、历史摘要，不放人工数据集
 └── work/                  # 临时：脚本生成的模型、C 工程、runner、scratch，可整体删除
@@ -80,3 +81,24 @@ TDD 测试分三层：
 - 若期望 `ok`，必须逐步补充数值验收，不能只依赖 C99 smoke run。
 
 当前第一条完整网络数值验收目标是 `TOPO_003`：真实 MNIST QLinear int8 分类链路。
+
+## 数据集采集 UI
+
+MNIST 手写样本采集 UI 位于：
+
+```bash
+python tdd/tools/mnist_capture/server.py
+```
+
+它会将样本写入：
+
+```text
+tdd/fixtures/datasets/mnist_hand_drawn/dataset.json
+```
+
+采集完成后，可以分别执行两个数据集的 ONNX-vs-C 对比：
+
+```bash
+python tdd/scripts/run_numeric_tests.py --case TOPO_003 --dataset mnist_synthetic_smoke --generate
+python tdd/scripts/run_numeric_tests.py --case TOPO_003 --dataset mnist_hand_drawn --generate
+```

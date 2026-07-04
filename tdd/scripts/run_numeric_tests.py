@@ -56,6 +56,12 @@ class NumericCaseResult:
     sample_count: int = 0
     top1_matches: int = 0
     top1_match_ratio: float = 0.0
+    labeled_count: int = 0
+    onnx_label_matches: int = 0
+    c_label_matches: int = 0
+    onnx_label_accuracy: float | None = None
+    c_label_accuracy: float | None = None
+    label_accuracy_delta: float | None = None
     saturation_ratio: float = 0.0
     max_abs_error: float | None = None
     error_msg: str = ""
@@ -78,6 +84,7 @@ class NumericReport:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run ONNX-vs-C numeric TDD checks.")
     parser.add_argument("--case", help="only run one numeric case")
+    parser.add_argument("--dataset", help="override the registered dataset id")
     parser.add_argument("--generate", action="store_true", help="generate ONNX test models first")
     parser.add_argument("--list", action="store_true", help="list numeric-enabled cases")
     args = parser.parse_args(argv)
@@ -110,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{'=' * 70}\n")
 
     for case_id in selected:
-        result = run_numeric_case(case_id)
+        result = run_numeric_case(case_id, dataset_override=args.dataset)
         report.total += 1
         if result.passed:
             report.passed += 1
@@ -121,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"  [{icon}] {case_id:<15} "
             f"top1={result.top1_matches}/{result.sample_count} "
+            f"label_acc={_fmt_optional_ratio(result.c_label_accuracy)} "
             f"sat={result.saturation_ratio:.2f} "
             f"max_abs={_fmt_float(result.max_abs_error)} "
             f"cc={'OK' if result.compile_ok else '-'} "
@@ -140,11 +148,23 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if report.failed == 0 else 1
 
 
-def run_numeric_case(case_id: str) -> NumericCaseResult:
+def run_numeric_case(
+    case_id: str,
+    *,
+    dataset_override: str | None = None,
+) -> NumericCaseResult:
     case_def = CASE_MAP[case_id]
     check = case_def.numeric
     if check is None:
         raise ValueError(f"case has no numeric check: {case_id}")
+    if dataset_override:
+        check = NumericCheck(
+            dataset_id=dataset_override,
+            input_scale=check.input_scale,
+            top1_min_match_ratio=check.top1_min_match_ratio,
+            max_abs_error=check.max_abs_error,
+            max_saturation_ratio=check.max_saturation_ratio,
+        )
 
     onnx_path = _find_model(case_id)
     work_dir = NUMERIC_WORK_ROOT / case_id
@@ -271,6 +291,40 @@ def _sample_pixels(item: dict[str, Any]) -> np.ndarray:
             arr[0, 0, i, i] = 1.0
             if i + 1 < 28:
                 arr[0, 0, i, i + 1] = 0.7
+        return arr
+    if pattern == "anti_diagonal":
+        for i in range(5, 23):
+            j = 27 - i
+            arr[0, 0, i, j] = 1.0
+            if j - 1 >= 0:
+                arr[0, 0, i, j - 1] = 0.7
+        return arr
+    if pattern == "horizontal_center":
+        arr[0, 0, 13:16, 4:24] = 1.0
+        return arr
+    if pattern == "cross":
+        arr[0, 0, 4:24, 13:16] = 1.0
+        arr[0, 0, 13:16, 4:24] = 1.0
+        return arr
+    if pattern == "box":
+        arr[0, 0, 5:8, 6:22] = 1.0
+        arr[0, 0, 20:23, 6:22] = 1.0
+        arr[0, 0, 5:23, 6:9] = 1.0
+        arr[0, 0, 5:23, 19:22] = 1.0
+        return arr
+    if pattern == "top_arc":
+        arr[0, 0, 6:9, 8:20] = 1.0
+        arr[0, 0, 9:15, 6:9] = 0.8
+        arr[0, 0, 9:15, 19:22] = 0.8
+        return arr
+    if pattern == "bottom_arc":
+        arr[0, 0, 19:22, 8:20] = 1.0
+        arr[0, 0, 13:19, 6:9] = 0.8
+        arr[0, 0, 13:19, 19:22] = 0.8
+        return arr
+    if pattern == "two_columns":
+        arr[0, 0, 5:23, 8:11] = 1.0
+        arr[0, 0, 5:23, 17:20] = 1.0
         return arr
     raise ValueError(f"unknown sample pattern: {pattern!r}")
 
@@ -431,6 +485,9 @@ def _compare_outputs(
     saturated_values = 0
     max_abs = 0.0
     matches = 0
+    labeled = 0
+    onnx_label_matches = 0
+    c_label_matches = 0
     details: list[dict[str, Any]] = []
 
     for sample, onnx_out, raw_out, c_out in zip(
@@ -445,6 +502,14 @@ def _compare_outputs(
         match = onnx_top1 == c_top1
         if match:
             matches += 1
+        label = sample.get("label")
+        if label is not None:
+            labeled += 1
+            label_int = int(label)
+            if onnx_top1 == label_int:
+                onnx_label_matches += 1
+            if c_top1 == label_int:
+                c_label_matches += 1
         saturated_values += int(np.count_nonzero((raw_out == -128) | (raw_out == 127)))
         total_values += int(raw_out.size)
         diff = np.abs(onnx_out.astype(np.float32) - c_out.astype(np.float32))
@@ -453,6 +518,7 @@ def _compare_outputs(
         details.append(
             {
                 "id": sample["id"],
+                "label": sample.get("label"),
                 "onnx_top1": onnx_top1,
                 "c_top1": c_top1,
                 "match": match,
@@ -463,6 +529,13 @@ def _compare_outputs(
 
     result.top1_matches = matches
     result.top1_match_ratio = matches / len(samples) if samples else 0.0
+    result.labeled_count = labeled
+    result.onnx_label_matches = onnx_label_matches
+    result.c_label_matches = c_label_matches
+    if labeled:
+        result.onnx_label_accuracy = onnx_label_matches / labeled
+        result.c_label_accuracy = c_label_matches / labeled
+        result.label_accuracy_delta = abs(result.onnx_label_accuracy - result.c_label_accuracy)
     result.saturation_ratio = saturated_values / total_values if total_values else 0.0
     result.max_abs_error = max_abs
     result.samples = details
@@ -531,6 +604,12 @@ def _fmt_float(value: float | None) -> str:
     if value is None or math.isnan(value):
         return "-"
     return f"{value:.1f}"
+
+
+def _fmt_optional_ratio(value: float | None) -> str:
+    if value is None or math.isnan(value):
+        return "-"
+    return f"{value:.2f}"
 
 
 if __name__ == "__main__":

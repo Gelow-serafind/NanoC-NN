@@ -1,88 +1,237 @@
 {
-  "timestamp": "2026-07-04T18:18:26.526850",
-  "git_commit": "acd9da1",
+  "timestamp": "2026-07-04T22:01:04.417069",
+  "git_commit": "0529b4b",
   "platform": "Darwin 25.2.0 (arm64)",
-  "command": "tdd/scripts/run_numeric_tests.py --case TOPO_003 --generate",
+  "command": "tdd/scripts/run_numeric_tests.py --case TOPO_003 --dataset mnist_hand_drawn --generate",
   "total": 1,
-  "passed": 0,
-  "failed": 1,
+  "passed": 1,
+  "failed": 0,
   "results": [
     {
       "case_id": "TOPO_003",
-      "dataset_id": "mnist_synthetic_smoke",
+      "dataset_id": "mnist_hand_drawn",
       "onnx_path": "tdd/work/models/topology/TOPO_003.onnx",
       "output_dir": "tdd/work/numeric/TOPO_003",
-      "passed": false,
+      "passed": true,
       "pipeline_status": "ok",
       "pipeline_exit_code": 0,
       "compile_ok": true,
       "run_ok": true,
-      "sample_count": 3,
-      "top1_matches": 1,
-      "top1_match_ratio": 0.3333333333333333,
-      "saturation_ratio": 0.9666666666666667,
-      "max_abs_error": 9768.7109375,
-      "error_msg": "top1 match ratio 0.333 < 1.000; saturation ratio 0.967 > 0.500",
+      "sample_count": 10,
+      "top1_matches": 10,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 10,
+      "onnx_label_matches": 7,
+      "c_label_matches": 7,
+      "onnx_label_accuracy": 0.7,
+      "c_label_accuracy": 0.7,
+      "label_accuracy_delta": 0.0,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 59.9307861328125,
+      "error_msg": "",
       "samples": [
         {
-          "id": "blank",
+          "id": "hand_20260704_215934_091606",
+          "label": 0,
           "onnx_top1": 0,
-          "c_top1": 2,
-          "match": false,
-          "c_int8": [
-            -128,
-            112,
-            127,
-            127,
-            -128,
-            127,
-            -128,
-            -128,
-            127,
-            -128
-          ],
-          "max_abs_error": 8570.095703125
-        },
-        {
-          "id": "vertical_center",
-          "onnx_top1": 1,
-          "c_top1": 1,
+          "c_top1": 0,
           "match": true,
           "c_int8": [
-            -128,
-            127,
-            -128,
-            -128,
-            127,
-            -128,
-            -128,
-            -128,
-            127,
-            127
+            42,
+            -87,
+            -35,
+            -50,
+            -34,
+            -27,
+            -17,
+            -35,
+            -13,
+            28
           ],
-          "max_abs_error": 9588.91796875
+          "max_abs_error": 0.0
         },
         {
-          "id": "diagonal",
-          "onnx_top1": 1,
-          "c_top1": 3,
-          "match": false,
+          "id": "hand_20260704_215937_834421",
+          "label": 1,
+          "onnx_top1": 4,
+          "c_top1": 4,
+          "match": true,
           "c_int8": [
-            -128,
-            -128,
-            -128,
-            127,
-            127,
-            -128,
-            127,
-            127,
-            -128,
-            -128
+            7,
+            -17,
+            -20,
+            -100,
+            28,
+            -20,
+            26,
+            -7,
+            -28,
+            -49
           ],
-          "max_abs_error": 9768.7109375
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "hand_20260704_215942_205132",
+          "label": 2,
+          "onnx_top1": 2,
+          "c_top1": 2,
+          "match": true,
+          "c_int8": [
+            -32,
+            -14,
+            37,
+            14,
+            -63,
+            -37,
+            -63,
+            -25,
+            1,
+            -32
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "hand_20260704_215946_354894",
+          "label": 3,
+          "onnx_top1": 3,
+          "c_top1": 3,
+          "match": true,
+          "c_int8": [
+            -64,
+            -51,
+            9,
+            57,
+            -32,
+            -27,
+            -33,
+            -23,
+            -13,
+            -40
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "hand_20260704_215952_505231",
+          "label": 4,
+          "onnx_top1": 5,
+          "c_top1": 5,
+          "match": true,
+          "c_int8": [
+            -15,
+            -50,
+            -25,
+            -17,
+            -49,
+            41,
+            -17,
+            -25,
+            -10,
+            -6
+          ],
+          "max_abs_error": 59.9306640625
+        },
+        {
+          "id": "hand_20260704_215957_538614",
+          "label": 5,
+          "onnx_top1": 5,
+          "c_top1": 5,
+          "match": true,
+          "c_int8": [
+            -6,
+            -68,
+            -26,
+            -4,
+            -29,
+            33,
+            8,
+            -37,
+            8,
+            -33
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "hand_20260704_220001_805347",
+          "label": 6,
+          "onnx_top1": 7,
+          "c_top1": 7,
+          "match": true,
+          "c_int8": [
+            -40,
+            12,
+            15,
+            18,
+            -97,
+            -49,
+            -92,
+            88,
+            -43,
+            -35
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "hand_20260704_220005_034183",
+          "label": 7,
+          "onnx_top1": 7,
+          "c_top1": 7,
+          "match": true,
+          "c_int8": [
+            -46,
+            7,
+            10,
+            10,
+            -84,
+            -39,
+            -97,
+            75,
+            -30,
+            -23
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "hand_20260704_220009_501769",
+          "label": 8,
+          "onnx_top1": 8,
+          "c_top1": 8,
+          "match": true,
+          "c_int8": [
+            -32,
+            -93,
+            -2,
+            7,
+            -24,
+            -28,
+            20,
+            -93,
+            56,
+            -3
+          ],
+          "max_abs_error": 59.9307861328125
+        },
+        {
+          "id": "hand_20260704_220013_788858",
+          "label": 9,
+          "onnx_top1": 9,
+          "c_top1": 9,
+          "match": true,
+          "c_int8": [
+            -30,
+            -47,
+            -38,
+            -29,
+            13,
+            -28,
+            -56,
+            -8,
+            -11,
+            48
+          ],
+          "max_abs_error": 59.9306640625
         }
       ],
-      "duration_sec": 3.11
+      "duration_sec": 3.12
     }
   ]
 }

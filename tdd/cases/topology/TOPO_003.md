@@ -4,6 +4,8 @@
 
 固化真实 MNIST int8 ONNX 的 QLinear 量化链路，验证 converter 能解析直接 QLinear 形式，codegen 能生成包含 Conv、MaxPool、FC 和 Add 的 CMSIS-NN C 推理路径。
 
+详细修复复盘见 `tdd/cases/topology/TOPO_003_mnist/CODEGEN_CASE_STUDY.md`。
+
 ## 来源
 
 缺陷复现 / 真实模型回归：`mnist-12-int8.onnx`，来自 ONNX Model Zoo MNIST int8 模型镜像。本用例用于固化此前 MNIST 暴露的问题，包括 QLinear 算子支持、uint8 量化域转换、QLinearMatMul 权重方向和 QLinearAdd 参数生成。
@@ -58,7 +60,7 @@ Float Input(1,1,28,28)
 - **关键验证点**:
   - 解析并生成 `QLinearConv` -> `arm_convolve_wrapper_s8`
   - 解析并生成 `MaxPool` -> `arm_max_pool_s8`
-  - 解析并生成 `QLinearMatMul` -> `arm_fully_connected_s8`
+  - 解析并生成 `QLinearMatMul` -> `arm_fully_connected_per_channel_s8`
   - 解析并生成 `QLinearAdd` -> `arm_elementwise_add_s8`
   - uint8 ONNX 量化域转换到 int8 runtime 时 zero point 不丢失
   - QLinearMatMul 权重方向与 CMSIS-NN FC 输入约定一致

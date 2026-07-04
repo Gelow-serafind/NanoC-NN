@@ -1083,25 +1083,16 @@ def _qlinear_matmul_quant_info(
     input_size, output_size = [int(item) for item in weight_initializer.shape]
     raw_values = _qlinear_int_values(weight_initializer)
     weight_scales = _repeat_scales(weight_quant["scale"], output_size)
-    common_weight_scale = max(abs(item) for item in weight_scales) if weight_scales else 1.0
-    if common_weight_scale <= 0:
-        common_weight_scale = 1.0
     transposed_values = []
     for out_index in range(output_size):
         for in_index in range(input_size):
-            raw = raw_values[in_index * output_size + out_index]
-            scale = weight_scales[out_index]
-            requantized = int(round(raw * scale / common_weight_scale))
-            transposed_values.append(int(np.clip(requantized, -128, 127)))
+            transposed_values.append(raw_values[in_index * output_size + out_index])
     multipliers, shifts, real_multipliers = _per_channel_requant(
         input_quant["scale"],
-        common_weight_scale,
+        weight_scales,
         output_quant["scale"],
         output_size,
     )
-    multiplier: int | list[int] = multipliers[0]
-    shift: int | list[int] = shifts[0]
-    real_multiplier: float | list[float] = real_multipliers[0]
     qmin, qmax = _activation_range(output_quant)
     return {
         "op_type": node.op_type,
@@ -1124,19 +1115,19 @@ def _qlinear_matmul_quant_info(
                 "elem_type": "INT8",
                 "shape": [output_size, input_size],
                 "element_count": len(transposed_values),
-                "scale": common_weight_scale,
+                "scale": weight_quant["scale"],
                 "zero_point": 0,
                 "values": transposed_values,
             },
         },
         "cmsis_nn": {
-            "api": "arm_fully_connected_s8",
-            "real_multiplier": real_multiplier,
+            "api": "arm_fully_connected_per_channel_s8",
+            "real_multiplier": real_multipliers,
             "input_offset": -int(input_quant["zero_point"]),
             "filter_offset": 0,
             "output_offset": int(output_quant["zero_point"]),
-            "multiplier": multiplier,
-            "shift": shift,
+            "multiplier": multipliers,
+            "shift": shifts,
             "shift_semantics": (
                 "CMSIS-NN arm_nn_requantize shift; positive is left shift, "
                 "negative is right shift"
@@ -1182,7 +1173,7 @@ def _qlinear_add_quant_info(
     if block_size <= 0:
         warnings.append(f"node '{node.name}' QLinearAdd output shape is dynamic.")
         return None
-    left_shift = 20
+    left_shift = 0
     input_1_multiplier, input_1_shift = _quantize_multiplier(
         float(input_1_quant["scale"]) / float(output_quant["scale"])
     )

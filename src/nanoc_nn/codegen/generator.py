@@ -204,6 +204,7 @@ def _model_c(
 ) -> str:
     runtime_layers = _runtime_layers(graph, mappings) if status == "ok" else []
     tensor_buffers = _tensor_buffer_declarations(graph, runtime_layers)
+    flatten_transforms = _flatten_layout_transforms(graph)
     return_code = {
         "ok": "NANOC_STATUS_OK",
         "blocked": "NANOC_STATUS_BLOCKED",
@@ -264,6 +265,8 @@ def _model_c(
         tensor_symbols = _tensor_symbol_map(graph, runtime_layers)
         for sym in tensor_symbols.values():
             void_lines.append(f"    (void){sym};")
+        for transform in flatten_transforms.values():
+            void_lines.append(f"    (void){transform['symbol']};")
         void_lines.extend(
             [
                 "    return NANOC_STATUS_BLOCKED;",
@@ -449,6 +452,7 @@ def _cmsis_tensor_runtime_run_body(
     layers: list[dict[str, Any]],
 ) -> list[str]:
     aliases = _tensor_aliases(graph)
+    flatten_transforms = _flatten_layout_transforms(graph)
     tensor_symbols = _tensor_symbol_map(graph, layers)
     model_inputs = {tensor.name for tensor in graph.inputs}
     model_outputs = {tensor.name for tensor in graph.outputs}
@@ -484,6 +488,13 @@ def _cmsis_tensor_runtime_run_body(
         for i, name in enumerate(input_tensors):
             if constant_idx is not None and i == constant_idx and constant_symbol:
                 input_exprs.append(constant_symbol)
+            elif name in flatten_transforms:
+                transform = flatten_transforms[name]
+                source_expr = tensor_expr(str(transform["source"]))
+                if source_expr is None:
+                    return []
+                lines.extend(_flatten_transform_call(transform, source_expr))
+                input_exprs.append(str(transform["symbol"]))
             else:
                 expr = tensor_expr(name)
                 if expr is None:
@@ -552,6 +563,13 @@ def _tensor_buffer_declarations(
                 continue
             declared[resolved] = size
             lines.append(f"static int8_t {_tensor_symbol(resolved)}[{size}u];")
+    for tensor_name, transform in _flatten_layout_transforms(graph).items():
+        symbol = str(transform["symbol"])
+        size = int(transform["size"])
+        if tensor_name in declared or size <= 0:
+            continue
+        declared[tensor_name] = size
+        lines.append(f"static int8_t {symbol}[{size}u];")
     return lines
 
 
@@ -596,6 +614,85 @@ def _resolve_tensor_alias(name: str, aliases: dict[str, str]) -> str:
         seen.add(current)
         current = aliases[current]
     return current
+
+
+def _resolve_tensor_alias_path(name: str, aliases: dict[str, str]) -> list[str]:
+    seen: set[str] = set()
+    path = [name]
+    current = name
+    while current in aliases and current not in seen:
+        seen.add(current)
+        current = aliases[current]
+        path.append(current)
+    return path
+
+
+def _flatten_layout_transforms(graph: ModelGraph) -> dict[str, dict[str, Any]]:
+    """Find alias tensors that need NHWC memory flattened back to ONNX NCHW order."""
+    aliases = _tensor_aliases(graph)
+    reshape_by_output: dict[str, dict[str, Any]] = {}
+    for node in graph.nodes:
+        if node.op_type not in {"Flatten", "Reshape"} or not node.inputs or not node.outputs:
+            continue
+        source = node.inputs[0]
+        output = node.outputs[0]
+        source_shape = node.input_shapes.get(source, [])
+        output_shape = node.output_shapes.get(output, [])
+        if (
+            len(source_shape) != 4
+            or len(output_shape) not in {1, 2}
+            or not all(isinstance(dim, int) and dim > 0 for dim in source_shape)
+        ):
+            continue
+        source_count = element_count_from_shape(source_shape)
+        output_count = element_count_from_shape(output_shape)
+        if source_count is None or output_count is None or source_count != output_count:
+            continue
+        reshape_by_output[output] = {
+            "source": source,
+            "source_shape": [int(dim) for dim in source_shape],
+            "size": int(output_count),
+        }
+
+    if not reshape_by_output:
+        return {}
+
+    tensor_names: set[str] = set()
+    for node in graph.nodes:
+        tensor_names.update(str(name) for name in node.inputs)
+        tensor_names.update(str(name) for name in node.outputs)
+    tensor_names.update(tensor.name for tensor in graph.inputs)
+    tensor_names.update(tensor.name for tensor in graph.outputs)
+
+    transforms: dict[str, dict[str, Any]] = {}
+    for tensor_name in tensor_names:
+        path = _resolve_tensor_alias_path(tensor_name, aliases)
+        for reshape_output, transform in reshape_by_output.items():
+            if reshape_output not in path:
+                continue
+            item = dict(transform)
+            item["symbol"] = _tensor_symbol(tensor_name)
+            transforms[tensor_name] = item
+            break
+    return transforms
+
+
+def _flatten_transform_call(transform: dict[str, Any], source_expr: str) -> list[str]:
+    n, c, h, w = [int(dim) for dim in transform["source_shape"]]
+    target = str(transform["symbol"])
+    return [
+        f"    /* NCHW flatten for {transform['source']} -> {target} */",
+        f"    for (int _ni = 0; _ni < {n}; ++_ni)",
+        f"        for (int _ci = 0; _ci < {c}; ++_ci)",
+        f"            for (int _hi = 0; _hi < {h}; ++_hi)",
+        f"                for (int _wi = 0; _wi < {w}; ++_wi)",
+        (
+            f"                    {target}[_ni * {c * h * w} + _ci * {h * w} + "
+            f"_hi * {w} + _wi] = {source_expr}[_ni * {h * w * c} + "
+            f"_hi * {w * c} + _wi * {c} + _ci];"
+        ),
+        "",
+    ]
 
 
 def _tensor_symbol(name: str) -> str:
@@ -651,12 +748,23 @@ def _cmsis_fc_call(layer: dict[str, Any], current_output: str) -> list[str]:
     output_size = layer["output_size"]
     prefix = layer["symbol"]
     input_expr = layer.get("input_expr", "current_input")
+    per_channel = isinstance(layer["multiplier"], list)
+    api = "arm_fully_connected_per_channel_s8" if per_channel else "arm_fully_connected_s8"
+    quant_type = (
+        "cmsis_nn_per_channel_quant_params"
+        if per_channel
+        else "cmsis_nn_per_tensor_quant_params"
+    )
+    multiplier_expr = (
+        f"(int32_t *){prefix}_multiplier" if per_channel else str(layer["multiplier"])
+    )
+    shift_expr = f"(int32_t *){prefix}_shift" if per_channel else str(layer["shift"])
     return [
-        f"    /* node {layer['index']}: {layer['name']} -> arm_fully_connected_s8 */",
+        f"    /* node {layer['index']}: {layer['name']} -> {api} */",
         "    {",
         "        cmsis_nn_context ctx;",
         "        cmsis_nn_fc_params fc_params;",
-        "        cmsis_nn_per_tensor_quant_params quant_params;",
+        f"        {quant_type} quant_params;",
         f"        cmsis_nn_dims input_dims = {{1, 1, 1, {input_size}}};",
         f"        cmsis_nn_dims filter_dims = {{{input_size}, 1, 1, {output_size}}};",
         f"        cmsis_nn_dims bias_dims = {{1, 1, 1, {output_size}}};",
@@ -672,10 +780,10 @@ def _cmsis_fc_call(layer: dict[str, Any], current_output: str) -> list[str]:
         f"        fc_params.output_offset = {layer['output_offset']};",
         f"        fc_params.activation.min = {layer['activation_min']};",
         f"        fc_params.activation.max = {layer['activation_max']};",
-        f"        quant_params.multiplier = {layer['multiplier']};",
-        f"        quant_params.shift = {layer['shift']};",
+        f"        quant_params.multiplier = {multiplier_expr};",
+        f"        quant_params.shift = {shift_expr};",
         "",
-        "        cmsis_status = arm_fully_connected_s8(",
+        f"        cmsis_status = {api}(",
         "            &ctx,",
         "            &fc_params,",
         "            &quant_params,",
@@ -1014,7 +1122,7 @@ def _quantized_weight_declarations(graph: ModelGraph) -> list[str]:
                 "};",
             ]
         )
-        if layer["kind"] in {"conv", "depthwise"}:
+        if layer["kind"] in {"conv", "depthwise"} or isinstance(layer.get("multiplier"), list):
             multiplier_values = _int_values(layer["multiplier"])
             shift_values = _int_values(layer["shift"])
             lines.extend(
@@ -1151,8 +1259,8 @@ def _fc_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
         "input_offset": int(cmsis_nn["input_offset"]),
         "filter_offset": int(cmsis_nn["filter_offset"]),
         "output_offset": int(cmsis_nn["output_offset"]),
-        "multiplier": int(cmsis_nn["multiplier"]),
-        "shift": int(cmsis_nn["shift"]),
+        "multiplier": cmsis_nn["multiplier"],
+        "shift": cmsis_nn["shift"],
         "activation_min": int(cmsis_nn["activation_min"]),
         "activation_max": int(cmsis_nn["activation_max"]),
     }

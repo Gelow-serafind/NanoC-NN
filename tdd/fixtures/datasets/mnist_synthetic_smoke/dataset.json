@@ -19,6 +19,41 @@
       "id": "diagonal",
       "label": null,
       "pattern": "diagonal"
+    },
+    {
+      "id": "anti_diagonal",
+      "label": null,
+      "pattern": "anti_diagonal"
+    },
+    {
+      "id": "horizontal_center",
+      "label": null,
+      "pattern": "horizontal_center"
+    },
+    {
+      "id": "cross",
+      "label": null,
+      "pattern": "cross"
+    },
+    {
+      "id": "box",
+      "label": null,
+      "pattern": "box"
+    },
+    {
+      "id": "top_arc",
+      "label": null,
+      "pattern": "top_arc"
+    },
+    {
+      "id": "bottom_arc",
+      "label": null,
+      "pattern": "bottom_arc"
+    },
+    {
+      "id": "two_columns",
+      "label": null,
+      "pattern": "two_columns"
     }
   ]
 }

@@ -128,7 +128,7 @@ CASE_REGISTRY: list[CaseDef] = [
         (
             "arm_convolve_wrapper_s8",
             "arm_max_pool_s8",
-            "arm_fully_connected_s8",
+            "arm_fully_connected_per_channel_s8",
             "arm_elementwise_add_s8",
         ),
         regression=True,

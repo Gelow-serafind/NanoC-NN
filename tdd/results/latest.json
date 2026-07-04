@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-07-04T18:18:02.931915",
+  "timestamp": "2026-07-04T21:04:02.157463",
   "mode": "target",
-  "git_commit": "acd9da1",
+  "git_commit": "0529b4b",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "tdd/scripts/run_tests.py --mode target --generate",
   "total": 17,
@@ -26,7 +26,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.95
+      "duration_sec": 0.65
     },
     {
       "case_id": "CONV_002",
@@ -46,7 +46,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.56
+      "duration_sec": 0.39
     },
     {
       "case_id": "CONV_003",
@@ -66,7 +66,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.56
+      "duration_sec": 0.4
     },
     {
       "case_id": "CONV_004",
@@ -86,7 +86,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.34
+      "duration_sec": 0.38
     },
     {
       "case_id": "GEMM_001",
@@ -106,7 +106,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.36
     },
     {
       "case_id": "GEMM_002",
@@ -126,7 +126,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.55
+      "duration_sec": 0.35
     },
     {
       "case_id": "GEMM_003",
@@ -146,7 +146,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.54
+      "duration_sec": 0.47
     },
     {
       "case_id": "GEMM_004",
@@ -166,7 +166,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.57
+      "duration_sec": 0.42
     },
     {
       "case_id": "MAXPOOL_001",
@@ -186,7 +186,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.38
     },
     {
       "case_id": "QLINEAR_NUM_001",
@@ -206,7 +206,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.56
+      "duration_sec": 0.37
     },
     {
       "case_id": "QLINEAR_NUM_002",
@@ -226,7 +226,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.54
+      "duration_sec": 0.35
     },
     {
       "case_id": "QLINEAR_NUM_003",
@@ -246,7 +246,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.38
     },
     {
       "case_id": "SOFTMAX_001",
@@ -266,7 +266,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.58
+      "duration_sec": 0.36
     },
     {
       "case_id": "NEG_001",
@@ -284,7 +284,7 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 0.13
+      "duration_sec": 0.12
     },
     {
       "case_id": "TOPO_001",
@@ -306,7 +306,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.56
     },
     {
       "case_id": "TOPO_002",
@@ -327,7 +327,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.37
     },
     {
       "case_id": "TOPO_003",
@@ -341,7 +341,7 @@
       "required_apis": [
         "arm_convolve_wrapper_s8",
         "arm_max_pool_s8",
-        "arm_fully_connected_s8",
+        "arm_fully_connected_per_channel_s8",
         "arm_elementwise_add_s8"
       ],
       "missing_apis": [],
@@ -350,7 +350,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.57
+      "duration_sec": 0.38
     }
   ]
 }
