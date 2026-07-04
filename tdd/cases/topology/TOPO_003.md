@@ -63,9 +63,20 @@ Float Input(1,1,28,28)
   - uint8 ONNX 量化域转换到 int8 runtime 时 zero point 不丢失
   - QLinearMatMul 权重方向与 CMSIS-NN FC 输入约定一致
 
+## 数值验收
+
+- **是否需要**: `yes`
+- **数据集**: `tdd/fixtures/datasets/mnist_synthetic_smoke/dataset.json`
+- **参考路径**: 原始 `mnist-12-int8.onnx` + ONNX Runtime
+- **C 路径**: NanoC-NN pipeline 生成的 CMSIS-NN C 代码，host 端链接 `third_party/CMSIS-NN`
+- **通过阈值**:
+  - ONNX top1 与 C top1 一致率 >= 100%
+  - C int8 输出饱和值比例 <= 50%
+
 ## 边界/风险
 
 - 这是直接 QLinear 模型，不是合成 Q/DQ float wrapper 模型。
 - ONNX 输入/输出是 float32，但核心推理链路必须落到 int8 CMSIS-NN。
 - `status: ok` 不能单独代表成功，必须以生成物和 C99 smoke compile 为准。
 - fixture 是二进制 ONNX 文件，更新时需要同步确认来源和哈希。
+- 结构验收 PASS 不代表数值正确，必须执行 `run_numeric_tests.py --case TOPO_003 --generate`。

@@ -1,7 +1,7 @@
 """
 tdd/scripts/run_tests.py — TDD 测试执行器。
 
-扫描 tdd/models/ 下的 ONNX 文件，逐个执行 pipeline，并把结果写入 results/latest.json。
+扫描 tdd/work/models/ 下的 ONNX 文件，逐个执行 pipeline，并把结果写入 results/latest.json。
 
 用法:
     python tdd/scripts/run_tests.py --generate
@@ -27,9 +27,12 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).resolve().parent
 TDD_ROOT = _SCRIPT_DIR.parent
 REPO_ROOT = TDD_ROOT.parent
-MODELS_ROOT = TDD_ROOT / "models"
+WORK_ROOT = TDD_ROOT / "work"
+MODELS_ROOT = WORK_ROOT / "models"
+STRUCTURAL_WORK_ROOT = WORK_ROOT / "structural"
 RESULTS_DIR = TDD_ROOT / "results"
 CAPABILITIES_PATH = TDD_ROOT / "CAPABILITIES.md"
+WORKDIR_MARKER = ".nanoc_tdd_workdir"
 
 sys.path.insert(0, str(_SCRIPT_DIR))
 from cases_registry import CASE_MAP  # noqa: E402
@@ -236,10 +239,10 @@ def check_required_apis(codegen_dir: Path, required_apis: list[str]) -> tuple[bo
 def run_case(case_id: str, onnx_path: Path) -> CaseResult:
     """执行单个测试用例。"""
     case_def = CASE_MAP[case_id]
-    tmp_dir = TDD_ROOT / "results" / "tmp" / case_id
-    if tmp_dir.exists():
-        shutil.rmtree(tmp_dir)
+    tmp_dir = STRUCTURAL_WORK_ROOT / case_id
+    _reset_work_dir(tmp_dir)
     tmp_dir.mkdir(parents=True, exist_ok=True)
+    (tmp_dir / WORKDIR_MARKER).write_text("structural\n", encoding="utf-8")
 
     result = CaseResult(
         case_id=case_id,
@@ -277,6 +280,24 @@ def run_case(case_id: str, onnx_path: Path) -> CaseResult:
 
     result.duration_sec = round(time.monotonic() - t0, 2)
     return result
+
+
+def _reset_work_dir(path: Path) -> None:
+    """Remove a runner-owned work directory.
+
+    Human datasets and manual experiments must live outside tdd/work.  This guard
+    prevents the runner from deleting a directory unless it was created by a TDD
+    runner in a previous invocation.
+    """
+    if not path.exists():
+        return
+    marker = path / WORKDIR_MARKER
+    if not marker.exists():
+        raise RuntimeError(
+            f"refuse to delete unmarked directory: {path}. "
+            f"Move manual assets to tdd/fixtures or add {WORKDIR_MARKER} only for runner-owned work dirs."
+        )
+    shutil.rmtree(path)
 
 
 def _case_passed(result: CaseResult) -> bool:

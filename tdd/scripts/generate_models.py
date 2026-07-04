@@ -33,7 +33,8 @@ from common.model_builder import (  # noqa: E402
 )
 
 TDD_ROOT = _SCRIPT_DIR.parent
-MODELS_ROOT = TDD_ROOT / "models"
+WORK_ROOT = TDD_ROOT / "work"
+MODELS_ROOT = WORK_ROOT / "models"
 FIXTURES_ROOT = TDD_ROOT / "fixtures"
 
 

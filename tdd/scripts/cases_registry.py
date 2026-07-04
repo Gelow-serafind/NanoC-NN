@@ -14,6 +14,15 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
+class NumericCheck:
+    dataset_id: str
+    input_scale: float = 255.0
+    top1_min_match_ratio: float = 1.0
+    max_abs_error: float | None = None
+    max_saturation_ratio: float = 0.5
+
+
+@dataclass(frozen=True)
 class CaseDef:
     case_id: str
     description: str
@@ -21,6 +30,7 @@ class CaseDef:
     category: str
     required_apis: tuple[str, ...] = field(default_factory=tuple)
     regression: bool = False
+    numeric: NumericCheck | None = None
 
 
 CASE_REGISTRY: list[CaseDef] = [
@@ -122,6 +132,12 @@ CASE_REGISTRY: list[CaseDef] = [
             "arm_elementwise_add_s8",
         ),
         regression=True,
+        numeric=NumericCheck(
+            dataset_id="mnist_synthetic_smoke",
+            input_scale=255.0,
+            top1_min_match_ratio=1.0,
+            max_saturation_ratio=0.5,
+        ),
     ),
     CaseDef(
         "QLINEAR_NUM_001",

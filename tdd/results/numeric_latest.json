@@ -1,0 +1,88 @@
+{
+  "timestamp": "2026-07-04T18:18:26.526850",
+  "git_commit": "acd9da1",
+  "platform": "Darwin 25.2.0 (arm64)",
+  "command": "tdd/scripts/run_numeric_tests.py --case TOPO_003 --generate",
+  "total": 1,
+  "passed": 0,
+  "failed": 1,
+  "results": [
+    {
+      "case_id": "TOPO_003",
+      "dataset_id": "mnist_synthetic_smoke",
+      "onnx_path": "tdd/work/models/topology/TOPO_003.onnx",
+      "output_dir": "tdd/work/numeric/TOPO_003",
+      "passed": false,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 3,
+      "top1_matches": 1,
+      "top1_match_ratio": 0.3333333333333333,
+      "saturation_ratio": 0.9666666666666667,
+      "max_abs_error": 9768.7109375,
+      "error_msg": "top1 match ratio 0.333 < 1.000; saturation ratio 0.967 > 0.500",
+      "samples": [
+        {
+          "id": "blank",
+          "onnx_top1": 0,
+          "c_top1": 2,
+          "match": false,
+          "c_int8": [
+            -128,
+            112,
+            127,
+            127,
+            -128,
+            127,
+            -128,
+            -128,
+            127,
+            -128
+          ],
+          "max_abs_error": 8570.095703125
+        },
+        {
+          "id": "vertical_center",
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "match": true,
+          "c_int8": [
+            -128,
+            127,
+            -128,
+            -128,
+            127,
+            -128,
+            -128,
+            -128,
+            127,
+            127
+          ],
+          "max_abs_error": 9588.91796875
+        },
+        {
+          "id": "diagonal",
+          "onnx_top1": 1,
+          "c_top1": 3,
+          "match": false,
+          "c_int8": [
+            -128,
+            -128,
+            -128,
+            127,
+            127,
+            -128,
+            127,
+            127,
+            -128,
+            -128
+          ],
+          "max_abs_error": 9768.7109375
+        }
+      ],
+      "duration_sec": 3.11
+    }
+  ]
+}

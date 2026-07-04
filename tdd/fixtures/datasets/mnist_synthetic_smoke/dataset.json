@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "mnist_synthetic_smoke",
+  "description": "Synthetic 28x28 grayscale patterns for ONNX-vs-C numeric consistency checks.",
+  "input_shape": [1, 1, 28, 28],
+  "pixel_range": [0.0, 1.0],
+  "samples": [
+    {
+      "id": "blank",
+      "label": null,
+      "pattern": "blank"
+    },
+    {
+      "id": "vertical_center",
+      "label": null,
+      "pattern": "vertical_center"
+    },
+    {
+      "id": "diagonal",
+      "label": null,
+      "pattern": "diagonal"
+    }
+  ]
+}
