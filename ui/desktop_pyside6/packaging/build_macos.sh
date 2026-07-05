@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+cd "$ROOT_DIR"
+
+python -m PyInstaller \
+  --clean \
+  --noconfirm \
+  ui/desktop_pyside6/packaging/NanoC-NN.spec
+
+echo
+echo "Built: $ROOT_DIR/dist/NanoC-NN.app"
