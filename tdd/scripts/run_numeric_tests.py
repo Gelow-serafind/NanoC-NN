@@ -259,7 +259,7 @@ def _load_dataset(check: NumericCheck) -> list[dict[str, Any]]:
     raw = json.loads(path.read_text(encoding="utf-8"))
     samples = []
     for item in raw.get("samples", []):
-        pixels = _sample_pixels(item)
+        pixels = _sample_pixels(item, raw)
         samples.append(
             {
                 "id": item.get("id", f"sample_{len(samples)}"),
@@ -272,12 +272,30 @@ def _load_dataset(check: NumericCheck) -> list[dict[str, Any]]:
     return samples
 
 
-def _sample_pixels(item: dict[str, Any]) -> np.ndarray:
+def _sample_pixels(item: dict[str, Any], dataset: dict[str, Any]) -> np.ndarray:
+    if "values" in item:
+        shape = dataset.get("input_shape")
+        if not shape:
+            raise ValueError(
+                f"dataset {dataset.get('dataset_id')} uses values but has no input_shape"
+            )
+        arr = np.asarray(item["values"], dtype=np.float32)
+        expected_size = int(np.prod(np.asarray(shape, dtype=np.int64)))
+        if arr.size != expected_size:
+            raise ValueError(
+                f"sample {item.get('id')} must contain {expected_size} values for shape {shape}"
+            )
+        return arr.reshape(tuple(int(dim) for dim in shape))
+
     if "float_pixels" in item:
         arr = np.asarray(item["float_pixels"], dtype=np.float32)
-        if arr.size != 784:
-            raise ValueError(f"sample {item.get('id')} must contain 784 pixels")
-        return arr.reshape(1, 1, 28, 28)
+        shape = dataset.get("input_shape", [1, 1, 28, 28])
+        expected_size = int(np.prod(np.asarray(shape, dtype=np.int64)))
+        if arr.size != expected_size:
+            raise ValueError(
+                f"sample {item.get('id')} must contain {expected_size} pixels for shape {shape}"
+            )
+        return arr.reshape(tuple(int(dim) for dim in shape))
 
     pattern = item.get("pattern")
     arr = np.zeros((1, 1, 28, 28), dtype=np.float32)

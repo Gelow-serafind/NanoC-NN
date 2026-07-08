@@ -629,6 +629,30 @@ def _resolve_tensor_alias_path(name: str, aliases: dict[str, str]) -> list[str]:
     return path
 
 
+def _output_flows_through_relu(graph: ModelGraph, output_name: str) -> bool:
+    """Return true when a tensor is folded through Q/DQ into Relu."""
+    consumers: dict[str, list[Any]] = {}
+    for node in graph.nodes:
+        for input_name in node.inputs:
+            consumers.setdefault(str(input_name), []).append(node)
+
+    queue = [output_name]
+    seen: set[str] = set()
+    passthrough_ops = {"QuantizeLinear", "DequantizeLinear", "Relu"}
+    while queue:
+        tensor_name = queue.pop(0)
+        if tensor_name in seen:
+            continue
+        seen.add(tensor_name)
+        for consumer in consumers.get(tensor_name, []):
+            if consumer.op_type == "Relu":
+                return True
+            if consumer.op_type not in passthrough_ops:
+                continue
+            queue.extend(str(name) for name in consumer.outputs)
+    return False
+
+
 def _flatten_layout_transforms(graph: ModelGraph) -> dict[str, dict[str, Any]]:
     """Find alias tensors that need NHWC memory flattened back to ONNX NCHW order."""
     aliases = _tensor_aliases(graph)
@@ -641,7 +665,7 @@ def _flatten_layout_transforms(graph: ModelGraph) -> dict[str, dict[str, Any]]:
         source_shape = node.input_shapes.get(source, [])
         output_shape = node.output_shapes.get(output, [])
         if (
-            len(source_shape) != 4
+            len(source_shape) not in {3, 4}
             or len(output_shape) not in {1, 2}
             or not all(isinstance(dim, int) and dim > 0 for dim in source_shape)
         ):
@@ -680,8 +704,22 @@ def _flatten_layout_transforms(graph: ModelGraph) -> dict[str, dict[str, Any]]:
 
 
 def _flatten_transform_call(transform: dict[str, Any], source_expr: str) -> list[str]:
-    n, c, h, w = [int(dim) for dim in transform["source_shape"]]
+    source_shape = [int(dim) for dim in transform["source_shape"]]
     target = str(transform["symbol"])
+    if len(source_shape) == 3:
+        n, c, w = source_shape
+        return [
+            f"    /* NCW flatten for {transform['source']} -> {target} */",
+            f"    for (int _ni = 0; _ni < {n}; ++_ni)",
+            f"        for (int _ci = 0; _ci < {c}; ++_ci)",
+            f"            for (int _wi = 0; _wi < {w}; ++_wi)",
+            (
+                f"                {target}[_ni * {c * w} + _ci * {w} + _wi] = "
+                f"{source_expr}[_ni * {w * c} + _wi * {c} + _ci];"
+            ),
+            "",
+        ]
+    n, c, h, w = source_shape
     return [
         f"    /* NCHW flatten for {transform['source']} -> {target} */",
         f"    for (int _ni = 0; _ni < {n}; ++_ni)",
@@ -1315,6 +1353,9 @@ def _conv_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
     output_dims = _activation_dims(output_shape, graph.layout)
     if input_dims is None or output_dims is None:
         return None
+    activation_min = int(cmsis_nn["activation_min"])
+    if node.outputs and _output_flows_through_relu(graph, str(node.outputs[0])):
+        activation_min = max(activation_min, int(cmsis_nn["output_offset"]))
     return {
         "kind": "conv",
         "index": mapping.index,
@@ -1332,7 +1373,7 @@ def _conv_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
         "shift": cmsis_nn["shift"],
         "input_offset": int(cmsis_nn["input_offset"]),
         "output_offset": int(cmsis_nn["output_offset"]),
-        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_min": activation_min,
         "activation_max": int(cmsis_nn["activation_max"]),
         "stride": _pair(cmsis_nn.get("stride", [1, 1]), default=[1, 1]),
         "padding": _pair(cmsis_nn.get("padding", [0, 0]), default=[0, 0]),
@@ -1384,6 +1425,9 @@ def _depthwise_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | 
         or len(values) != output_channels * in_per_group * kernel_h * kernel_w
     ):
         return None
+    activation_min = int(cmsis_nn["activation_min"])
+    if node.outputs and _output_flows_through_relu(graph, str(node.outputs[0])):
+        activation_min = max(activation_min, int(cmsis_nn["output_offset"]))
     return {
         "kind": "depthwise",
         "index": mapping.index,
@@ -1402,7 +1446,7 @@ def _depthwise_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | 
         "shift": cmsis_nn["shift"],
         "input_offset": int(cmsis_nn["input_offset"]),
         "output_offset": int(cmsis_nn["output_offset"]),
-        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_min": activation_min,
         "activation_max": int(cmsis_nn["activation_max"]),
         "stride": _pair(cmsis_nn.get("stride", [1, 1]), default=[1, 1]),
         "padding": _pair(cmsis_nn.get("padding", [0, 0]), default=[0, 0]),

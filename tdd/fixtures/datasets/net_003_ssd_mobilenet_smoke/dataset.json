@@ -1,0 +1,9 @@
+{
+  "dataset_id": "net_003_ssd_mobilenet_smoke",
+  "case_id": "NET_003",
+  "status": "reserved",
+  "input_tensor": "inputs",
+  "input_shape": ["N", "H", "W", 3],
+  "preprocessing": "uint8 NHWC detector input; samples to be fixed when detection codegen is in scope.",
+  "samples": []
+}

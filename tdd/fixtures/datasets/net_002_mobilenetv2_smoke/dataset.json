@@ -1,0 +1,9 @@
+{
+  "dataset_id": "net_002_mobilenetv2_smoke",
+  "case_id": "NET_002",
+  "status": "reserved",
+  "input_tensor": "input",
+  "input_shape": [1, 3, 224, 224],
+  "preprocessing": "ImageNet-style float32 NCHW input; samples to be fixed when NET_002 becomes ok.",
+  "samples": []
+}

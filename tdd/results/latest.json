@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-07-05T00:46:45.147997",
+  "timestamp": "2026-07-06T02:37:12.055495",
   "mode": "baseline",
-  "git_commit": "735fd53",
+  "git_commit": "34e7352",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_tests.py --mode baseline --generate",
-  "total": 3,
-  "passed": 3,
+  "total": 4,
+  "passed": 4,
   "failed": 0,
   "results": [
     {
@@ -26,7 +26,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.34
+      "duration_sec": 0.35
     },
     {
       "case_id": "SOFTMAX_001",
@@ -46,7 +46,28 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.38
+      "duration_sec": 0.34
+    },
+    {
+      "case_id": "NET_005",
+      "category": "networks",
+      "onnx_path": "tdd/work/models/networks/NET_005.onnx",
+      "output_dir": "tdd/work/structural/NET_005",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_convolve_wrapper_s8",
+        "arm_fully_connected_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.37
     },
     {
       "case_id": "TOPO_003",
@@ -69,7 +90,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.61
+      "duration_sec": 0.6
     }
   ]
 }

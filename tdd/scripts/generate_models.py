@@ -539,8 +539,37 @@ def gen_topo_003() -> Path:
 
 def gen_net_001() -> Path:
     """NET_001: 真实 SqueezeNet 1.0 int8 ONNX 导入评估。"""
-    path = MODELS_ROOT / "networks" / "NET_001.onnx"
-    source = FIXTURES_ROOT / "onnx" / "squeezenet1.0-12-int8.onnx"
+    return _copy_network_fixture("NET_001", "squeezenet1.0-12-int8.onnx")
+
+
+def gen_net_002() -> Path:
+    """NET_002: 真实 MobileNetV2 int8/QLinear 图像分类网络导入评估。"""
+    return _copy_network_fixture("NET_002", "mobilenetv2-12-int8.onnx")
+
+
+def gen_net_003() -> Path:
+    """NET_003: 真实 SSD-MobileNet int8 目标检测网络导入评估。"""
+    return _copy_network_fixture("NET_003", "ssd_mobilenet_v1_12-int8.onnx")
+
+
+def gen_net_004() -> Path:
+    """NET_004: KWS DS-CNN-style int8 网络导入评估。"""
+    return _copy_network_fixture("NET_004", "keyword_spotting_dscnn.int8.onnx")
+
+
+def gen_net_005() -> Path:
+    """NET_005: Tiny signal jump int8 时序分类网络导入评估。"""
+    return _copy_network_fixture("NET_005", "signal_jump.int8.onnx")
+
+
+def gen_net_006() -> Path:
+    """NET_006: EfficientNet-Lite4 int8 小型图像分类网络导入评估。"""
+    return _copy_network_fixture("NET_006", "efficientnet-lite4-11-int8.onnx")
+
+
+def _copy_network_fixture(case_id: str, fixture_name: str) -> Path:
+    path = MODELS_ROOT / "networks" / f"{case_id}.onnx"
+    source = FIXTURES_ROOT / "onnx" / fixture_name
     if not source.exists():
         raise FileNotFoundError(f"missing fixture: {source}")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -762,6 +791,11 @@ _GENERATORS: dict[str, object] = {
     "TOPO_002": gen_topo_002,
     "TOPO_003": gen_topo_003,
     "NET_001": gen_net_001,
+    "NET_002": gen_net_002,
+    "NET_003": gen_net_003,
+    "NET_004": gen_net_004,
+    "NET_005": gen_net_005,
+    "NET_006": gen_net_006,
     "QLINEAR_NUM_001": gen_qlinear_num_001,
     "QLINEAR_NUM_002": gen_qlinear_num_002,
     "QLINEAR_NUM_003": gen_qlinear_num_003,
@@ -798,8 +832,11 @@ def main() -> None:
         path = _GENERATORS[args.case]()
         print(f"  生成: {path}")
     elif args.category:
-        prefix = args.category.split("/")[-1].upper()
-        matched = {k: v for k, v in _GENERATORS.items() if k.startswith(prefix)}
+        matched = {
+            k: v
+            for k, v in _GENERATORS.items()
+            if CASE_MAP[k].category == args.category
+        }
         if not matched:
             print(f"无匹配用例: {args.category}")
             sys.exit(1)

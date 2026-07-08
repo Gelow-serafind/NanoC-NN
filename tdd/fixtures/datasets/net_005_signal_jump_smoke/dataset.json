@@ -1,0 +1,25 @@
+{
+  "dataset_id": "net_005_signal_jump_smoke",
+  "case_id": "NET_005",
+  "status": "numeric_regression",
+  "input_tensor": "signal_window",
+  "input_shape": [1, 1, 10],
+  "classes": ["no_jump", "up_jump", "down_jump"],
+  "samples": [
+    {
+      "id": "up_jump_step",
+      "label": 1,
+      "values": [5, 5, 5, 5, 5, 11, 11, 11, 11, 11]
+    },
+    {
+      "id": "down_jump_step",
+      "label": 2,
+      "values": [9, 9, 9, 1, 1, 1, 1, 1, 1, 1]
+    },
+    {
+      "id": "no_jump_slope",
+      "label": 0,
+      "values": [3, 3, 4, 4, 5, 5, 6, 6, 7, 7]
+    }
+  ]
+}

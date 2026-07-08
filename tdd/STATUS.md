@@ -6,12 +6,14 @@
 
 NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
-截至 2026-07-05：
+截至 2026-07-06：
 
-- target 结构回归：`18/18 PASS`
+- target 结构回归：`23/23 PASS`
 - 稳定回归入口：`python tdd/scripts/run_regression.py --generate` 已通过
-- 数值回归：`TOPO_003` MNIST ONNX-vs-C `top1=10/10`，饱和率 `0.00`
-- 新增真实网络导入测试：`NET_001` SqueezeNet 1.0 int8，当前正确 `blocked`
+- 数值回归：`TOPO_003` MNIST ONNX-vs-C `top1=10/10`，`NET_005` signal jump ONNX-vs-C `top1=3/3`，饱和率均为 `0.00`
+- 真实网络导入测试扩展到 `NET_001~NET_006`
+- 新增结构 `ok` 网络：`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
+- 新增正确拒绝网络：`NET_003` SSD-MobileNet int8、`NET_006` EfficientNet-Lite4 int8，当前为 `unsupported`
 - 平台预算拦截已从 `blocked` 拆出为 `oversize`
 
 ## 状态语义
@@ -29,13 +31,13 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 18 |
-| target 通过 | 18 |
+| 测试用例总数 | 23 |
+| target 通过 | 23 |
 | target 失败 | 0 |
-| 稳定结构回归 | 3/3 PASS |
-| 数值回归 | 1/1 PASS |
+| 稳定结构回归 | 4/4 PASS |
+| 数值回归 | 2/2 PASS |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
-| 最新迭代记录 | `tdd/iterations/010_post_mnist_regression_plan.md` |
+| 最新迭代记录 | `tdd/iterations/012_signal_jump_numeric.md` |
 
 ## 已确认主线能力
 
@@ -49,6 +51,11 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 | 真实 MNIST QLinear int8 完整网络 | `TOPO_003` | 结构 PASS + 数值 PASS |
 | float32 无 Q/DQ 模型拒绝 | `NEG_001` | PASS |
 | 真实 SqueezeNet int8 导入边界 | `NET_001` | 正确 blocked |
+| 真实 MobileNetV2 int8 结构生成 | `NET_002` | 结构 PASS |
+| 真实 SSD-MobileNet int8 检测边界 | `NET_003` | 正确 unsupported |
+| KWS DS-CNN-style int8 结构生成 | `NET_004` | 结构 PASS |
+| Tiny signal jump int8 完整数值闭环 | `NET_005` | 结构 PASS + 数值 PASS |
+| EfficientNet-Lite4 int8 边界 | `NET_006` | 正确 unsupported |
 
 ## 当前真实网络
 
@@ -80,6 +87,35 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 - float output 侧 `Softmax` 的折叠、拒绝或 int8 生成策略
 - 平台预算与代码生成能力的分层判断
 
+### NET_002~NET_006: 新一轮真实嵌入式网络
+
+本轮新增 5 个真实或典型嵌入式网络 fixture：
+
+| 用例 | 网络 | 当前结论 | 覆盖重点 |
+|------|------|----------|----------|
+| `NET_002` | MobileNetV2 int8/QLinear | 结构 PASS | depthwise conv、QLinearAdd、QLinearGlobalAveragePool、QLinearMatMul |
+| `NET_003` | SSD-MobileNet int8 | 正确 unsupported | 多输出检测、动态 shape、Loop、检测后处理 |
+| `NET_004` | KWS DS-CNN-style int8 | 结构 PASS | 音频特征、depthwise separable conv、pool、FC |
+| `NET_005` | tiny signal jump int8 | 结构 PASS | Conv1d、Flatten、FC、时序分类 |
+| `NET_006` | EfficientNet-Lite4 int8 | 正确 unsupported | NHWC、QLinearAveragePool、Squeeze、QLinearMatMul 边界 |
+
+注意：`NET_002/004` 当前是结构验收 PASS，即生成物包含真实 CMSIS-NN 调用且 C99 smoke compile/run 通过；它们尚未完成 ONNX-vs-C 数值验收。`NET_005` 已完成 ONNX-vs-C 数值验收。
+
+### NET_005: Tiny signal jump int8
+
+`NET_005` 是内部构造的典型嵌入式时序分类网络，不是外部下载模型：
+
+- ONNX fixture: `tdd/fixtures/onnx/signal_jump.int8.onnx`
+- 数据集：`tdd/fixtures/datasets/net_005_signal_jump_smoke/`
+- 网络结构：`Conv1d -> Relu -> Conv1d -> Relu -> Flatten -> Gemm`
+- 数值验收：ONNX Runtime 与生成 C 并行推理一致
+- 当前结果：`top1=3/3`，C label accuracy `1.00`，饱和率 `0.00`，最大绝对误差 `0.0`
+
+本轮关键修复：
+
+- 支持 Conv1d runtime NHWC-like buffer 到 ONNX NCW flatten 顺序的显式转换。
+- 支持 Conv/Depthwise 输出经 Q/DQ 进入 Relu 时，将 Relu 折叠为 CMSIS activation min clamp。
+
 ## 推荐命令
 
 ```bash
@@ -109,3 +145,6 @@ python tdd/tools/mnist_capture/server.py
 4. 明确 float 侧 `Softmax` 的处理策略。
 5. 增加逐层 dump 工具，用于 ONNX 节点输出与 C 中间 buffer 对比。
 6. 继续导入 keyword spotting、tiny anomaly detection、简单 IMU 分类等 MCU 常见小模型。
+7. 将 `NET_004` KWS-style 升级为数值验收候选。
+8. 为 `NET_002` 增加显式 SRAM/Flash 预算 probe，验证 Cortex-M3/M4/M7 平台门禁返回 `oversize` 而不是混入结构能力判断。
+9. 为 Conv1d NCW flatten 和 Conv/Relu Q/DQ 折叠补独立最小数值用例，降低完整网络失败时的定位成本。

@@ -1,0 +1,9 @@
+{
+  "dataset_id": "net_006_efficientnet_lite_smoke",
+  "case_id": "NET_006",
+  "status": "reserved",
+  "input_tensor": "images:0",
+  "input_shape": [1, 224, 224, 3],
+  "preprocessing": "float32 NHWC image input; samples to be fixed when NET_006 becomes ok.",
+  "samples": []
+}

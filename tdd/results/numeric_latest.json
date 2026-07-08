@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-05T00:46:46.674551",
-  "git_commit": "735fd53",
+  "timestamp": "2026-07-06T02:37:13.943250",
+  "git_commit": "34e7352",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py --generate",
-  "total": 1,
-  "passed": 1,
+  "total": 2,
+  "passed": 2,
   "failed": 0,
   "results": [
     {
@@ -231,7 +231,72 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.9
+      "duration_sec": 2.69
+    },
+    {
+      "case_id": "NET_005",
+      "dataset_id": "net_005_signal_jump_smoke",
+      "onnx_path": "tdd/work/models/networks/NET_005.onnx",
+      "output_dir": "tdd/work/numeric/NET_005",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 3,
+      "top1_matches": 3,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 3,
+      "onnx_label_matches": 3,
+      "c_label_matches": 3,
+      "onnx_label_accuracy": 1.0,
+      "c_label_accuracy": 1.0,
+      "label_accuracy_delta": 0.0,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "up_jump_step",
+          "label": 1,
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "match": true,
+          "c_int8": [
+            -15,
+            28,
+            -9
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "down_jump_step",
+          "label": 2,
+          "onnx_top1": 2,
+          "c_top1": 2,
+          "match": true,
+          "c_int8": [
+            -21,
+            -47,
+            78
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "no_jump_slope",
+          "label": 0,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "match": true,
+          "c_int8": [
+            12,
+            2,
+            -15
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.43
     }
   ]
 }

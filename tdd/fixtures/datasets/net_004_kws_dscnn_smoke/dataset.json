@@ -1,0 +1,10 @@
+{
+  "dataset_id": "net_004_kws_dscnn_smoke",
+  "case_id": "NET_004",
+  "status": "reserved",
+  "input_tensor": "input",
+  "input_shape": [1, 1, 49, 10],
+  "classes": ["silence", "unknown", "yes", "no"],
+  "preprocessing": "log-mel-like float32 feature map; samples to be fixed when trained KWS weights are available.",
+  "samples": []
+}
