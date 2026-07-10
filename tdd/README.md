@@ -53,6 +53,55 @@
 
 这个循环永不停止。我们的代码生成器的能力边界，等于我们的测试集覆盖的边界。
 
+## 新模型失败分流规则：先查地图，再扩能力
+
+从现在开始，测试一个新的 ONNX 模型时，必须使用 ONNX schema catalog 和
+support matrix 作为能力地图。TDD 仍然是开发内核，但失败不再是黑盒摸索，
+而是沿着一张不断生长的地图定位缺口。
+
+当一个新模型执行后返回 `blocked`、`unsupported`、生成物不完整或数值不一致时，
+按以下顺序处理：
+
+1. **确认模型的 ONNX 版本和算子集合**
+   - 读取模型 `opset_import`。
+   - 列出所有 node 的 `domain`、`op_type`、属性、输入输出 rank、量化形态。
+   - 对照 `tdd/onnx_schema/` 中当前绑定 ONNX 版本的官方 catalog。
+
+2. **判断失败来自未支持算子，还是已支持算子的未覆盖子形态**
+   - 如果某个 `op_type` 不在 support matrix 中，说明这是新的 ONNX 官方算子能力缺口，或真实模型扩展 op 缺口。
+   - 如果 `op_type` 已在 support matrix 中，但当前模型的 rank、group、axis、dtype、opset、layout、Q/DQ 模式、动态 shape 等条件不匹配，说明这是已支持算子的特殊情况分支。
+
+3. **按缺口类型新增 TDD 资产**
+   - 未支持算子：先在 support matrix 中新增 planned/blocked 行，再新增该算子的最小 case。
+   - 已支持算子的未覆盖分支：在原 support 行下细化 schema 子形态，或新增更具体的 support 行，再新增最小 case。
+   - 完整网络问题不能直接硬修完整网络，必须反向提炼最小 case。
+
+4. **先让测试表达失败，再修改代码**
+   - 新 case 应先稳定复现 `blocked`、`unsupported`、compile failure 或 numeric mismatch。
+   - 只有测试把缺口钉住后，才允许修改 converter/codegen。
+
+5. **通过后扩展能力集**
+   - 最小 case 通过后，再回测触发问题的完整网络。
+   - 全量 target 和必要 numeric 回归通过后，能力才进入 `CAPABILITIES.md`。
+
+这个流程的核心判断是：
+
+```text
+新模型失败
+  -> 查 ONNX 官方 catalog
+  -> 查 NanoC-NN support matrix
+  -> 算子未登记？新增算子能力 case
+  -> 算子已登记但形态不匹配？新增该算子的子形态 case
+  -> case 先失败
+  -> 修 converter/codegen
+  -> 回归通过
+  -> 能力地图向外生长
+```
+
+因此，我们不是盲目地在黑夜里摸索，而是在一张版本绑定的 ONNX 官方全集地图上，
+用 TDD 一格一格扩张。每个新 case 都是地图的一次繁殖和蔓延：它要么让一个
+新算子进入产品视野，要么让一个已支持算子的边界变得更精确。
+
 ## 测试用例的三重角色
 
 在这个项目中，测试用例同时扮演三个角色：

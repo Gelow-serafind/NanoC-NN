@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-07-08T23:26:42.052436",
-  "git_commit": "b872e4b",
+  "timestamp": "2026-07-11T03:35:34.830762",
+  "git_commit": "537eb10",
   "platform": "Darwin 25.2.0 (arm64)",
-  "command": "tdd/scripts/run_numeric_tests.py --generate",
+  "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py --generate",
   "total": 7,
   "passed": 7,
   "failed": 0,
@@ -351,7 +351,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 3.37
+      "duration_sec": 2.49
     },
     {
       "case_id": "NET_005",
@@ -431,7 +431,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.45
     },
     {
       "case_id": "TS_001",
@@ -522,7 +522,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.7
+      "duration_sec": 0.34
     },
     {
       "case_id": "TS_002",
@@ -663,7 +663,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 1.04
+      "duration_sec": 0.58
     },
     {
       "case_id": "TS_003",
@@ -804,7 +804,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.88
+      "duration_sec": 0.58
     },
     {
       "case_id": "TS_004",
@@ -890,7 +890,7 @@
           "max_abs_error": 2.9802322387695312e-08
         }
       ],
-      "duration_sec": 0.99
+      "duration_sec": 0.4
     },
     {
       "case_id": "TS_005",
@@ -996,7 +996,7 @@
           "max_abs_error": 5.960464477539063e-08
         }
       ],
-      "duration_sec": 0.68
+      "duration_sec": 0.36
     }
   ]
 }

@@ -49,6 +49,25 @@ cases/
 - `用户反馈` — 用户报告的问题分解而来，附上问题描述或 issue 编号
 - `缺陷复现` — 修复过程中构造的防退化用例，说明所防止的缺陷
 
+## ONNX Schema 归属
+
+说明本用例覆盖的 ONNX 官方算子语义。机器可校验的归属写在
+`tdd/scripts/cases_registry.py` 的 `schema_refs` 字段中，必须引用
+`tdd/scripts/support_matrix.py` 中的 `support_id`。
+
+官方 ONNX 算子全集快照位于 `tdd/onnx_schema/`。新增官方算子 case 时，
+必须先确认该 op 存在于当前绑定的 ONNX catalog 中；真实模型中出现但
+catalog 没有的 op 只能作为 `extension` 明确登记。
+
+| 字段 | 示例 |
+|------|------|
+| domain | `ai.onnx` |
+| op_type | `Conv` |
+| opset_range | `11+` |
+| schema_form | `rank=4 NCHW, group=1, QDQ/int8 parameters` |
+| lowering | `cmsis_conv2d_s8` |
+| backend | `cmsis-nn` |
+
 ## 网络结构
 
 ​```
@@ -95,14 +114,17 @@ Q/DQ Input → [算子序列] → Q/DQ Output
 ## 编写原则
 
 1. **一个用例只验证一个核心点**。不要在一个用例里堆砌多个验证目标。
-2. **量化参数必须显式指定**，不留"默认值"歧义。
-3. **预期结果必须明确**——`ok`、`blocked`、`unsupported`、`oversize` 四选一，不允许模糊。
-4. **边界/风险字段必须填写**——解释为什么选择这组参数，预期能暴露什么问题。
-5. **不描述实现细节**——用例只定义"什么是对的"，不描述"怎么做到"。
-6. **每个用例就是一项能力声明**——用例通过后，它就成为产品能力集的一部分，永远不允许退化。新增用例时要意识到：你在定义产品应该拥有的能力。
-7. **来源字段必须填写**——维护者需要知道"为什么这个用例存在"。来自用户反馈的用例尤其重要：一旦 PASS，它就是防止同一问题再次出现的防退化锁。
-8. **完整网络必须有数值验收计划**。真实 MNIST、语音检测、小型图像分类等完整网络，不能只验证生成 C 文件和 API 字符串；必须准备数据集并逐步接入 ONNX-vs-C 对比。
-9. **人工数据集必须放在 `tdd/fixtures/`**。`tdd/work/` 是脚本临时目录，`tdd/results/` 是报告目录，都不能作为数据集来源。
+2. **ONNX schema 是前端事实**。不要用业务名称创造平行前端算子；例如 Conv1d/Conv2d/DepthwiseConv 都应解释为 ONNX `Conv` 的不同 schema 子形态。
+3. **官方全集先于支持矩阵**。新增官方算子能力时，先查 `tdd/onnx_schema/` 中的版本绑定 catalog，再新增或细化 support matrix 行。
+4. **每个用例必须绑定 support matrix**。新增 case 时必须先在 `support_matrix.py` 中确认或新增 `support_id`，再在 registry 的 `schema_refs` 中引用它。
+5. **量化参数必须显式指定**，不留"默认值"歧义。
+6. **预期结果必须明确**——`ok`、`blocked`、`unsupported`、`oversize` 四选一，不允许模糊。
+7. **边界/风险字段必须填写**——解释为什么选择这组参数，预期能暴露什么问题。
+8. **不描述实现细节**——用例只定义"什么是对的"，不描述"怎么做到"。
+9. **每个用例就是一项能力声明**——用例通过后，它就成为产品能力集的一部分，永远不允许退化。新增用例时要意识到：你在定义产品应该拥有的能力。
+10. **来源字段必须填写**——维护者需要知道"为什么这个用例存在"。来自用户反馈的用例尤其重要：一旦 PASS，它就是防止同一问题再次出现的防退化锁。
+11. **完整网络必须有数值验收计划**。真实 MNIST、语音检测、小型图像分类等完整网络，不能只验证生成 C 文件和 API 字符串；必须准备数据集并逐步接入 ONNX-vs-C 对比。
+12. **人工数据集必须放在 `tdd/fixtures/`**。`tdd/work/` 是脚本临时目录，`tdd/results/` 是报告目录，都不能作为数据集来源。
 
 ## 能力集视角
 
@@ -128,3 +150,8 @@ python tdd/scripts/run_tests.py --validate-only
 - 每个规格文件是否包含必需章节。
 - 规格中的 `codegen status` 是否与 registry 中的 expected 一致。
 - 规格路径是否与 registry 中的分类一致。
+- registry 中每个 case 是否绑定 `support_matrix.py` 中存在的 `support_id`。
+- `schema_source="official"` 的 support matrix 行是否存在于当前 ONNX catalog。
+- `ok` case 是否只引用 `ok` 的 support matrix 行。
+- CMSIS-NN `ok` case 是否声明了 support matrix 要求的 CMSIS-NN API。
+- support matrix 行是否至少被 case 覆盖，或显式标记为 planned。

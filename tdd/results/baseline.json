@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-07-06T02:37:12.055495",
+  "timestamp": "2026-07-11T03:35:31.292535",
   "mode": "baseline",
-  "git_commit": "34e7352",
+  "git_commit": "537eb10",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_tests.py --mode baseline --generate",
-  "total": 4,
-  "passed": 4,
+  "total": 9,
+  "passed": 9,
   "failed": 0,
   "results": [
     {
@@ -26,7 +26,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.35
+      "duration_sec": 0.29
     },
     {
       "case_id": "SOFTMAX_001",
@@ -46,7 +46,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.34
+      "duration_sec": 0.3
     },
     {
       "case_id": "NET_005",
@@ -67,7 +67,97 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.37
+      "duration_sec": 0.52
+    },
+    {
+      "case_id": "TS_001",
+      "category": "networks",
+      "onnx_path": "tdd/work/models/networks/TS_001.onnx",
+      "output_dir": "tdd/work/structural/TS_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.31
+    },
+    {
+      "case_id": "TS_002",
+      "category": "networks",
+      "onnx_path": "tdd/work/models/networks/TS_002.onnx",
+      "output_dir": "tdd/work/structural/TS_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.36
+    },
+    {
+      "case_id": "TS_003",
+      "category": "networks",
+      "onnx_path": "tdd/work/models/networks/TS_003.onnx",
+      "output_dir": "tdd/work/structural/TS_003",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.36
+    },
+    {
+      "case_id": "TS_004",
+      "category": "networks",
+      "onnx_path": "tdd/work/models/networks/TS_004.onnx",
+      "output_dir": "tdd/work/structural/TS_004",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.35
+    },
+    {
+      "case_id": "TS_005",
+      "category": "networks",
+      "onnx_path": "tdd/work/models/networks/TS_005.onnx",
+      "output_dir": "tdd/work/structural/TS_005",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.31
     },
     {
       "case_id": "TOPO_003",
@@ -90,7 +180,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.6
+      "duration_sec": 0.52
     }
   ]
 }

@@ -32,6 +32,7 @@ class CaseDef:
     required_apis: tuple[str, ...] = field(default_factory=tuple)
     regression: bool = False
     numeric: NumericCheck | None = None
+    schema_refs: tuple[str, ...] = field(default_factory=tuple)
 
 
 CASE_REGISTRY: list[CaseDef] = [
@@ -41,6 +42,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/gemm",
         ("arm_fully_connected_s8",),
+        schema_refs=("ONNX_GEMM_QDQ_INT8",),
     ),
     CaseDef(
         "GEMM_002",
@@ -48,6 +50,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/gemm",
         ("arm_fully_connected_s8",),
+        schema_refs=("ONNX_GEMM_QDQ_INT8",),
     ),
     CaseDef(
         "GEMM_003",
@@ -55,6 +58,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/gemm",
         ("arm_fully_connected_s8",),
+        schema_refs=("ONNX_GEMM_QDQ_INT8",),
     ),
     CaseDef(
         "GEMM_004",
@@ -62,6 +66,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/gemm",
         ("arm_fully_connected_s8",),
+        schema_refs=("ONNX_GEMM_QDQ_INT8",),
     ),
     CaseDef(
         "CONV_001",
@@ -69,6 +74,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/conv",
         ("arm_convolve_wrapper_s8",),
+        schema_refs=("ONNX_CONV_RANK4_QDQ_INT8",),
     ),
     CaseDef(
         "CONV_002",
@@ -76,6 +82,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/conv",
         ("arm_convolve_wrapper_s8",),
+        schema_refs=("ONNX_CONV_RANK4_QDQ_INT8",),
     ),
     CaseDef(
         "CONV_003",
@@ -83,6 +90,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/conv",
         ("arm_convolve_wrapper_s8",),
+        schema_refs=("ONNX_CONV_RANK4_QDQ_INT8",),
     ),
     CaseDef(
         "CONV_004",
@@ -90,6 +98,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/conv",
         ("arm_convolve_wrapper_s8",),
+        schema_refs=("ONNX_CONV_RANK4_QDQ_INT8",),
     ),
     CaseDef(
         "MAXPOOL_001",
@@ -98,6 +107,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "core/maxpool",
         ("arm_max_pool_s8",),
         regression=True,
+        schema_refs=("ONNX_MAXPOOL_QDQ_INT8",),
     ),
     CaseDef(
         "SOFTMAX_001",
@@ -106,6 +116,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "core/softmax",
         ("arm_softmax_s8",),
         regression=True,
+        schema_refs=("ONNX_SOFTMAX_QDQ_INT8",),
     ),
     CaseDef(
         "TOPO_001",
@@ -113,6 +124,11 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "topology",
         ("arm_convolve_wrapper_s8", "arm_max_pool_s8", "arm_fully_connected_s8"),
+        schema_refs=(
+            "ONNX_CONV_RANK4_QDQ_INT8",
+            "ONNX_MAXPOOL_QDQ_INT8",
+            "ONNX_GEMM_QDQ_INT8",
+        ),
     ),
     CaseDef(
         "TOPO_002",
@@ -120,6 +136,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "topology",
         ("arm_convolve_wrapper_s8", "arm_fully_connected_s8"),
+        schema_refs=("ONNX_CONV_RANK3_QDQ_INT8", "ONNX_GEMM_QDQ_INT8"),
     ),
     CaseDef(
         "TOPO_003",
@@ -139,6 +156,12 @@ CASE_REGISTRY: list[CaseDef] = [
             top1_min_match_ratio=1.0,
             max_saturation_ratio=0.5,
         ),
+        schema_refs=(
+            "ONNX_QLINEARCONV_PER_CHANNEL",
+            "ONNX_MAXPOOL_QDQ_INT8",
+            "ONNX_QLINEARADD_INT8",
+            "ONNX_QLINEARMATMUL_INT8",
+        ),
     ),
     CaseDef(
         "NET_001",
@@ -146,6 +169,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "blocked",
         "networks",
         regression=False,
+        schema_refs=("ONNX_SQUEEZENET_QDQ_BLOCKED",),
     ),
     CaseDef(
         "NET_002",
@@ -160,6 +184,13 @@ CASE_REGISTRY: list[CaseDef] = [
             "arm_fully_connected_per_channel_s8",
         ),
         regression=False,
+        schema_refs=(
+            "ONNX_CONV_RANK4_QDQ_INT8",
+            "ONNX_CONV_DEPTHWISE_QDQ_INT8",
+            "ONNX_QLINEARADD_INT8",
+            "ONNX_QGLOBALAVGPOOL_INT8",
+            "ONNX_QLINEARMATMUL_INT8",
+        ),
     ),
     CaseDef(
         "NET_003",
@@ -167,6 +198,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "unsupported",
         "networks",
         regression=False,
+        schema_refs=("ONNX_SSD_MOBILENET_UNSUPPORTED",),
     ),
     CaseDef(
         "NET_004",
@@ -180,6 +212,12 @@ CASE_REGISTRY: list[CaseDef] = [
             "arm_fully_connected_s8",
         ),
         regression=False,
+        schema_refs=(
+            "ONNX_CONV_RANK4_QDQ_INT8",
+            "ONNX_CONV_DEPTHWISE_QDQ_INT8",
+            "ONNX_MAXPOOL_QDQ_INT8",
+            "ONNX_GEMM_QDQ_INT8",
+        ),
     ),
     CaseDef(
         "NET_005",
@@ -197,6 +235,7 @@ CASE_REGISTRY: list[CaseDef] = [
             top1_min_match_ratio=1.0,
             max_saturation_ratio=0.5,
         ),
+        schema_refs=("ONNX_CONV_RANK3_QDQ_INT8", "ONNX_GEMM_QDQ_INT8"),
     ),
     CaseDef(
         "NET_006",
@@ -204,6 +243,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "unsupported",
         "networks",
         regression=False,
+        schema_refs=("ONNX_EFFICIENTNET_LITE_UNSUPPORTED",),
     ),
     CaseDef(
         "TS_001",
@@ -219,6 +259,7 @@ CASE_REGISTRY: list[CaseDef] = [
             max_saturation_ratio=1.0,
             float_api=True,
         ),
+        schema_refs=("ONNX_FLOAT_REFERENCE_STATIC",),
     ),
     CaseDef(
         "TS_002",
@@ -234,6 +275,7 @@ CASE_REGISTRY: list[CaseDef] = [
             max_saturation_ratio=1.0,
             float_api=True,
         ),
+        schema_refs=("ONNX_FLOAT_REFERENCE_STATIC",),
     ),
     CaseDef(
         "TS_003",
@@ -249,6 +291,7 @@ CASE_REGISTRY: list[CaseDef] = [
             max_saturation_ratio=1.0,
             float_api=True,
         ),
+        schema_refs=("ONNX_FLOAT_REFERENCE_STATIC",),
     ),
     CaseDef(
         "TS_004",
@@ -264,6 +307,7 @@ CASE_REGISTRY: list[CaseDef] = [
             max_saturation_ratio=1.0,
             float_api=True,
         ),
+        schema_refs=("ONNX_FLOAT_REFERENCE_STATIC",),
     ),
     CaseDef(
         "TS_005",
@@ -279,6 +323,7 @@ CASE_REGISTRY: list[CaseDef] = [
             max_saturation_ratio=1.0,
             float_api=True,
         ),
+        schema_refs=("ONNX_FLOAT_REFERENCE_STATIC",),
     ),
     CaseDef(
         "QLINEAR_NUM_001",
@@ -286,6 +331,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/qlinear",
         ("arm_convolve_wrapper_s8",),
+        schema_refs=("ONNX_QLINEARCONV_UINT8",),
     ),
     CaseDef(
         "QLINEAR_NUM_002",
@@ -293,6 +339,7 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/qlinear",
         ("arm_convolve_wrapper_s8",),
+        schema_refs=("ONNX_QLINEARCONV_PER_CHANNEL",),
     ),
     CaseDef(
         "QLINEAR_NUM_003",
@@ -300,8 +347,15 @@ CASE_REGISTRY: list[CaseDef] = [
         "ok",
         "core/qlinear",
         ("arm_convolve_wrapper_s8",),
+        schema_refs=("ONNX_QLINEARCONV_PER_CHANNEL",),
     ),
-    CaseDef("NEG_001", "float32 无 Q/DQ 模型正确拒绝", "blocked", "negative"),
+    CaseDef(
+        "NEG_001",
+        "float32 无 Q/DQ 模型正确拒绝",
+        "blocked",
+        "negative",
+        schema_refs=("ONNX_FLOAT_NO_QDQ_BLOCKED",),
+    ),
 ]
 
 CASE_MAP: dict[str, CaseDef] = {c.case_id: c for c in CASE_REGISTRY}

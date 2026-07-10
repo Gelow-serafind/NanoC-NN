@@ -36,6 +36,7 @@ WORKDIR_MARKER = ".nanoc_tdd_workdir"
 
 sys.path.insert(0, str(_SCRIPT_DIR))
 from cases_registry import CASE_MAP  # noqa: E402
+from support_matrix import SUPPORT_MAP, SUPPORT_MATRIX  # noqa: E402
 
 
 @dataclass
@@ -407,8 +408,8 @@ def save_report(report: TestReport) -> Path:
 
 def generate_capabilities(report: TestReport) -> Path:
     """根据 target 全量测试报告生成 CAPABILITIES.md。"""
-    passed_cases = []
-    failed_cases = []
+    passed_rows = []
+    failed_rows = []
 
     for r in report.results:
         case_id = r["case_id"]
@@ -416,14 +417,23 @@ def generate_capabilities(report: TestReport) -> Path:
         desc = case_def.description if case_def else case_id
         category = case_def.category if case_def else r.get("category", "")
         if r["passed"]:
-            passed_cases.append((case_id, category, desc))
+            for entry in _case_support_entries(case_def):
+                passed_rows.append((entry, case_id, category, desc))
         else:
             reason = r.get("error_msg", "unknown")
-            failed_cases.append((case_id, category, desc, reason))
+            for entry in _case_support_entries(case_def):
+                failed_rows.append((entry, case_id, category, desc, reason))
 
     date_str = report.timestamp[:10] if report.timestamp else "unknown"
     total = report.total
     passed = report.passed
+    planned_rows = [
+        entry
+        for entry in SUPPORT_MATRIX
+        if entry.planned and not any(
+            entry.support_id in case_def.schema_refs for case_def in CASE_MAP.values()
+        )
+    ]
 
     lines = [
         "# NanoC-NN 能力集",
@@ -436,15 +446,18 @@ def generate_capabilities(report: TestReport) -> Path:
         "",
         "## 已验证能力 (PASS)",
         "",
-        "以下用例通过测试，代表代码生成器已确认支持的能力：",
+        "以下能力按 `ONNX op -> schema 子形态 -> backend -> case` 展示。能力必须同时存在 support matrix 行和 PASS 用例，才可视为已确认。",
         "",
     ]
 
-    if passed_cases:
-        lines.append("| 用例 ID | 分类 | 能力描述 | 验证日期 |")
-        lines.append("|---------|------|---------|---------|")
-        for case_id, category, desc in passed_cases:
-            lines.append(f"| {case_id} | {category} | {desc} | {date_str} |")
+    if passed_rows:
+        lines.append("| schema source | ONNX op | schema 子形态 | backend | lowering | 用例 ID | 分类 | 能力描述 | 验证日期 |")
+        lines.append("|---------------|---------|--------------|---------|----------|---------|------|---------|---------|")
+        for entry, case_id, category, desc in passed_rows:
+            lines.append(
+                f"| {entry.schema_source} | {entry.op_type} | {entry.schema_form} | {entry.backend} | "
+                f"{entry.lowering} | {case_id} | {category} | {desc} | {date_str} |"
+            )
     else:
         lines.append("*暂无已验证能力。*")
 
@@ -452,23 +465,55 @@ def generate_capabilities(report: TestReport) -> Path:
         "",
         "## 未通过用例 (FAIL)",
         "",
-        "以下用例代表目标能力但尚未实现：",
+        "以下用例代表目标能力或拒绝边界，但本轮执行未达到 registry 预期：",
         "",
     ])
 
-    if failed_cases:
-        lines.append("| 用例 ID | 分类 | 目标能力 | 阻塞原因 |")
-        lines.append("|---------|------|---------|---------|")
-        for case_id, category, desc, reason in failed_cases:
-            lines.append(f"| {case_id} | {category} | {desc} | {reason} |")
+    if failed_rows:
+        lines.append("| schema source | ONNX op | schema 子形态 | backend | 用例 ID | 分类 | 目标能力 | 阻塞原因 |")
+        lines.append("|---------------|---------|--------------|---------|---------|------|---------|---------|")
+        for entry, case_id, category, desc, reason in failed_rows:
+            lines.append(
+                f"| {entry.schema_source} | {entry.op_type} | {entry.schema_form} | {entry.backend} | "
+                f"{case_id} | {category} | {desc} | {reason} |"
+            )
     else:
         lines.append("*所有用例均已通过。*")
+
+    lines.extend([
+        "",
+        "## 已规划但未验证",
+        "",
+        "以下 support matrix 行尚未绑定 PASS 用例，不能作为当前能力声明：",
+        "",
+    ])
+
+    if planned_rows:
+        lines.append("| support ID | schema source | ONNX op | schema 子形态 | 目标 lowering | 当前状态 |")
+        lines.append("|------------|---------------|---------|--------------|---------------|----------|")
+        for entry in planned_rows:
+            lines.append(
+                f"| {entry.support_id} | {entry.schema_source} | {entry.op_type} | {entry.schema_form} | "
+                f"{entry.lowering} | {entry.status} |"
+            )
+    else:
+        lines.append("*暂无未覆盖 planned 行。*")
 
     lines.append("")
 
     content = "\n".join(lines)
     CAPABILITIES_PATH.write_text(content, encoding="utf-8")
     return CAPABILITIES_PATH
+
+
+def _case_support_entries(case_def) -> list:
+    if case_def is None:
+        return []
+    return [
+        SUPPORT_MAP[support_id]
+        for support_id in case_def.schema_refs
+        if support_id in SUPPORT_MAP
+    ]
 
 
 def _repo_relative(path: Path) -> str:
