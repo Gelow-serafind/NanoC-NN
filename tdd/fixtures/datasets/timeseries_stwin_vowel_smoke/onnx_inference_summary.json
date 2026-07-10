@@ -1,0 +1,116 @@
+{
+  "dataset_id": "timeseries_stwin_vowel_smoke",
+  "models": [
+    {
+      "model_file": "timeseries_stwin_vowel.onnx",
+      "input_names": [
+        "input"
+      ],
+      "output_names": [
+        "output"
+      ],
+      "samples": [
+        {
+          "sample_id": "stwin_neutral_midpoint",
+          "raw_output": [
+            0.032504,
+            0.020874,
+            0.016229,
+            0.829184,
+            0.101209
+          ],
+          "probabilities": [
+            0.032504,
+            0.020874,
+            0.016229,
+            0.829184,
+            0.101209
+          ],
+          "top1_index": 3,
+          "top1_label": "O",
+          "top1_probability": 0.829184
+        },
+        {
+          "sample_id": "stwin_axis0_horizontal_ramp",
+          "raw_output": [
+            0.581551,
+            0.101685,
+            0.171094,
+            0.074785,
+            0.070885
+          ],
+          "probabilities": [
+            0.581551,
+            0.101685,
+            0.171094,
+            0.074785,
+            0.070885
+          ],
+          "top1_index": 0,
+          "top1_label": "A",
+          "top1_probability": 0.581551
+        },
+        {
+          "sample_id": "stwin_axis3_sine_motion",
+          "raw_output": [
+            0.041382,
+            0.017771,
+            0.019189,
+            0.680293,
+            0.241365
+          ],
+          "probabilities": [
+            0.041382,
+            0.017771,
+            0.019189,
+            0.680293,
+            0.241365
+          ],
+          "top1_index": 3,
+          "top1_label": "O",
+          "top1_probability": 0.680293
+        },
+        {
+          "sample_id": "stwin_six_axis_checker",
+          "raw_output": [
+            0.000975,
+            0.004098,
+            0.036859,
+            6.3e-05,
+            0.958005
+          ],
+          "probabilities": [
+            0.000975,
+            0.004098,
+            0.036859,
+            6.3e-05,
+            0.958005
+          ],
+          "top1_index": 4,
+          "top1_label": "U",
+          "top1_probability": 0.958005
+        },
+        {
+          "sample_id": "stwin_center_impulse",
+          "raw_output": [
+            0.143127,
+            0.135775,
+            0.372736,
+            0.286288,
+            0.062074
+          ],
+          "probabilities": [
+            0.143127,
+            0.135775,
+            0.372736,
+            0.286288,
+            0.062074
+          ],
+          "top1_index": 2,
+          "top1_label": "I",
+          "top1_probability": 0.372736
+        }
+      ]
+    }
+  ]
+}

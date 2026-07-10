@@ -164,6 +164,7 @@ def run_numeric_case(
             top1_min_match_ratio=check.top1_min_match_ratio,
             max_abs_error=check.max_abs_error,
             max_saturation_ratio=check.max_saturation_ratio,
+            float_api=check.float_api,
         )
 
     onnx_path = _find_model(case_id)
@@ -195,27 +196,36 @@ def run_numeric_case(
     onnx_outputs = _run_onnx(onnx_path, samples, check)
 
     c_runner = work_dir / "numeric_runner.c"
-    _write_c_runner(c_runner, samples, graph, check)
     binary = work_dir / "numeric_runner"
-    compile_ok, compile_error = _compile_c_runner(codegen_dir, c_runner, binary)
+    if check.float_api:
+        _write_float_c_runner(c_runner, samples, graph, check)
+        compile_ok, compile_error = _compile_float_c_runner(codegen_dir, c_runner, binary)
+    else:
+        _write_c_runner(c_runner, samples, graph, check)
+        compile_ok, compile_error = _compile_c_runner(codegen_dir, c_runner, binary)
     result.compile_ok = compile_ok
     if not compile_ok:
         result.error_msg = f"C runner compile failed: {compile_error[:500]}"
         result.duration_sec = round(time.monotonic() - t0, 2)
         return result
 
-    c_raw_outputs, run_error = _run_c_runner(binary)
+    if check.float_api:
+        c_outputs, run_error = _run_float_c_runner(binary)
+        c_raw_outputs = [np.asarray([], dtype=np.int8) for _ in c_outputs]
+    else:
+        c_raw_outputs, run_error = _run_c_runner(binary)
     result.run_ok = run_error == ""
     if run_error:
         result.error_msg = f"C runner failed: {run_error[:500]}"
         result.duration_sec = round(time.monotonic() - t0, 2)
         return result
 
-    output_quant = _model_output_quant(graph)
-    c_outputs = [
-        (raw.astype(np.float32) - float(output_quant["zero_point"])) * float(output_quant["scale"])
-        for raw in c_raw_outputs
-    ]
+    if not check.float_api:
+        output_quant = _model_output_quant(graph)
+        c_outputs = [
+            (raw.astype(np.float32) - float(output_quant["zero_point"])) * float(output_quant["scale"])
+            for raw in c_raw_outputs
+        ]
     _compare_outputs(result, samples, onnx_outputs, c_raw_outputs, c_outputs, check)
     result.duration_sec = round(time.monotonic() - t0, 2)
     return result
@@ -259,17 +269,29 @@ def _load_dataset(check: NumericCheck) -> list[dict[str, Any]]:
     raw = json.loads(path.read_text(encoding="utf-8"))
     samples = []
     for item in raw.get("samples", []):
-        pixels = _sample_pixels(item, raw)
+        inputs = _sample_inputs(item)
+        pixels = _sample_pixels(item, raw) if inputs is None else None
         samples.append(
             {
                 "id": item.get("id", f"sample_{len(samples)}"),
-                "label": item.get("label"),
+                "label": item.get("label", item.get("label_index")),
                 "pixels": pixels,
+                "inputs": inputs,
             }
         )
     if not samples:
         raise ValueError(f"dataset has no samples: {path}")
     return samples
+
+
+def _sample_inputs(item: dict[str, Any]) -> dict[str, np.ndarray] | None:
+    raw_inputs = item.get("inputs")
+    if not isinstance(raw_inputs, dict):
+        return None
+    return {
+        str(name): np.asarray(value, dtype=np.float32)
+        for name, value in raw_inputs.items()
+    }
 
 
 def _sample_pixels(item: dict[str, Any], dataset: dict[str, Any]) -> np.ndarray:
@@ -355,13 +377,80 @@ def _run_onnx(
     import onnxruntime as ort
 
     session = ort.InferenceSession(str(onnx_path))
-    input_name = session.get_inputs()[0].name
+    input_names = [item.name for item in session.get_inputs()]
     outputs = []
     for sample in samples:
-        inp = sample["pixels"].astype(np.float32) * float(check.input_scale)
-        out = session.run(None, {input_name: inp})[0]
+        if sample.get("inputs") is not None:
+            sample_inputs = sample["inputs"]
+            inp = {
+                name: np.asarray(sample_inputs[name], dtype=np.float32) * float(check.input_scale)
+                for name in input_names
+            }
+        else:
+            input_name = input_names[0]
+            inp = {input_name: sample["pixels"].astype(np.float32) * float(check.input_scale)}
+        out = session.run(None, inp)[0]
         outputs.append(np.asarray(out, dtype=np.float32).reshape(-1))
     return outputs
+
+
+def _write_float_c_runner(
+    path: Path,
+    samples: list[dict[str, Any]],
+    graph: dict[str, Any],
+    check: NumericCheck,
+) -> None:
+    del check
+    input_names = [item["name"] for item in graph.get("inputs", [])]
+    arrays: list[str] = []
+    sample_input_rows: list[str] = []
+    for sample_index, sample in enumerate(samples):
+        sample_inputs = sample.get("inputs")
+        if not isinstance(sample_inputs, dict):
+            raise ValueError("float_api numeric case requires dataset samples with inputs")
+        ptrs: list[str] = []
+        for input_index, input_name in enumerate(input_names):
+            values = np.asarray(sample_inputs[input_name], dtype=np.float32).reshape(-1)
+            symbol = f"sample_{sample_index}_{input_index}"
+            literal_values = ", ".join(_c_float_literal(float(value)) for value in values.tolist())
+            arrays.append(f"static const float {symbol}[{values.size}] = {{{literal_values}}};")
+            ptrs.append(symbol)
+        row_symbol = f"sample_inputs_{sample_index}"
+        sample_input_rows.append(
+            f"static const float *{row_symbol}[{len(ptrs)}] = {{{', '.join(ptrs)}}};"
+        )
+
+    sample_list = ", ".join(f"sample_inputs_{index}" for index in range(len(samples)))
+    code = f"""/* Auto-generated numeric TDD float runner. */
+#include <stdio.h>
+#include "model.h"
+
+#define NUM_SAMPLES {len(samples)}
+
+{chr(10).join(arrays)}
+{chr(10).join(sample_input_rows)}
+
+static const float **samples[NUM_SAMPLES] = {{{sample_list}}};
+static float output_buffer[NANOC_MODEL_OUTPUT_FLOATS];
+
+int main(void)
+{{
+    for (int i = 0; i < NUM_SAMPLES; ++i) {{
+        int ret = nanoc_model_run_float(samples[i], output_buffer);
+        if (ret != 0) {{
+            printf("C_ERROR sample=%d ret=%d\\n", i, ret);
+            return ret;
+        }}
+        printf("C_OUT sample=%d", i);
+        for (unsigned j = 0; j < NANOC_MODEL_OUTPUT_FLOATS; ++j) {{
+            printf(" %.9g", output_buffer[j]);
+        }}
+        printf("\\n");
+    }}
+    return 0;
+}}
+"""
+    path.write_text(code, encoding="utf-8")
 
 
 def _write_c_runner(
@@ -447,6 +536,28 @@ def _compile_c_runner(codegen_dir: Path, runner_c: Path, binary: Path) -> tuple[
     return True, ""
 
 
+def _compile_float_c_runner(codegen_dir: Path, runner_c: Path, binary: Path) -> tuple[bool, str]:
+    cc = "cc"
+    if shutil.which(cc) is None:
+        return False, f"C compiler not found: {cc}"
+    cmd = [
+        cc,
+        "-std=c99",
+        "-O2",
+        "-I",
+        str(codegen_dir / "include"),
+        str(runner_c),
+        str(codegen_dir / "src" / "model.c"),
+        "-lm",
+        "-o",
+        str(binary),
+    ]
+    completed = subprocess.run(cmd, text=True, capture_output=True, check=False)
+    if completed.returncode != 0:
+        return False, completed.stderr
+    return True, ""
+
+
 def _collect_cmsis_sources() -> list[Path]:
     dirs = [
         CMSIS_NN_ROOT / "Source" / "ConvolutionFunctions",
@@ -490,6 +601,28 @@ def _run_c_runner(binary: Path) -> tuple[list[np.ndarray], str]:
     return outputs, ""
 
 
+def _run_float_c_runner(binary: Path) -> tuple[list[np.ndarray], str]:
+    completed = subprocess.run(
+        [str(binary)],
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    if completed.returncode != 0:
+        return [], (completed.stderr or completed.stdout)[:1000]
+    outputs: list[np.ndarray] = []
+    for line in completed.stdout.splitlines():
+        if not line.startswith("C_OUT"):
+            continue
+        parts = line.split()
+        values = [float(value) for value in parts[2:]]
+        outputs.append(np.asarray(values, dtype=np.float32))
+    if not outputs:
+        return [], "C runner produced no C_OUT lines"
+    return outputs, ""
+
+
 def _compare_outputs(
     result: NumericCaseResult,
     samples: list[dict[str, Any]],
@@ -528,8 +661,9 @@ def _compare_outputs(
                 onnx_label_matches += 1
             if c_top1 == label_int:
                 c_label_matches += 1
-        saturated_values += int(np.count_nonzero((raw_out == -128) | (raw_out == 127)))
-        total_values += int(raw_out.size)
+        if raw_out.size:
+            saturated_values += int(np.count_nonzero((raw_out == -128) | (raw_out == 127)))
+            total_values += int(raw_out.size)
         diff = np.abs(onnx_out.astype(np.float32) - c_out.astype(np.float32))
         sample_max_abs = float(np.max(diff)) if diff.size else 0.0
         max_abs = max(max_abs, sample_max_abs)
@@ -541,6 +675,7 @@ def _compare_outputs(
                 "c_top1": c_top1,
                 "match": match,
                 "c_int8": [int(value) for value in raw_out.tolist()],
+                "c_float": [float(value) for value in c_out.tolist()],
                 "max_abs_error": sample_max_abs,
             }
         )
@@ -616,6 +751,13 @@ def _repo_relative(path: Path) -> str:
         return str(path.resolve().relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
+
+
+def _c_float_literal(value: float) -> str:
+    text = f"{float(value):.9g}"
+    if "e" not in text.lower() and "." not in text:
+        text = f"{text}.0"
+    return f"{text}f"
 
 
 def _fmt_float(value: float | None) -> str:

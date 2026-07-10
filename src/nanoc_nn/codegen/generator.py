@@ -11,6 +11,7 @@ from .model import (
     CodegenError,
     CodegenOptions,
     GenerationResult,
+    InitializerSpec,
     MemoryPlan,
     ModelGraph,
     OpMapping,
@@ -68,6 +69,12 @@ def _status(
     quantization_issues: list,
     memory_plan: MemoryPlan,
 ) -> str:
+    if _reference_runtime_enabled(graph) and _reference_runtime_supported(graph):
+        if memory_plan.sram_budget_status == "over_budget":
+            return "oversize"
+        if memory_plan.flash_budget_status == "over_budget":
+            return "oversize"
+        return "ok"
     if any(item.status == "unsupported" for item in mappings):
         return "unsupported"
     if any(item.status == "blocked" for item in mappings) or quantization_issues:
@@ -117,7 +124,7 @@ def _write_project_files(
 ) -> list[Path]:
     out_dir = options.out_dir
     generated = {
-        out_dir / "include" / "model.h": _model_h(memory_plan),
+        out_dir / "include" / "model.h": _model_h(model_graph, memory_plan),
         out_dir / "include" / "model_weights.h": _model_weights_h(
             model_graph,
             memory_plan,
@@ -138,9 +145,11 @@ def _write_project_files(
     return written
 
 
-def _model_h(memory_plan: MemoryPlan) -> str:
+def _model_h(graph: ModelGraph, memory_plan: MemoryPlan) -> str:
     input_bytes = max(1, sum(item.size_bytes for item in memory_plan.input_buffers))
     output_bytes = max(1, sum(item.size_bytes for item in memory_plan.output_buffers))
+    input_floats = max(1, sum((tensor.element_count or 0) for tensor in graph.inputs))
+    output_floats = max(1, sum((tensor.element_count or 0) for tensor in graph.outputs))
     activation_a = max(1, memory_plan.activation_buffers[0].size_bytes)
     activation_b = max(1, memory_plan.activation_buffers[1].size_bytes)
     scratch = max(1, memory_plan.max_scratch_bytes)
@@ -154,6 +163,8 @@ def _model_h(memory_plan: MemoryPlan) -> str:
             "",
             f"#define NANOC_MODEL_INPUT_BYTES {input_bytes}u",
             f"#define NANOC_MODEL_OUTPUT_BYTES {output_bytes}u",
+            f"#define NANOC_MODEL_INPUT_FLOATS {input_floats}u",
+            f"#define NANOC_MODEL_OUTPUT_FLOATS {output_floats}u",
             f"#define NANOC_MODEL_ACTIVATION_A_BYTES {activation_a}u",
             f"#define NANOC_MODEL_ACTIVATION_B_BYTES {activation_b}u",
             f"#define NANOC_MODEL_SCRATCH_BYTES {scratch}u",
@@ -169,6 +180,7 @@ def _model_h(memory_plan: MemoryPlan) -> str:
             "",
             "const char *nanoc_model_status(void);",
             "int nanoc_model_run(const int8_t *input, int8_t *output);",
+            "int nanoc_model_run_float(const float * const *inputs, float *output);",
             "",
             "#endif /* NANOC_MODEL_H */",
             "",
@@ -203,6 +215,8 @@ def _model_c(
     memory_plan: MemoryPlan,
     status: str,
 ) -> str:
+    if status == "ok" and _reference_runtime_enabled(graph) and _reference_runtime_supported(graph):
+        return _reference_model_c(graph, memory_plan, status)
     runtime_layers = _runtime_layers(graph, mappings) if status == "ok" else []
     tensor_buffers = _tensor_buffer_declarations(graph, runtime_layers)
     flatten_transforms = _flatten_layout_transforms(graph)
@@ -1940,3 +1954,639 @@ def _cmake_path(path: Path | None) -> str:
     if path is None:
         return ""
     return str(path).replace("\\", "/")
+
+
+REFERENCE_RUNTIME_OPS = {
+    "Add",
+    "Cast",
+    "Concat",
+    "Conv",
+    "DequantizeLinear",
+    "Dropout",
+    "Flatten",
+    "Gemm",
+    "GlobalAveragePool",
+    "MatMul",
+    "MaxPool",
+    "Mul",
+    "QuantizeLinear",
+    "Relu",
+    "Reshape",
+    "Softmax",
+    "Squeeze",
+    "Transpose",
+    "Unsqueeze",
+}
+
+
+def _reference_runtime_enabled(graph: ModelGraph) -> bool:
+    reference_producers = {"pytorch", "tf2onnx", "onnx.quantize"}
+    if graph.producer_name not in reference_producers:
+        return False
+    if not graph.has_quantization:
+        return True
+    quantization = graph.quantization or {}
+    contract = quantization.get("int8_contract") if isinstance(quantization, dict) else None
+    return isinstance(contract, dict) and contract.get("status") != "ok"
+
+
+def _reference_runtime_supported(graph: ModelGraph) -> bool:
+    return all(node.op_type in REFERENCE_RUNTIME_OPS for node in graph.nodes)
+
+
+def _reference_model_c(graph: ModelGraph, memory_plan: MemoryPlan, status: str) -> str:
+    shapes = _reference_tensor_shapes(graph)
+    init_map = {item.name: item for item in graph.initializers}
+    buffers = _reference_buffer_declarations(graph, shapes)
+    shape_arrays = _reference_shape_arrays(shapes)
+    lines = [
+        "#include \"model.h\"",
+        "#include \"model_weights.h\"",
+        "",
+        "#include <math.h>",
+        "#include <stddef.h>",
+        "",
+        "#if defined(__GNUC__) || defined(__clang__)",
+        "#define NANOC_MAYBE_UNUSED __attribute__((unused))",
+        "#else",
+        "#define NANOC_MAYBE_UNUSED",
+        "#endif",
+        "",
+        "static int8_t nanoc_activation_a[NANOC_MODEL_ACTIVATION_A_BYTES];",
+        "static int8_t nanoc_activation_b[NANOC_MODEL_ACTIVATION_B_BYTES];",
+        "static int8_t nanoc_scratch[NANOC_MODEL_SCRATCH_BYTES];",
+    ]
+    lines.extend(buffers)
+    lines.extend(shape_arrays)
+    lines.extend(
+        [
+            "",
+            "static void NANOC_MAYBE_UNUSED nanoc_unravel(size_t index, int rank, const int *shape, int *coords)",
+            "{",
+            "    for (int axis = rank - 1; axis >= 0; --axis) {",
+            "        int dim = shape[axis];",
+            "        coords[axis] = dim > 0 ? (int)(index % (size_t)dim) : 0;",
+            "        if (dim > 0) {",
+            "            index /= (size_t)dim;",
+            "        }",
+            "    }",
+            "}",
+            "",
+            "static size_t NANOC_MAYBE_UNUSED nanoc_ravel(int rank, const int *shape, const int *coords)",
+            "{",
+            "    size_t offset = 0u;",
+            "    for (int axis = 0; axis < rank; ++axis) {",
+            "        offset = offset * (size_t)shape[axis] + (size_t)coords[axis];",
+            "    }",
+            "    return offset;",
+            "}",
+            "",
+            "static size_t NANOC_MAYBE_UNUSED nanoc_broadcast_offset(size_t out_index, int out_rank, const int *out_shape, int in_rank, const int *in_shape)",
+            "{",
+            "    int out_coords[8] = {0};",
+            "    int in_coords[8] = {0};",
+            "    nanoc_unravel(out_index, out_rank, out_shape, out_coords);",
+            "    int rank_delta = out_rank - in_rank;",
+            "    for (int axis = 0; axis < in_rank; ++axis) {",
+            "        int out_axis = axis + rank_delta;",
+            "        int coord = out_axis >= 0 ? out_coords[out_axis] : 0;",
+            "        in_coords[axis] = in_shape[axis] == 1 ? 0 : coord;",
+            "    }",
+            "    return nanoc_ravel(in_rank, in_shape, in_coords);",
+            "}",
+            "",
+            "static int NANOC_MAYBE_UNUSED nanoc_axis_index(size_t index, int rank, const int *shape, int axis)",
+            "{",
+            "    int coords[8] = {0};",
+            "    if (axis < 0) {",
+            "        axis += rank;",
+            "    }",
+            "    nanoc_unravel(index, rank, shape, coords);",
+            "    return coords[axis];",
+            "}",
+            "",
+            "const char *nanoc_model_status(void)",
+            "{",
+            f"    return \"{status}\";",
+            "}",
+            "",
+            "int nanoc_model_run(const int8_t *input, int8_t *output)",
+            "{",
+            "    (void)input;",
+            "    (void)output;",
+            "    (void)nanoc_activation_a;",
+            "    (void)nanoc_activation_b;",
+            "    (void)nanoc_scratch;",
+            "    return NANOC_STATUS_BLOCKED;",
+            "}",
+            "",
+            "int nanoc_model_run_float(const float * const *inputs, float *output)",
+            "{",
+            "    (void)nanoc_activation_a;",
+            "    (void)nanoc_activation_b;",
+            "    (void)nanoc_scratch;",
+        ]
+    )
+    for node in graph.nodes:
+        lines.extend(_reference_node_lines(graph, node, shapes, init_map))
+    if graph.outputs:
+        out_name = graph.outputs[0].name
+        out_expr = _reference_expr(graph, out_name)
+        out_size = _shape_size(shapes[out_name])
+        if out_expr != "output":
+            lines.extend(
+                [
+                    f"    for (size_t i = 0u; i < {out_size}u; ++i) {{",
+                    f"        output[i] = {out_expr}[i];",
+                    "    }",
+                ]
+            )
+    lines.extend(["    return NANOC_STATUS_OK;", "}", ""])
+    return "\n".join(lines)
+
+
+def _reference_node_lines(
+    graph: ModelGraph,
+    node,
+    shapes: dict[str, list[int]],
+    init_map: dict[str, InitializerSpec],
+) -> list[str]:
+    op = node.op_type
+    inputs = node.inputs
+    outputs = node.outputs
+    if not outputs:
+        return []
+    out = outputs[0]
+    out_expr = _reference_expr(graph, out)
+    out_shape = shapes[out]
+    out_size = _shape_size(out_shape)
+    lines = [f"    /* {op}: {node.name} */"]
+    if op in {"Flatten", "Reshape", "Dropout", "Cast", "Squeeze", "Unsqueeze"}:
+        src = _reference_expr(graph, inputs[0])
+        lines.extend(_copy_loop(src, out_expr, out_size))
+    elif op == "Relu":
+        src = _reference_expr(graph, inputs[0])
+        lines.extend(
+            [
+                f"    for (size_t i = 0u; i < {out_size}u; ++i) {{",
+                f"        float v = {src}[i];",
+                f"        {out_expr}[i] = v > 0.0f ? v : 0.0f;",
+                "    }",
+            ]
+        )
+    elif op in {"Add", "Mul"}:
+        a = _reference_expr(graph, inputs[0])
+        b = _reference_expr(graph, inputs[1])
+        a_shape = shapes[inputs[0]]
+        b_shape = shapes[inputs[1]]
+        operator = "+" if op == "Add" else "*"
+        lines.extend(
+            [
+                f"    for (size_t i = 0u; i < {out_size}u; ++i) {{",
+                f"        size_t ai = nanoc_broadcast_offset(i, {len(out_shape)}, {_shape_symbol(out)}, {len(a_shape)}, {_shape_symbol(inputs[0])});",
+                f"        size_t bi = nanoc_broadcast_offset(i, {len(out_shape)}, {_shape_symbol(out)}, {len(b_shape)}, {_shape_symbol(inputs[1])});",
+                f"        {out_expr}[i] = {a}[ai] {operator} {b}[bi];",
+                "    }",
+            ]
+        )
+    elif op == "MatMul":
+        lines.extend(_reference_matmul_lines(graph, node, shapes))
+    elif op == "Gemm":
+        lines.extend(_reference_gemm_lines(graph, node, shapes))
+    elif op == "Conv":
+        lines.extend(_reference_conv_lines(graph, node, shapes))
+    elif op == "MaxPool":
+        lines.extend(_reference_maxpool_lines(graph, node, shapes))
+    elif op == "GlobalAveragePool":
+        lines.extend(_reference_gap_lines(graph, node, shapes))
+    elif op == "Softmax":
+        lines.extend(_reference_softmax_lines(graph, node, shapes))
+    elif op == "Transpose":
+        lines.extend(_reference_transpose_lines(graph, node, shapes))
+    elif op == "Concat":
+        lines.extend(_reference_concat_lines(graph, node, shapes))
+    elif op == "QuantizeLinear":
+        lines.extend(_reference_quantize_lines(graph, node, shapes, init_map))
+    elif op == "DequantizeLinear":
+        lines.extend(_reference_dequantize_lines(graph, node, shapes))
+    else:
+        lines.append(f"    /* unsupported reference op: {op} */")
+        lines.append("    return NANOC_STATUS_UNSUPPORTED;")
+    lines.append("")
+    return lines
+
+
+def _reference_matmul_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    a, b = node.inputs[:2]
+    out = node.outputs[0]
+    a_expr = _reference_expr(graph, a)
+    b_expr = _reference_expr(graph, b)
+    out_expr = _reference_expr(graph, out)
+    m, k = shapes[a]
+    _, n = shapes[b]
+    return [
+        f"    for (int row = 0; row < {m}; ++row) {{",
+        f"        for (int col = 0; col < {n}; ++col) {{",
+        "            float acc = 0.0f;",
+        f"            for (int kk = 0; kk < {k}; ++kk) {{",
+        f"                acc += {a_expr}[row * {k} + kk] * {b_expr}[kk * {n} + col];",
+        "            }",
+        f"            {out_expr}[row * {n} + col] = acc;",
+        "        }",
+        "    }",
+    ]
+
+
+def _reference_gemm_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    a, b = node.inputs[:2]
+    c = node.inputs[2] if len(node.inputs) > 2 else ""
+    out = node.outputs[0]
+    attrs = node.normalized_attributes
+    trans_a = int(attrs.get("transA", 0))
+    trans_b = int(attrs.get("transB", 0))
+    alpha = float(attrs.get("alpha", 1.0))
+    beta = float(attrs.get("beta", 1.0))
+    a_shape = shapes[a]
+    b_shape = shapes[b]
+    m = a_shape[1] if trans_a else a_shape[0]
+    k = a_shape[0] if trans_a else a_shape[1]
+    n = b_shape[0] if trans_b else b_shape[1]
+    a_expr = _reference_expr(graph, a)
+    b_expr = _reference_expr(graph, b)
+    c_expr = _reference_expr(graph, c) if c else ""
+    out_expr = _reference_expr(graph, out)
+    a_at = (
+        f"{a_expr}[kk * {a_shape[1]} + row]"
+        if trans_a
+        else f"{a_expr}[row * {a_shape[1]} + kk]"
+    )
+    b_at = (
+        f"{b_expr}[col * {b_shape[1]} + kk]"
+        if trans_b
+        else f"{b_expr}[kk * {b_shape[1]} + col]"
+    )
+    bias_line = f"            acc += {beta:.9g}f * {c_expr}[col];" if c else ""
+    lines = [
+        f"    for (int row = 0; row < {m}; ++row) {{",
+        f"        for (int col = 0; col < {n}; ++col) {{",
+        "            float acc = 0.0f;",
+        f"            for (int kk = 0; kk < {k}; ++kk) {{",
+        f"                acc += {a_at} * {b_at};",
+        "            }",
+        f"            acc *= {_c_float_literal(alpha)};",
+    ]
+    if bias_line:
+        lines.append(bias_line.replace(f"{beta:.9g}f", _c_float_literal(beta)))
+    lines.extend([f"            {out_expr}[row * {n} + col] = acc;", "        }", "    }"])
+    return lines
+
+
+def _reference_conv_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    x, w = node.inputs[:2]
+    b = node.inputs[2] if len(node.inputs) > 2 else ""
+    y = node.outputs[0]
+    x_expr = _reference_expr(graph, x)
+    w_expr = _reference_expr(graph, w)
+    b_expr = _reference_expr(graph, b) if b else ""
+    y_expr = _reference_expr(graph, y)
+    n, c, h, width = shapes[x]
+    oc, ic_per_group, kh, kw = shapes[w]
+    _, _, oh, ow = shapes[y]
+    attrs = node.normalized_attributes
+    strides = [int(v) for v in attrs.get("strides", [1, 1])]
+    pads = [int(v) for v in attrs.get("pads", [0, 0, 0, 0])]
+    dilations = [int(v) for v in attrs.get("dilations", [1, 1])]
+    groups = int(attrs.get("group", 1))
+    oc_per_group = oc // groups
+    lines = [
+        f"    for (int ni = 0; ni < {n}; ++ni) {{",
+        f"        for (int oc_i = 0; oc_i < {oc}; ++oc_i) {{",
+        "            int group_i = oc_i / " + str(oc_per_group) + ";",
+        f"            for (int oh_i = 0; oh_i < {oh}; ++oh_i) {{",
+        f"                for (int ow_i = 0; ow_i < {ow}; ++ow_i) {{",
+        f"                    float acc = {b_expr}[oc_i];" if b else "                    float acc = 0.0f;",
+        f"                    for (int icg = 0; icg < {ic_per_group}; ++icg) {{",
+        f"                        int ic_i = group_i * {ic_per_group} + icg;",
+        f"                        for (int kh_i = 0; kh_i < {kh}; ++kh_i) {{",
+        f"                            int ih_i = oh_i * {strides[0]} + kh_i * {dilations[0]} - {pads[0]};",
+        f"                            if (ih_i < 0 || ih_i >= {h}) continue;",
+        f"                            for (int kw_i = 0; kw_i < {kw}; ++kw_i) {{",
+        f"                                int iw_i = ow_i * {strides[1]} + kw_i * {dilations[1]} - {pads[1]};",
+        f"                                if (iw_i < 0 || iw_i >= {width}) continue;",
+        f"                                float xv = {x_expr}[ni * {c * h * width} + ic_i * {h * width} + ih_i * {width} + iw_i];",
+        f"                                float wv = {w_expr}[oc_i * {ic_per_group * kh * kw} + icg * {kh * kw} + kh_i * {kw} + kw_i];",
+        "                                acc += xv * wv;",
+        "                            }",
+        "                        }",
+        "                    }",
+        f"                    {y_expr}[ni * {oc * oh * ow} + oc_i * {oh * ow} + oh_i * {ow} + ow_i] = acc;",
+        "                }",
+        "            }",
+        "        }",
+        "    }",
+    ]
+    return lines
+
+
+def _reference_maxpool_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    x = node.inputs[0]
+    y = node.outputs[0]
+    x_expr = _reference_expr(graph, x)
+    y_expr = _reference_expr(graph, y)
+    n, c, h, width = shapes[x]
+    _, _, oh, ow = shapes[y]
+    attrs = node.normalized_attributes
+    kernel = [int(v) for v in attrs.get("kernel_shape", [1, 1])]
+    strides = [int(v) for v in attrs.get("strides", kernel)]
+    pads = [int(v) for v in attrs.get("pads", [0, 0, 0, 0])]
+    return [
+        f"    for (int ni = 0; ni < {n}; ++ni) {{",
+        f"        for (int ci = 0; ci < {c}; ++ci) {{",
+        f"            for (int oh_i = 0; oh_i < {oh}; ++oh_i) {{",
+        f"                for (int ow_i = 0; ow_i < {ow}; ++ow_i) {{",
+        "                    float max_v = -3.402823466e+38f;",
+        f"                    for (int kh_i = 0; kh_i < {kernel[0]}; ++kh_i) {{",
+        f"                        int ih_i = oh_i * {strides[0]} + kh_i - {pads[0]};",
+        f"                        if (ih_i < 0 || ih_i >= {h}) continue;",
+        f"                        for (int kw_i = 0; kw_i < {kernel[1]}; ++kw_i) {{",
+        f"                            int iw_i = ow_i * {strides[1]} + kw_i - {pads[1]};",
+        f"                            if (iw_i < 0 || iw_i >= {width}) continue;",
+        f"                            float v = {x_expr}[ni * {c * h * width} + ci * {h * width} + ih_i * {width} + iw_i];",
+        "                            if (v > max_v) max_v = v;",
+        "                        }",
+        "                    }",
+        f"                    {y_expr}[ni * {c * oh * ow} + ci * {oh * ow} + oh_i * {ow} + ow_i] = max_v;",
+        "                }",
+        "            }",
+        "        }",
+        "    }",
+    ]
+
+
+def _reference_gap_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    x = node.inputs[0]
+    y = node.outputs[0]
+    x_expr = _reference_expr(graph, x)
+    y_expr = _reference_expr(graph, y)
+    shape = shapes[x]
+    n, c = shape[0], shape[1]
+    spatial = _shape_size(shape[2:])
+    return [
+        f"    for (int ni = 0; ni < {n}; ++ni) {{",
+        f"        for (int ci = 0; ci < {c}; ++ci) {{",
+        "            float acc = 0.0f;",
+        f"            for (int si = 0; si < {spatial}; ++si) {{",
+        f"                acc += {x_expr}[ni * {c * spatial} + ci * {spatial} + si];",
+        "            }",
+            f"            {y_expr}[ni * {c} + ci] = acc / {_c_float_literal(float(spatial))};",
+        "        }",
+        "    }",
+    ]
+
+
+def _reference_softmax_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    x = node.inputs[0]
+    y = node.outputs[0]
+    x_expr = _reference_expr(graph, x)
+    y_expr = _reference_expr(graph, y)
+    shape = shapes[x]
+    rank = len(shape)
+    axis = int(node.normalized_attributes.get("axis", rank - 1))
+    if axis < 0:
+        axis += rank
+    inner = _shape_size(shape[axis + 1 :])
+    axis_dim = shape[axis]
+    outer = _shape_size(shape[:axis])
+    return [
+        f"    for (int outer = 0; outer < {outer}; ++outer) {{",
+        f"        for (int inner = 0; inner < {inner}; ++inner) {{",
+        "            float max_v = -3.402823466e+38f;",
+        f"            for (int ai = 0; ai < {axis_dim}; ++ai) {{",
+        f"                size_t idx = (size_t)outer * {axis_dim * inner}u + (size_t)ai * {inner}u + (size_t)inner;",
+        f"                float v = {x_expr}[idx];",
+        "                if (v > max_v) max_v = v;",
+        "            }",
+        "            float sum = 0.0f;",
+        f"            for (int ai = 0; ai < {axis_dim}; ++ai) {{",
+        f"                size_t idx = (size_t)outer * {axis_dim * inner}u + (size_t)ai * {inner}u + (size_t)inner;",
+        f"                float e = expf({x_expr}[idx] - max_v);",
+        f"                {y_expr}[idx] = e;",
+        "                sum += e;",
+        "            }",
+        f"            for (int ai = 0; ai < {axis_dim}; ++ai) {{",
+        f"                size_t idx = (size_t)outer * {axis_dim * inner}u + (size_t)ai * {inner}u + (size_t)inner;",
+        f"                {y_expr}[idx] = {y_expr}[idx] / sum;",
+        "            }",
+        "        }",
+        "    }",
+    ]
+
+
+def _reference_transpose_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    x = node.inputs[0]
+    y = node.outputs[0]
+    x_expr = _reference_expr(graph, x)
+    y_expr = _reference_expr(graph, y)
+    perm = [int(v) for v in node.normalized_attributes.get("perm", list(reversed(range(len(shapes[x])))))]
+    out_size = _shape_size(shapes[y])
+    rank = len(perm)
+    lines = [
+        f"    for (size_t i = 0u; i < {out_size}u; ++i) {{",
+        "        int out_coords[8] = {0};",
+        "        int in_coords[8] = {0};",
+        f"        nanoc_unravel(i, {rank}, {_shape_symbol(y)}, out_coords);",
+    ]
+    for axis, source_axis in enumerate(perm):
+        lines.append(f"        in_coords[{source_axis}] = out_coords[{axis}];")
+    lines.extend(
+        [
+            f"        size_t src = nanoc_ravel({rank}, {_shape_symbol(x)}, in_coords);",
+            f"        {y_expr}[i] = {x_expr}[src];",
+            "    }",
+        ]
+    )
+    return lines
+
+
+def _reference_concat_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    y = node.outputs[0]
+    y_expr = _reference_expr(graph, y)
+    out_shape = shapes[y]
+    rank = len(out_shape)
+    axis = int(node.normalized_attributes.get("axis", 0))
+    if axis < 0:
+        axis += rank
+    lines = [
+        "    {",
+        f"        size_t offset_axis = 0u;",
+    ]
+    for input_name in node.inputs:
+        x_expr = _reference_expr(graph, input_name)
+        x_shape = shapes[input_name]
+        x_size = _shape_size(x_shape)
+        lines.extend(
+            [
+                f"        for (size_t i = 0u; i < {x_size}u; ++i) {{",
+                "            int coords[8] = {0};",
+                f"            nanoc_unravel(i, {rank}, {_shape_symbol(input_name)}, coords);",
+                f"            coords[{axis}] += (int)offset_axis;",
+                f"            size_t dst = nanoc_ravel({rank}, {_shape_symbol(y)}, coords);",
+                f"            {y_expr}[dst] = {x_expr}[i];",
+                "        }",
+                f"        offset_axis += {x_shape[axis]}u;",
+            ]
+        )
+    lines.append("    }")
+    return lines
+
+
+def _reference_quantize_lines(
+    graph: ModelGraph,
+    node,
+    shapes: dict[str, list[int]],
+    init_map: dict[str, InitializerSpec],
+) -> list[str]:
+    x, scale, zero = node.inputs[:3]
+    y = node.outputs[0]
+    x_expr = _reference_expr(graph, x)
+    scale_expr = _reference_expr(graph, scale)
+    zero_expr = _reference_expr(graph, zero)
+    y_expr = _reference_expr(graph, y)
+    out_size = _shape_size(shapes[y])
+    axis = node.normalized_attributes.get("axis")
+    zp_type = init_map.get(zero).elem_type if zero in init_map else "INT8"
+    qmin, qmax = (0, 255) if zp_type == "UINT8" else (-128, 127)
+    scale_size = _shape_size(shapes[scale])
+    lines = [
+        f"    for (size_t i = 0u; i < {out_size}u; ++i) {{",
+    ]
+    if scale_size == 1 or axis is None:
+        lines.append("        int qi = 0;")
+    else:
+        lines.append(
+            f"        int qi = nanoc_axis_index(i, {len(shapes[x])}, {_shape_symbol(x)}, {int(axis)});"
+        )
+    lines.extend(
+        [
+            f"        float q = nearbyintf({x_expr}[i] / {scale_expr}[qi] + (float){zero_expr}[qi]);",
+            f"        if (q < {qmin}.0f) q = {qmin}.0f;",
+            f"        if (q > {qmax}.0f) q = {qmax}.0f;",
+            f"        {y_expr}[i] = q;",
+            "    }",
+        ]
+    )
+    return lines
+
+
+def _reference_dequantize_lines(graph: ModelGraph, node, shapes: dict[str, list[int]]) -> list[str]:
+    x, scale, zero = node.inputs[:3]
+    y = node.outputs[0]
+    x_expr = _reference_expr(graph, x)
+    scale_expr = _reference_expr(graph, scale)
+    zero_expr = _reference_expr(graph, zero)
+    y_expr = _reference_expr(graph, y)
+    out_size = _shape_size(shapes[y])
+    scale_size = _shape_size(shapes[scale])
+    axis = node.normalized_attributes.get("axis")
+    lines = [f"    for (size_t i = 0u; i < {out_size}u; ++i) {{"]
+    if scale_size == 1 or axis is None:
+        lines.append("        int qi = 0;")
+    else:
+        lines.append(
+            f"        int qi = nanoc_axis_index(i, {len(shapes[x])}, {_shape_symbol(x)}, {int(axis)});"
+        )
+    lines.extend(
+        [
+            f"        {y_expr}[i] = ((float){x_expr}[i] - (float){zero_expr}[qi]) * {scale_expr}[qi];",
+            "    }",
+        ]
+    )
+    return lines
+
+
+def _copy_loop(src: str, dst: str, size: int) -> list[str]:
+    return [
+        f"    for (size_t i = 0u; i < {size}u; ++i) {{",
+        f"        {dst}[i] = {src}[i];",
+        "    }",
+    ]
+
+
+def _reference_buffer_declarations(graph: ModelGraph, shapes: dict[str, list[int]]) -> list[str]:
+    model_outputs = {tensor.name for tensor in graph.outputs}
+    model_inputs = {tensor.name for tensor in graph.inputs}
+    initializers = {item.name for item in graph.initializers}
+    lines: list[str] = []
+    declared: set[str] = set()
+    for node in graph.nodes:
+        for name in node.outputs:
+            if name in model_outputs or name in model_inputs or name in initializers or name in declared:
+                continue
+            size = _shape_size(shapes[name])
+            lines.append(f"static float {_reference_buffer_symbol(name)}[{size}u];")
+            declared.add(name)
+    return lines
+
+
+def _reference_shape_arrays(shapes: dict[str, list[int]]) -> list[str]:
+    lines: list[str] = []
+    for name, shape in sorted(shapes.items()):
+        if not shape:
+            lines.append(f"static const int {_shape_symbol(name)}[1] NANOC_MAYBE_UNUSED = {{1}};")
+        else:
+            values = ", ".join(str(int(dim)) for dim in shape)
+            lines.append(
+                f"static const int {_shape_symbol(name)}[{len(shape)}] "
+                f"NANOC_MAYBE_UNUSED = {{{values}}};"
+            )
+    return lines
+
+
+def _reference_tensor_shapes(graph: ModelGraph) -> dict[str, list[int]]:
+    shapes: dict[str, list[int]] = {}
+    for tensor in [*graph.inputs, *graph.outputs]:
+        if tensor.element_count is not None:
+            shapes[tensor.name] = [int(dim) for dim in tensor.shape if isinstance(dim, int)]
+    for initializer in graph.initializers:
+        if initializer.element_count is not None:
+            shapes[initializer.name] = [int(dim) for dim in initializer.shape if isinstance(dim, int)]
+    for node in graph.nodes:
+        for shape_map in (node.input_shapes, node.output_shapes):
+            for name, shape in shape_map.items():
+                if element_count_from_shape(shape) is not None:
+                    shapes[name] = [int(dim) for dim in shape if isinstance(dim, int)]
+    return shapes
+
+
+def _reference_expr(graph: ModelGraph, name: str) -> str:
+    for index, tensor in enumerate(graph.inputs):
+        if tensor.name == name:
+            return f"inputs[{index}]"
+    if graph.outputs and graph.outputs[0].name == name:
+        return "output"
+    for initializer in graph.initializers:
+        if initializer.name == name:
+            return initializer.c_name
+    return _reference_buffer_symbol(name)
+
+
+def _reference_buffer_symbol(name: str) -> str:
+    return f"nanoc_ref_{_tensor_symbol(name)}"
+
+
+def _shape_symbol(name: str) -> str:
+    return f"nanoc_shape_{_tensor_symbol(name)}"
+
+
+def _shape_size(shape: list[int]) -> int:
+    total = 1
+    for dim in shape:
+        total *= int(dim)
+    return total
+
+
+def _c_float_literal(value: float) -> str:
+    text = f"{float(value):.9g}"
+    if "e" not in text.lower() and "." not in text:
+        text = f"{text}.0"
+    return f"{text}f"

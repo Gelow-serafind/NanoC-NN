@@ -1,0 +1,89 @@
+{
+  "dataset_id": "timeseries_met_hybrid_smoke",
+  "models": [
+    {
+      "model_file": "timeseries_met_hybrid.onnx",
+      "input_names": [
+        "feat_input",
+        "raw_input"
+      ],
+      "output_names": [
+        "output_0"
+      ],
+      "samples": [
+        {
+          "sample_id": "met_sedentary_baseline",
+          "raw_output": [
+            0.0,
+            0.999995,
+            5e-06,
+            0.0
+          ],
+          "probabilities": [
+            0.0,
+            0.999995,
+            5e-06,
+            0.0
+          ],
+          "top1_index": 1,
+          "top1_label": "light",
+          "top1_probability": 0.999995
+        },
+        {
+          "sample_id": "met_light_periodic_motion",
+          "raw_output": [
+            0.0,
+            0.999997,
+            2e-06,
+            0.0
+          ],
+          "probabilities": [
+            0.0,
+            0.999997,
+            2e-06,
+            0.0
+          ],
+          "top1_index": 1,
+          "top1_label": "light",
+          "top1_probability": 0.999997
+        },
+        {
+          "sample_id": "met_moderate_periodic_motion",
+          "raw_output": [
+            0.0,
+            0.999925,
+            7.4e-05,
+            1e-06
+          ],
+          "probabilities": [
+            0.0,
+            0.999925,
+            7.4e-05,
+            1e-06
+          ],
+          "top1_index": 1,
+          "top1_label": "light",
+          "top1_probability": 0.999925
+        },
+        {
+          "sample_id": "met_vigorous_periodic_motion",
+          "raw_output": [
+            0.001901,
+            0.862538,
+            0.135542,
+            1.8e-05
+          ],
+          "probabilities": [
+            0.001901,
+            0.862538,
+            0.135542,
+            1.8e-05
+          ],
+          "top1_index": 1,
+          "top1_label": "light",
+          "top1_probability": 0.862538
+        }
+      ]
+    }
+  ]
+}

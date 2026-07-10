@@ -1,0 +1,101 @@
+{
+  "dataset_id": "timeseries_cwru_bearing_smoke",
+  "models": [
+    {
+      "model_file": "timeseries_cwru_bearing_mlp.onnx",
+      "input_names": [
+        "input"
+      ],
+      "output_names": [
+        "output"
+      ],
+      "samples": [
+        {
+          "sample_id": "cwru_real_00_healthy",
+          "raw_output": [
+            1.813228,
+            -1.515232
+          ],
+          "probabilities": [
+            0.965392,
+            0.034608
+          ],
+          "top1_index": 0,
+          "top1_label": "healthy",
+          "top1_probability": 0.965392,
+          "expected_label_index": 0,
+          "expected_label_name": "healthy",
+          "top1_matches_expected": true
+        },
+        {
+          "sample_id": "cwru_real_01_healthy",
+          "raw_output": [
+            4.651994,
+            -4.416342
+          ],
+          "probabilities": [
+            0.999885,
+            0.000115
+          ],
+          "top1_index": 0,
+          "top1_label": "healthy",
+          "top1_probability": 0.999885,
+          "expected_label_index": 0,
+          "expected_label_name": "healthy",
+          "top1_matches_expected": true
+        },
+        {
+          "sample_id": "cwru_real_02_faulty",
+          "raw_output": [
+            -17.581797,
+            26.385841
+          ],
+          "probabilities": [
+            0.0,
+            1.0
+          ],
+          "top1_index": 1,
+          "top1_label": "faulty",
+          "top1_probability": 1.0,
+          "expected_label_index": 1,
+          "expected_label_name": "faulty",
+          "top1_matches_expected": true
+        },
+        {
+          "sample_id": "cwru_real_03_faulty",
+          "raw_output": [
+            -22.718079,
+            37.75201
+          ],
+          "probabilities": [
+            0.0,
+            1.0
+          ],
+          "top1_index": 1,
+          "top1_label": "faulty",
+          "top1_probability": 1.0,
+          "expected_label_index": 1,
+          "expected_label_name": "faulty",
+          "top1_matches_expected": true
+        },
+        {
+          "sample_id": "cwru_real_04_faulty",
+          "raw_output": [
+            -22.257219,
+            37.938988
+          ],
+          "probabilities": [
+            0.0,
+            1.0
+          ],
+          "top1_index": 1,
+          "top1_label": "faulty",
+          "top1_probability": 1.0,
+          "expected_label_index": 1,
+          "expected_label_name": "faulty",
+          "top1_matches_expected": true
+        }
+      ]
+    }
+  ]
+}

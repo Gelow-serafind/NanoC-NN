@@ -20,6 +20,7 @@ class NumericCheck:
     top1_min_match_ratio: float = 1.0
     max_abs_error: float | None = None
     max_saturation_ratio: float = 0.5
+    float_api: bool = False
 
 
 @dataclass(frozen=True)
@@ -203,6 +204,81 @@ CASE_REGISTRY: list[CaseDef] = [
         "unsupported",
         "networks",
         regression=False,
+    ),
+    CaseDef(
+        "TS_001",
+        "CWRU bearing vibration MLP float C reference 数值回归",
+        "ok",
+        "networks",
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="timeseries_cwru_bearing_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=1e-4,
+            max_saturation_ratio=1.0,
+            float_api=True,
+        ),
+    ),
+    CaseDef(
+        "TS_002",
+        "KWS DS-CNN PTQ INT8 Q/DQ float C reference 数值回归",
+        "ok",
+        "networks",
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="timeseries_kws_dscnn_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=1e-4,
+            max_saturation_ratio=1.0,
+            float_api=True,
+        ),
+    ),
+    CaseDef(
+        "TS_003",
+        "KWS DS-CNN QAT INT8 Q/DQ float C reference 数值回归",
+        "ok",
+        "networks",
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="timeseries_kws_dscnn_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=0.2,
+            max_saturation_ratio=1.0,
+            float_api=True,
+        ),
+    ),
+    CaseDef(
+        "TS_004",
+        "MET hybrid 双输入 float C reference 数值回归",
+        "ok",
+        "networks",
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="timeseries_met_hybrid_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=1e-4,
+            max_saturation_ratio=1.0,
+            float_api=True,
+        ),
+    ),
+    CaseDef(
+        "TS_005",
+        "STWIN vowel IMU CNN float C reference 数值回归",
+        "ok",
+        "networks",
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="timeseries_stwin_vowel_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=1e-4,
+            max_saturation_ratio=1.0,
+            float_api=True,
+        ),
     ),
     CaseDef(
         "QLINEAR_NUM_001",

@@ -114,6 +114,13 @@ def gen_gemm_001() -> Path:
     return path
 
 
+def _copy_fixture_model(case_id: str, fixture_name: str) -> Path:
+    path = MODELS_ROOT / "networks" / f"{case_id}.onnx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(FIXTURES_ROOT / "onnx" / fixture_name, path)
+    return path
+
+
 def gen_gemm_002() -> Path:
     """GEMM_002: 非对称输入 zp=10 含 bias — [1,4] → [1,8]"""
     path = MODELS_ROOT / "core" / "gemm" / "GEMM_002.onnx"
@@ -796,6 +803,11 @@ _GENERATORS: dict[str, object] = {
     "NET_004": gen_net_004,
     "NET_005": gen_net_005,
     "NET_006": gen_net_006,
+    "TS_001": lambda: _copy_fixture_model("TS_001", "timeseries_cwru_bearing_mlp.onnx"),
+    "TS_002": lambda: _copy_fixture_model("TS_002", "timeseries_kws_dscnn_small_int8.onnx"),
+    "TS_003": lambda: _copy_fixture_model("TS_003", "timeseries_kws_dscnn_small_qat_int8.onnx"),
+    "TS_004": lambda: _copy_fixture_model("TS_004", "timeseries_met_hybrid.onnx"),
+    "TS_005": lambda: _copy_fixture_model("TS_005", "timeseries_stwin_vowel.onnx"),
     "QLINEAR_NUM_001": gen_qlinear_num_001,
     "QLINEAR_NUM_002": gen_qlinear_num_002,
     "QLINEAR_NUM_003": gen_qlinear_num_003,
