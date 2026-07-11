@@ -132,7 +132,19 @@ Q/DQ Input → [算子序列] → Q/DQ Output
 
 - "我们的产品应该具备什么能力？" → 转化为测试用例
 - "这个能力已经具备了吗？" → 查看 `tdd/CAPABILITIES.md`
-- "开发这个能力需要做什么？" → 执行用例，观察失败报告，按报告修复
+- "开发这个能力需要做什么？" → 先看 `tdd/reports/onnx_support_map.html` 定位 ONNX 算子地图节点，再执行用例，观察失败报告，按报告修复
+
+规划新算子或新 case 时，推荐先打开 ONNX 支持思维导图：
+
+```bash
+python tdd/scripts/generate_support_map.py
+```
+
+从图谱中确认目标算子属于：
+
+- **已支持算子的未覆盖子形态**：在现有 support row 下补 case，或细化新的 support row。
+- **已登记但未完成**：优先补最小 case 和实现，使其从 planned/blocked 进入 PASS。
+- **尚未开始**：先查 ONNX 官方 schema，再新增 planned support row 和最小 case。
 
 **禁止反向操作**：不允许先改代码再补用例来证明它。先有能力定义（用例），后有能力实现（代码修复）。
 

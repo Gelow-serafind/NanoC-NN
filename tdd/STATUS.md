@@ -6,15 +6,16 @@
 
 NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
-截至 2026-07-06：
+截至 2026-07-11：
 
-- target 结构回归：`23/23 PASS`
+- target 结构回归：`29/29 PASS`
 - 稳定回归入口：`python tdd/scripts/run_regression.py --generate` 已通过
-- 数值回归：`TOPO_003` MNIST ONNX-vs-C `top1=10/10`，`NET_005` signal jump ONNX-vs-C `top1=3/3`，饱和率均为 `0.00`
+- 数值回归：`8/8 PASS`，新增 `CONCAT_001` ONNX-vs-C `top1=2/2`，`max_abs=0.0`
 - 真实网络导入测试扩展到 `NET_001~NET_006`
 - 新增结构 `ok` 网络：`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
 - 新增正确拒绝网络：`NET_003` SSD-MobileNet int8、`NET_006` EfficientNet-Lite4 int8，当前为 `unsupported`
 - 平台预算拦截已从 `blocked` 拆出为 `oversize`
+- ONNX 官方 `Concat` 已按 schema-driven TDD 进入能力集，当前确认子形态为 rank=4 NCHW、`axis=1` channel concat、同量化 QDQ/int8，lowering 到 `arm_concatenation_s8_z`
 
 ## 状态语义
 
@@ -31,13 +32,14 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 23 |
-| target 通过 | 23 |
+| 测试用例总数 | 29 |
+| target 通过 | 29 |
 | target 失败 | 0 |
 | 稳定结构回归 | 4/4 PASS |
-| 数值回归 | 2/2 PASS |
+| 数值回归 | 8/8 PASS |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
-| 最新迭代记录 | `tdd/iterations/012_signal_jump_numeric.md` |
+| 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
+| 最新迭代记录 | `tdd/iterations/016_concat_schema_tdd_pass.md` |
 
 ## 已确认主线能力
 
@@ -47,6 +49,7 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 | Gemm / MatMul / FC 生成 | `GEMM_001~004` | PASS |
 | MaxPool int8 生成 | `MAXPOOL_001` | PASS |
 | Softmax int8 生成 | `SOFTMAX_001` | PASS |
+| Concat int8 channel 拼接 | `CONCAT_001` | 结构 PASS + 数值 PASS |
 | 组合拓扑生成 | `TOPO_001`, `TOPO_002` | PASS |
 | 真实 MNIST QLinear int8 完整网络 | `TOPO_003` | 结构 PASS + 数值 PASS |
 | float32 无 Q/DQ 模型拒绝 | `NEG_001` | PASS |
@@ -127,6 +130,9 @@ python tdd/scripts/run_regression.py --generate
 
 # 全量 target：更新 CAPABILITIES.md + latest.json
 python tdd/scripts/run_tests.py --mode target --generate
+
+# 生成 ONNX 支持思维导图
+python tdd/scripts/generate_support_map.py
 
 # MNIST 数值验收
 python tdd/scripts/run_numeric_tests.py --case TOPO_003 --dataset mnist_synthetic_smoke --generate

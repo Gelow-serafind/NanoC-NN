@@ -83,6 +83,7 @@ support matrix 作为能力地图。TDD 仍然是开发内核，但失败不再�
 5. **通过后扩展能力集**
    - 最小 case 通过后，再回测触发问题的完整网络。
    - 全量 target 和必要 numeric 回归通过后，能力才进入 `CAPABILITIES.md`。
+   - 重新生成 `tdd/reports/onnx_support_map.html`，确认图谱中对应算子和 case 的状态已经更新。
 
 这个流程的核心判断是：
 
@@ -101,6 +102,31 @@ support matrix 作为能力地图。TDD 仍然是开发内核，但失败不再�
 因此，我们不是盲目地在黑夜里摸索，而是在一张版本绑定的 ONNX 官方全集地图上，
 用 TDD 一格一格扩张。每个新 case 都是地图的一次繁殖和蔓延：它要么让一个
 新算子进入产品视野，要么让一个已支持算子的边界变得更精确。
+
+## 可视化能力地图
+
+`tdd/reports/onnx_support_map.html` 是当前给人类阅读的 ONNX 支持思维导图。
+它由以下事实源生成：
+
+- `tdd/onnx_schema/`：当前绑定 ONNX 版本的官方算子全集。
+- `tdd/scripts/support_matrix.py`：NanoC-NN 对 ONNX schema 子形态的支持矩阵。
+- `tdd/scripts/cases_registry.py`：TDD case 与 support matrix 的绑定关系。
+- `tdd/results/latest.json`：最近一次 target 全量测试结果。
+
+这张图谱的用途：
+
+- **观察全局**：查看当前 ONNX 官方算子全集中哪些已经支持、哪些已登记但未完成、哪些尚未开始。
+- **选择下一轮迭代目标**：优先从“已登记但未完成”或真实模型暴露的“尚未开始”节点中选择目标。
+- **检查能力落点**：完成新算子或新 case 后，确认对应节点已经挂上 support row 和 TDD case。
+
+生成命令：
+
+```bash
+python tdd/scripts/generate_support_map.py
+```
+
+注意：图谱是开发导航和人类可视化入口，能力权威声明仍以 `tdd/CAPABILITIES.md`
+和全量回归结果为准。
 
 ## 测试用例的三重角色
 
