@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import onnx
 from onnx import TensorProto, helper, numpy_helper
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -274,6 +275,138 @@ def gen_maxpool_001() -> Path:
     return path
 
 
+def gen_maxpool_002() -> Path:
+    """MAXPOOL_002: DQ→MaxPool→Q 边界 — [1,4,4,4] → [1,4,2,2]"""
+    path = MODELS_ROOT / "core" / "maxpool" / "MAXPOOL_002.onnx"
+    input_name = "input"
+    input_shape = [1, 4, 4, 4]
+    output_shape = [1, 4, 2, 2]
+    scale = 0.1
+    zero_point = 0
+
+    nodes = []
+    initializers = []
+    value_infos = []
+
+    inp_vi = helper.make_tensor_value_info(input_name, TensorProto.FLOAT, input_shape)
+    out_vi = helper.make_tensor_value_info("pool_out_dq", TensorProto.FLOAT, output_shape)
+
+    in_nodes, in_inits, in_vis = make_qdq_wrapper(
+        "input_qdq",
+        input_name,
+        input_shape,
+        scale,
+        zero_point,
+        is_input=True,
+    )
+    nodes.extend(in_nodes)
+    initializers.extend(in_inits)
+    value_infos.extend(in_vis)
+
+    pool_node = make_maxpool_node(
+        "maxpool",
+        ["input_dq"],
+        ["pool_out"],
+        kernel_shape=[2, 2],
+        strides=[2, 2],
+        pads=[0, 0, 0, 0],
+    )
+    nodes.append(pool_node)
+    value_infos.append(helper.make_tensor_value_info("pool_out", TensorProto.FLOAT, output_shape))
+
+    pool_q_nodes, pool_q_inits, pool_q_vis = make_qdq_wrapper(
+        "pool_out_qdq",
+        "pool_out",
+        output_shape,
+        scale,
+        zero_point,
+        is_input=False,
+    )
+    nodes.extend(pool_q_nodes)
+    initializers.extend(pool_q_inits)
+    value_infos.extend(pool_q_vis)
+
+    build_and_save(
+        nodes=nodes,
+        inputs=[inp_vi],
+        outputs=[out_vi],
+        initializers=initializers,
+        save_path=path,
+        graph_name="maxpool_002_dq_q_boundary",
+        value_infos=value_infos,
+    )
+    return path
+
+
+# ---------------------------------------------------------------------------
+# AVGPOOL 用例生成
+# ---------------------------------------------------------------------------
+
+def gen_avgpool_001() -> Path:
+    """AVGPOOL_001: QLinearGlobalAveragePool — [1,4,3,3] → [1,4,1,1]"""
+    path = MODELS_ROOT / "core" / "avgpool" / "AVGPOOL_001.onnx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    input_name = "input"
+    output_name = "output"
+    input_shape = [1, 4, 3, 3]
+    output_shape = [1, 4, 1, 1]
+
+    scale_init = numpy_helper.from_array(np.array([0.05], dtype=np.float32), name="scale")
+    zp_init = numpy_helper.from_array(np.array([128], dtype=np.uint8), name="zp")
+    initializers = [scale_init, zp_init]
+
+    nodes = [
+        helper.make_node(
+            "QuantizeLinear",
+            [input_name, "scale", "zp"],
+            ["input_q"],
+            name="input_quant",
+        ),
+        helper.make_node(
+            "QLinearGlobalAveragePool",
+            ["input_q", "scale", "zp", "scale", "zp"],
+            ["pool_out"],
+            name="global_avgpool",
+            domain="com.microsoft",
+        ),
+        helper.make_node(
+            "DequantizeLinear",
+            ["pool_out", "scale", "zp"],
+            [output_name],
+            name="output_dequant",
+        ),
+    ]
+
+    value_infos = [
+        helper.make_tensor_value_info("input_q", TensorProto.UINT8, input_shape),
+        helper.make_tensor_value_info("pool_out", TensorProto.UINT8, output_shape),
+    ]
+    inp_vi = helper.make_tensor_value_info(input_name, TensorProto.FLOAT, input_shape)
+    out_vi = helper.make_tensor_value_info(output_name, TensorProto.FLOAT, output_shape)
+
+    graph = helper.make_graph(
+        nodes,
+        "avgpool_001_qlinear_global",
+        [inp_vi],
+        [out_vi],
+        initializer=initializers,
+        value_info=value_infos,
+    )
+    model = helper.make_model(
+        graph,
+        producer_name="nanoc-tdd",
+        opset_imports=[
+            helper.make_opsetid("", 12),
+            helper.make_opsetid("com.microsoft", 1),
+        ],
+    )
+    onnx.checker.check_model(model)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    onnx.save(model, path)
+    return path
+
+
 # ---------------------------------------------------------------------------
 # SOFTMAX 用例生成
 # ---------------------------------------------------------------------------
@@ -291,6 +424,45 @@ def gen_softmax_001() -> Path:
         runtime_nodes=[softmax_node],
         runtime_initializers=[],
         save_path=path,
+    )
+    return path
+
+
+def gen_softmax_002() -> Path:
+    """SOFTMAX_002: 末端 float output Softmax — [1,4] → [1,4]"""
+    path = MODELS_ROOT / "core" / "softmax" / "SOFTMAX_002.onnx"
+    input_name = "input"
+    input_shape = [1, 4]
+    output_shape = [1, 4]
+
+    nodes = []
+    initializers = []
+    value_infos = []
+
+    inp_vi = helper.make_tensor_value_info(input_name, TensorProto.FLOAT, input_shape)
+    out_vi = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+    in_nodes, in_inits, in_vis = make_qdq_wrapper(
+        "input_qdq",
+        input_name,
+        input_shape,
+        0.1,
+        0,
+        is_input=True,
+    )
+    nodes.extend(in_nodes)
+    initializers.extend(in_inits)
+    value_infos.extend(in_vis)
+    nodes.append(make_softmax_node("softmax", ["input_dq"], ["output"], axis=1))
+
+    build_and_save(
+        nodes=nodes,
+        inputs=[inp_vi],
+        outputs=[out_vi],
+        initializers=initializers,
+        save_path=path,
+        graph_name="softmax_002_float_output",
+        value_infos=value_infos,
     )
     return path
 
@@ -367,6 +539,76 @@ def gen_concat_001() -> Path:
         initializers=initializers,
         save_path=path,
         graph_name="concat_001",
+        value_infos=value_infos,
+    )
+    return path
+
+
+def gen_concat_002() -> Path:
+    """CONCAT_002: 不同输入 scale 的 channel 维 Concat — [1,1,2,2] + [1,1,2,2] → [1,2,2,2]"""
+    path = MODELS_ROOT / "core" / "concat" / "CONCAT_002.onnx"
+    input_a = "input_a"
+    input_b = "input_b"
+    input_shape = [1, 1, 2, 2]
+    output_shape = [1, 2, 2, 2]
+
+    nodes = []
+    initializers = []
+    value_infos = []
+    inputs = [
+        helper.make_tensor_value_info(input_a, TensorProto.FLOAT, input_shape),
+        helper.make_tensor_value_info(input_b, TensorProto.FLOAT, input_shape),
+    ]
+    output = helper.make_tensor_value_info("concat_out_dq", TensorProto.FLOAT, output_shape)
+
+    for tensor_name, scale in ((input_a, 0.1), (input_b, 0.2)):
+        q_nodes, q_inits, q_vis = make_qdq_wrapper(
+            f"{tensor_name}_qdq",
+            tensor_name,
+            input_shape,
+            scale,
+            0,
+            is_input=True,
+        )
+        nodes.extend(q_nodes)
+        initializers.extend(q_inits)
+        value_infos.extend(q_vis)
+        value_infos.append(
+            helper.make_tensor_value_info(f"{tensor_name}_dq", TensorProto.FLOAT, input_shape)
+        )
+
+    nodes.append(
+        helper.make_node(
+            "Concat",
+            ["input_a_dq", "input_b_dq"],
+            ["concat_out"],
+            name="concat",
+            axis=1,
+        )
+    )
+    value_infos.append(
+        helper.make_tensor_value_info("concat_out", TensorProto.FLOAT, output_shape)
+    )
+
+    out_nodes, out_inits, out_vis = make_qdq_wrapper(
+        "output_qdq",
+        "concat_out",
+        output_shape,
+        0.2,
+        0,
+        is_input=False,
+    )
+    nodes.extend(out_nodes)
+    initializers.extend(out_inits)
+    value_infos.extend(out_vis)
+
+    build_and_save(
+        nodes=nodes,
+        inputs=inputs,
+        outputs=[output],
+        initializers=initializers,
+        save_path=path,
+        graph_name="concat_002_requant",
         value_infos=value_infos,
     )
     return path
@@ -870,8 +1112,12 @@ _GENERATORS: dict[str, object] = {
     "CONV_003": gen_conv_003,
     "CONV_004": gen_conv_004,
     "MAXPOOL_001": gen_maxpool_001,
+    "MAXPOOL_002": gen_maxpool_002,
+    "AVGPOOL_001": gen_avgpool_001,
     "SOFTMAX_001": gen_softmax_001,
+    "SOFTMAX_002": gen_softmax_002,
     "CONCAT_001": gen_concat_001,
+    "CONCAT_002": gen_concat_002,
     "TOPO_001": gen_topo_001,
     "TOPO_002": gen_topo_002,
     "TOPO_003": gen_topo_003,

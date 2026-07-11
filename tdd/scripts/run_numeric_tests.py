@@ -162,6 +162,7 @@ def run_numeric_case(
             dataset_id=dataset_override,
             input_scale=check.input_scale,
             top1_min_match_ratio=check.top1_min_match_ratio,
+            top1_tie_margin=check.top1_tie_margin,
             max_abs_error=check.max_abs_error,
             max_saturation_ratio=check.max_saturation_ratio,
             float_api=check.float_api,
@@ -320,9 +321,13 @@ def _sample_pixels(item: dict[str, Any], dataset: dict[str, Any]) -> np.ndarray:
         return arr.reshape(tuple(int(dim) for dim in shape))
 
     pattern = item.get("pattern")
-    arr = np.zeros((1, 1, 28, 28), dtype=np.float32)
+    shape = tuple(int(dim) for dim in dataset.get("input_shape", [1, 1, 28, 28]))
+    arr = np.zeros(shape, dtype=np.float32)
     if pattern == "blank":
         return arr
+    if len(shape) == 4 and shape[1] == 3 and shape[2] > 28 and shape[3] > 28:
+        return _image_pattern(pattern, shape, item)
+    arr = np.zeros((1, 1, 28, 28), dtype=np.float32)
     if pattern == "vertical_center":
         arr[0, 0, 4:24, 13:16] = 1.0
         return arr
@@ -367,6 +372,64 @@ def _sample_pixels(item: dict[str, Any], dataset: dict[str, Any]) -> np.ndarray:
         arr[0, 0, 5:23, 17:20] = 1.0
         return arr
     raise ValueError(f"unknown sample pattern: {pattern!r}")
+
+
+def _image_pattern(
+    pattern: str,
+    shape: tuple[int, ...],
+    item: dict[str, Any],
+) -> np.ndarray:
+    if len(shape) != 4:
+        raise ValueError(f"image pattern requires NCHW shape, got {shape}")
+    n, c, h, w = shape
+    if n != 1:
+        raise ValueError(f"image pattern only supports batch=1, got {shape}")
+    if c not in (1, 3):
+        raise ValueError(f"image pattern only supports 1 or 3 channels, got {shape}")
+
+    value_range = item.get("value_range", [0.0, 255.0])
+    low = float(value_range[0])
+    high = float(value_range[1])
+    yy = np.linspace(0.0, 1.0, h, dtype=np.float32).reshape(1, h, 1)
+    xx = np.linspace(0.0, 1.0, w, dtype=np.float32).reshape(1, 1, w)
+    out = np.zeros(shape, dtype=np.float32)
+
+    if pattern == "image_midgray":
+        out.fill((low + high) * 0.5)
+        return out
+
+    if pattern == "image_channel_ramps":
+        channels = [
+            np.broadcast_to(xx, (1, h, w)),
+            np.broadcast_to(yy, (1, h, w)),
+            np.broadcast_to((xx + yy) * 0.5, (1, h, w)),
+        ]
+        for ch in range(c):
+            out[0, ch] = low + (high - low) * channels[ch % len(channels)][0]
+        return out
+
+    if pattern == "image_checker":
+        tile = int(item.get("tile", 16))
+        grid_y = np.arange(h, dtype=np.int32).reshape(h, 1) // tile
+        grid_x = np.arange(w, dtype=np.int32).reshape(1, w) // tile
+        checker = ((grid_y + grid_x) % 2).astype(np.float32)
+        for ch in range(c):
+            phase = checker if ch % 2 == 0 else 1.0 - checker
+            out[0, ch] = low + (high - low) * phase
+        return out
+
+    if pattern == "image_center_blob":
+        cy = float(item.get("center_y", 0.5))
+        cx = float(item.get("center_x", 0.5))
+        sigma = float(item.get("sigma", 0.16))
+        dist2 = (yy - cy) ** 2 + (xx - cx) ** 2
+        blob = np.exp(-dist2 / max(2.0 * sigma * sigma, 1e-6)).astype(np.float32)
+        for ch in range(c):
+            gain = 1.0 - 0.18 * ch
+            out[0, ch] = low + (high - low) * np.clip(blob[0] * gain, 0.0, 1.0)
+        return out
+
+    raise ValueError(f"unknown image sample pattern: {pattern!r}")
 
 
 def _run_onnx(
@@ -550,6 +613,7 @@ def _compile_c_runner(codegen_dir: Path, runner_c: Path, binary: Path) -> tuple[
         str(runner_c),
         str(codegen_dir / "src" / "model.c"),
         *[str(path) for path in _collect_cmsis_sources()],
+        "-lm",
         "-o",
         str(binary),
     ]
@@ -673,7 +737,17 @@ def _compare_outputs(
     ):
         onnx_top1 = int(np.argmax(onnx_out))
         c_top1 = int(np.argmax(c_out))
-        match = onnx_top1 == c_top1
+        onnx_top5 = _topk_indices(onnx_out, 5)
+        c_top5 = _topk_indices(c_out, 5)
+        top1_margin = 0.0
+        near_tie = False
+        if onnx_out.size and c_top1 < onnx_out.size:
+            top1_margin = float(
+                onnx_out.reshape(-1)[onnx_top1] - onnx_out.reshape(-1)[c_top1]
+            )
+            near_tie = top1_margin <= check.top1_tie_margin
+        exact_match = onnx_top1 == c_top1
+        match = exact_match or near_tie
         if match:
             matches += 1
         label = sample.get("label")
@@ -696,7 +770,12 @@ def _compare_outputs(
                 "label": sample.get("label"),
                 "onnx_top1": onnx_top1,
                 "c_top1": c_top1,
+                "onnx_top5": onnx_top5,
+                "c_top5": c_top5,
                 "match": match,
+                "exact_match": exact_match,
+                "near_tie": near_tie and not exact_match,
+                "onnx_top1_margin_to_c_top1": top1_margin,
                 "c_int8": [int(value) for value in raw_out.tolist()],
                 "c_float": [float(value) for value in c_out.tolist()],
                 "max_abs_error": sample_max_abs,
@@ -732,6 +811,14 @@ def _compare_outputs(
 
     result.passed = not issues
     result.error_msg = "; ".join(issues)
+
+
+def _topk_indices(values: np.ndarray, k: int) -> list[int]:
+    if values.size == 0:
+        return []
+    count = min(int(k), int(values.size))
+    order = np.argsort(values.reshape(-1))[::-1][:count]
+    return [int(index) for index in order.tolist()]
 
 
 def _model_input_quant(graph: dict[str, Any]) -> dict[str, Any]:

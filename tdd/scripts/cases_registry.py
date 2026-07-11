@@ -18,6 +18,7 @@ class NumericCheck:
     dataset_id: str
     input_scale: float = 255.0
     top1_min_match_ratio: float = 1.0
+    top1_tie_margin: float = 0.0
     max_abs_error: float | None = None
     max_saturation_ratio: float = 0.5
     float_api: bool = False
@@ -110,12 +111,46 @@ CASE_REGISTRY: list[CaseDef] = [
         schema_refs=("ONNX_MAXPOOL_QDQ_INT8",),
     ),
     CaseDef(
+        "MAXPOOL_002",
+        "SqueezeNet 风格 DQ/MaxPool/Q int8 边界代码生成",
+        "ok",
+        "core/maxpool",
+        ("arm_max_pool_s8",),
+        regression=True,
+        schema_refs=("ONNX_MAXPOOL_QDQ_INT8",),
+    ),
+    CaseDef(
+        "AVGPOOL_001",
+        "QLinearGlobalAveragePool int8 全局池化代码生成",
+        "ok",
+        "core/avgpool",
+        ("arm_avgpool_s8",),
+        regression=True,
+        schema_refs=("ONNX_QGLOBALAVGPOOL_INT8",),
+    ),
+    CaseDef(
         "SOFTMAX_001",
         "10 分类 Softmax int8 代码生成",
         "ok",
         "core/softmax",
         ("arm_softmax_s8",),
         regression=True,
+        schema_refs=("ONNX_SOFTMAX_QDQ_INT8",),
+    ),
+    CaseDef(
+        "SOFTMAX_002",
+        "SqueezeNet 末端 float output Softmax int8 C 输出",
+        "ok",
+        "core/softmax",
+        ("arm_softmax_s8",),
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="softmax_float_output_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=0.02,
+            max_saturation_ratio=0.25,
+        ),
         schema_refs=("ONNX_SOFTMAX_QDQ_INT8",),
     ),
     CaseDef(
@@ -130,6 +165,22 @@ CASE_REGISTRY: list[CaseDef] = [
             input_scale=1.0,
             top1_min_match_ratio=1.0,
             max_abs_error=0.11,
+            max_saturation_ratio=0.25,
+        ),
+        schema_refs=("ONNX_CONCAT_QDQ_INT8",),
+    ),
+    CaseDef(
+        "CONCAT_002",
+        "SqueezeNet 风格不同量化分支 Concat 数值精度",
+        "ok",
+        "core/concat",
+        ("arm_concatenation_s8_z",),
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="concat_requant_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=0.21,
             max_saturation_ratio=0.25,
         ),
         schema_refs=("ONNX_CONCAT_QDQ_INT8",),
@@ -182,10 +233,25 @@ CASE_REGISTRY: list[CaseDef] = [
     CaseDef(
         "NET_001",
         "真实 SqueezeNet 1.0 int8 图像分类网络导入评估",
-        "blocked",
+        "ok",
         "networks",
-        regression=False,
-        schema_refs=("ONNX_SQUEEZENET_QDQ_BLOCKED",),
+        (
+            "arm_convolve_wrapper_s8",
+            "arm_max_pool_s8",
+            "arm_concatenation_s8_z",
+            "arm_avgpool_s8",
+            "arm_softmax_s8",
+        ),
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="net_001_squeezenet_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            top1_tie_margin=0.02,
+            max_abs_error=0.21,
+            max_saturation_ratio=0.75,
+        ),
+        schema_refs=("ONNX_SQUEEZENET_QDQ_INT8",),
     ),
     CaseDef(
         "NET_002",

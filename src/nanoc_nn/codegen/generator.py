@@ -235,7 +235,9 @@ def _model_c(
         "#endif",
         "",
         "#if NANOC_ENABLE_CMSIS_NN",
+        "#include <math.h>",
         "#include \"arm_nnfunctions.h\"",
+        "#include \"arm_nnsupportfunctions.h\"",
         "#endif",
         "",
         "static int8_t nanoc_activation_a[NANOC_MODEL_ACTIVATION_A_BYTES];",
@@ -259,6 +261,8 @@ def _model_c(
         output_count = element_count_from_shape(output_shape) or max(1, memory_plan.output_buffers[0].size_bytes)
         lines.append(f"static int8_t nanoc_output_nhwc[{output_count}u];")
     lines.extend(tensor_buffers)
+    if _needs_stable_softmax(runtime_layers):
+        lines.extend(_stable_softmax_helper())
     lines.extend(
         [
         "",
@@ -287,6 +291,8 @@ def _model_c(
             void_lines.append("    (void)nanoc_output_nhwc;")
         tensor_symbols = _tensor_symbol_map(graph, runtime_layers)
         for sym in tensor_symbols.values():
+            void_lines.append(f"    (void){sym};")
+        for sym in _concat_requant_symbols(runtime_layers):
             void_lines.append(f"    (void){sym};")
         for transform in flatten_transforms.values():
             void_lines.append(f"    (void){transform['symbol']};")
@@ -422,8 +428,13 @@ def _cmsis_tensor_runtime_run_body_with_transpose(
         )
         result.append("")
 
-    # Insert the body (skip the #if and cmsis_status lines)
-    result.extend(body[2:])
+    # Insert the body (skip the #if and cmsis_status lines). When an output
+    # transpose is needed, move the success return after the transpose.
+    body_tail = body[2:]
+    success_return = None
+    if need_output_xpose and body_tail and body_tail[-1] == "    return NANOC_STATUS_OK;":
+        success_return = body_tail.pop()
+    result.extend(body_tail)
 
     if need_output_xpose:
         # Find the output expression from the last layer
@@ -450,6 +461,8 @@ def _cmsis_tensor_runtime_run_body_with_transpose(
             f"                    output[_ni * {c * h * w} + _ci * {h * w} + _hi * {w} + _wi] = "
             f"{last_expr}[_ni * {h * w * c} + _hi * {w * c} + _wi * {c} + _ci];"
         )
+    if success_return is not None:
+        result.append(success_return)
 
     return result
 
@@ -559,9 +572,15 @@ def _cmsis_tensor_runtime_run_body(
             lines.extend(_cmsis_fc_call(layer, output_expr))
         last_output_expr = output_expr
 
-    output_expr = tensor_expr(graph.outputs[0].name) if graph.outputs else None
+    graph_output_name = graph.outputs[0].name if graph.outputs else ""
+    output_expr = tensor_expr(graph_output_name) if graph.outputs else None
     output_expr = output_expr or last_output_expr
-    if output_expr != "output":
+    output_is_transpose_override = (
+        bool(graph_output_name)
+        and graph_output_name in output_expr_overrides
+        and output_expr == output_expr_overrides[graph_output_name]
+    )
+    if output_expr != "output" and not output_is_transpose_override:
         output_size = _graph_output_size(graph)
         lines.extend(
             [
@@ -597,6 +616,28 @@ def _tensor_buffer_declarations(
                 continue
             declared[resolved] = size
             lines.append(f"static int8_t {_tensor_symbol(resolved)}[{size}u];")
+        if layer.get("kind") == "concat":
+            for input_index, requant in enumerate(layer.get("input_requantize", [])):
+                if not isinstance(requant, dict) or not requant.get("required"):
+                    continue
+                symbol = str(
+                    requant.get(
+                        "symbol",
+                        f"{layer.get('symbol', 'nanoc_concat')}_requant_{input_index}",
+                    )
+                )
+                if symbol in declared:
+                    continue
+                dims = layer.get("input_dims", [])
+                if input_index >= len(dims):
+                    continue
+                size = 1
+                for dim in dims[input_index]:
+                    size *= int(dim)
+                if size <= 0:
+                    continue
+                declared[symbol] = size
+                lines.append(f"static int8_t {symbol}[{size}u];")
     for tensor_name, transform in _flatten_layout_transforms(graph).items():
         symbol = str(transform["symbol"])
         size = int(transform["size"])
@@ -605,6 +646,80 @@ def _tensor_buffer_declarations(
         declared[tensor_name] = size
         lines.append(f"static int8_t {symbol}[{size}u];")
     return lines
+
+
+def _concat_requant_symbols(layers: list[dict[str, Any]]) -> list[str]:
+    symbols: list[str] = []
+    for layer in layers:
+        if layer.get("kind") != "concat":
+            continue
+        for requant in layer.get("input_requantize", []):
+            if (
+                isinstance(requant, dict)
+                and requant.get("required")
+                and requant.get("symbol")
+            ):
+                symbols.append(str(requant["symbol"]))
+    return symbols
+
+
+def _needs_stable_softmax(layers: list[dict[str, Any]]) -> bool:
+    return any(
+        layer.get("kind") == "softmax" and bool(layer.get("stable_softmax"))
+        for layer in layers
+    )
+
+
+def _stable_softmax_helper() -> list[str]:
+    return [
+        "",
+        "#if NANOC_ENABLE_CMSIS_NN",
+        "static void nanoc_softmax_s8_stable(const int8_t *input,",
+        "                                     int32_t num_rows,",
+        "                                     int32_t row_size,",
+        "                                     float input_scale,",
+        "                                     int8_t *output)",
+        "{",
+        "    for (int32_t row = 0; row < num_rows; ++row) {",
+        "        const int8_t *row_in = input + (size_t)row * (size_t)row_size;",
+        "        int8_t *row_out = output + (size_t)row * (size_t)row_size;",
+        "        int8_t max_q = row_in[0];",
+        "        int32_t max_col = 0;",
+        "        for (int32_t col = 1; col < row_size; ++col) {",
+        "            if (row_in[col] > max_q) {",
+        "                max_q = row_in[col];",
+        "                max_col = col;",
+        "            }",
+        "        }",
+        "        float sum = 0.0f;",
+        "        for (int32_t col = 0; col < row_size; ++col) {",
+        "            sum += expf(((float)row_in[col] - (float)max_q) * input_scale);",
+        "        }",
+        "        if (sum <= 0.0f) {",
+        "            for (int32_t col = 0; col < row_size; ++col) {",
+        "                row_out[col] = -128;",
+        "            }",
+        "            continue;",
+        "        }",
+        "        for (int32_t col = 0; col < row_size; ++col) {",
+        "            float prob = expf(((float)row_in[col] - (float)max_q) * input_scale) / sum;",
+        "            int32_t q = (int32_t)(prob * 256.0f - 128.0f + 0.5f);",
+        "            if (q > 127) { q = 127; }",
+        "            if (q < -128) { q = -128; }",
+        "            row_out[col] = (int8_t)q;",
+        "        }",
+        "        int8_t best = row_out[max_col];",
+        "        for (int32_t col = 0; col < row_size; ++col) {",
+        "            if (col != max_col && row_out[col] >= best && best < 127) {",
+        "                best = (int8_t)(row_out[col] + 1);",
+        "            }",
+        "        }",
+        "        row_out[max_col] = best;",
+        "    }",
+        "}",
+        "#endif",
+        "",
+    ]
 
 
 def _tensor_symbol_map(
@@ -1066,10 +1181,28 @@ def _cmsis_pool_call(layer: dict[str, Any], current_output: str) -> list[str]:
             "        if (cmsis_status != ARM_CMSIS_NN_SUCCESS) {",
             "            return NANOC_STATUS_BLOCKED;",
             "        }",
-            "    }",
-            "",
         ]
     )
+    if layer.get("requantize_output"):
+        lines.extend(
+            [
+                f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer.get('output_elements', 0))}u; ++nanoc_i) {{",
+                (
+                    f"            int32_t nanoc_v = (int32_t){current_output}[nanoc_i] - "
+                    f"{int(layer['requantize_input_zero_point'])};"
+                ),
+                (
+                    f"            nanoc_v = arm_nn_requantize(nanoc_v, "
+                    f"{int(layer['requantize_multiplier'])}, {int(layer['requantize_shift'])}) + "
+                    f"{int(layer['requantize_output_zero_point'])};"
+                ),
+                f"            if (nanoc_v > {int(layer['activation_max'])}) {{ nanoc_v = {int(layer['activation_max'])}; }}",
+                f"            if (nanoc_v < {int(layer['activation_min'])}) {{ nanoc_v = {int(layer['activation_min'])}; }}",
+                f"            {current_output}[nanoc_i] = (int8_t)nanoc_v;",
+                "        }",
+            ]
+        )
+    lines.extend(["    }", ""])
     return lines
 
 
@@ -1122,9 +1255,62 @@ def _cmsis_concat_call(layer: dict[str, Any], current_output: str) -> list[str]:
         "    {",
         "        uint32_t concat_offset = 0u;",
     ]
+    requantize_inputs = layer.get("input_requantize", [])
     for input_index, dims in enumerate(input_dims):
         input_n, input_h, input_w, input_c = dims
         input_expr = input_exprs[input_index] if input_index < len(input_exprs) else "current_input"
+        requant = (
+            requantize_inputs[input_index]
+            if input_index < len(requantize_inputs) and isinstance(requantize_inputs[input_index], dict)
+            else {}
+        )
+        if requant.get("required"):
+            temp_symbol = requant.get("symbol", f"nanoc_concat_requant_{layer['index']}_{input_index}")
+            input_count = int(input_n) * int(input_h) * int(input_w) * int(input_c)
+            lines.extend(
+                [
+                    f"        for (size_t nanoc_i = 0u; nanoc_i < {input_count}u; ++nanoc_i) {{",
+                    (
+                        f"            int32_t nanoc_v = (int32_t){input_expr}[nanoc_i] - "
+                        f"{int(requant['input_zero_point'])};"
+                    ),
+                    (
+                        f"            nanoc_v = arm_nn_requantize(nanoc_v, "
+                        f"{int(requant['multiplier'])}, {int(requant['shift'])}) + "
+                        f"{int(requant['output_zero_point'])};"
+                    ),
+                    "            if (nanoc_v > 127) { nanoc_v = 127; }",
+                    "            if (nanoc_v < -128) { nanoc_v = -128; }",
+                    f"            {temp_symbol}[nanoc_i] = (int8_t)nanoc_v;",
+                    "        }",
+                ]
+            )
+            input_expr = str(temp_symbol)
+        if cmsis_axis == "z":
+            lines.extend(
+                [
+                    "        /* NHWC channel concat. arm_concatenation_s8_z copies channel-contiguous blocks. */",
+                    f"        for (uint32_t n = 0u; n < {input_n}u; ++n) {{",
+                    f"            for (uint32_t y = 0u; y < {input_h}u; ++y) {{",
+                    f"                for (uint32_t x = 0u; x < {input_w}u; ++x) {{",
+                    f"                    for (uint32_t z = 0u; z < {input_c}u; ++z) {{",
+                    (
+                        f"                        size_t src = ((size_t)n * {input_h * input_w * input_c}u) + "
+                        f"((size_t)y * {input_w * input_c}u) + ((size_t)x * {input_c}u) + z;"
+                    ),
+                    (
+                        f"                        size_t dst = ((size_t)n * {input_h * input_w * output_c}u) + "
+                        f"((size_t)y * {input_w * output_c}u) + ((size_t)x * {output_c}u) + concat_offset + z;"
+                    ),
+                    f"                        {current_output}[dst] = {input_expr}[src];",
+                    "                    }",
+                    "                }",
+                    "            }",
+                    "        }",
+                ]
+            )
+            lines.append(f"        concat_offset += {input_c}u;")
+            continue
         axis_extent = {
             "x": input_w,
             "y": input_h,
@@ -1162,6 +1348,19 @@ def _cmsis_concat_call(layer: dict[str, Any], current_output: str) -> list[str]:
 
 def _cmsis_softmax_call(layer: dict[str, Any], current_output: str) -> list[str]:
     input_expr = layer.get("input_expr", "current_input")
+    if layer.get("stable_softmax"):
+        return [
+            f"    /* node {layer['index']}: {layer['name']} -> stable s8 softmax fallback for large row_size; arm_softmax_s8 is unsafe here */",
+            "    {",
+            "        nanoc_softmax_s8_stable(",
+            f"            {input_expr},",
+            f"            {layer['num_rows']},",
+            f"            {layer['row_size']},",
+            f"            {_c_float_literal(float(layer['input_scale']))},",
+            f"            {current_output});",
+            "    }",
+            "",
+        ]
     return [
         f"    /* node {layer['index']}: {layer['name']} -> arm_softmax_s8 */",
         "    {",
@@ -1602,6 +1801,10 @@ def _concat_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | Non
     node = _node_by_name(graph, mapping.node_name)
     if node is None or not node.inputs or not node.outputs:
         return None
+    quant = _node_quant(graph, mapping.node_name)
+    cmsis_nn = quant.get("cmsis_nn", {}) if isinstance(quant, dict) else {}
+    if not isinstance(cmsis_nn, dict):
+        return None
     input_shapes = [node.input_shapes.get(name) for name in node.inputs]
     output_shape = _first_shape(node.output_shapes, node.outputs)
     if (
@@ -1619,17 +1822,26 @@ def _concat_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | Non
     output_dims = _activation_dims(output_shape, graph.layout)
     if output_dims is None or any(dims is None for dims in input_dims):
         return None
+    symbol = _c_symbol(f"nanoc_{mapping.node_name}")
+    input_requantize = []
+    for input_index, item in enumerate(cmsis_nn.get("input_requantize", [])):
+        if not isinstance(item, dict):
+            continue
+        entry = dict(item)
+        entry["symbol"] = f"{symbol}_requant_{input_index}"
+        input_requantize.append(entry)
     return {
         "kind": "concat",
         "index": mapping.index,
         "name": mapping.node_name,
-        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "symbol": symbol,
         "input_tensors": list(node.inputs),
         "output_tensors": list(node.outputs),
         "axis": axis,
         "layout": graph.layout,
         "input_dims": input_dims,
         "output_dims": output_dims,
+        "input_requantize": input_requantize,
     }
 
 
@@ -1646,10 +1858,20 @@ def _softmax_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | No
     input_shape = _first_shape(node.input_shapes, node.inputs)
     if not input_shape:
         return None
-    row_size = input_shape[-1]
     element_count = element_count_from_shape(input_shape)
-    if not isinstance(row_size, int) or element_count is None:
+    if element_count is None:
         return None
+    rank = len(input_shape)
+    axis = int(node.normalized_attributes.get("axis", node.attributes.get("axis", -1)))
+    if axis < 0:
+        axis += rank
+    if axis < 0 or axis >= rank:
+        return None
+    row_size = 1
+    for dim in input_shape[axis:]:
+        if not isinstance(dim, int):
+            return None
+        row_size *= int(dim)
     return {
         "kind": "softmax",
         "index": mapping.index,
@@ -1659,6 +1881,8 @@ def _softmax_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | No
         "output_tensors": list(node.outputs),
         "num_rows": max(1, element_count // int(row_size)),
         "row_size": int(row_size),
+        "input_scale": float(cmsis_nn.get("input_scale", 1.0)),
+        "stable_softmax": int(row_size) >= 512,
         "multiplier": int(cmsis_nn["multiplier"]),
         "shift": int(cmsis_nn["shift"]),
         "diff_min": int(cmsis_nn["diff_min"]),

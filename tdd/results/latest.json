@@ -1,13 +1,33 @@
 {
-  "timestamp": "2026-07-11T04:27:31.472571",
+  "timestamp": "2026-07-11T21:51:55.759381",
   "mode": "target",
-  "git_commit": "371b42e",
+  "git_commit": "43e7830",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "tdd/scripts/run_tests.py --mode target --generate",
-  "total": 29,
-  "passed": 29,
+  "total": 33,
+  "passed": 33,
   "failed": 0,
   "results": [
+    {
+      "case_id": "AVGPOOL_001",
+      "category": "core/avgpool",
+      "onnx_path": "tdd/work/models/core/avgpool/AVGPOOL_001.onnx",
+      "output_dir": "tdd/work/structural/AVGPOOL_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_avgpool_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.65
+    },
     {
       "case_id": "CONCAT_001",
       "category": "core/concat",
@@ -26,7 +46,27 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.29
+      "duration_sec": 0.28
+    },
+    {
+      "case_id": "CONCAT_002",
+      "category": "core/concat",
+      "onnx_path": "tdd/work/models/core/concat/CONCAT_002.onnx",
+      "output_dir": "tdd/work/structural/CONCAT_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_concatenation_s8_z"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.35
     },
     {
       "case_id": "CONV_001",
@@ -66,7 +106,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.29
+      "duration_sec": 0.3
     },
     {
       "case_id": "CONV_003",
@@ -86,7 +126,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.3
+      "duration_sec": 0.31
     },
     {
       "case_id": "CONV_004",
@@ -126,7 +166,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.29
+      "duration_sec": 0.28
     },
     {
       "case_id": "GEMM_002",
@@ -166,7 +206,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.29
+      "duration_sec": 0.28
     },
     {
       "case_id": "GEMM_004",
@@ -186,7 +226,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.31
+      "duration_sec": 0.28
     },
     {
       "case_id": "MAXPOOL_001",
@@ -206,7 +246,27 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.3
+      "duration_sec": 0.27
+    },
+    {
+      "case_id": "MAXPOOL_002",
+      "category": "core/maxpool",
+      "onnx_path": "tdd/work/models/core/maxpool/MAXPOOL_002.onnx",
+      "output_dir": "tdd/work/structural/MAXPOOL_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_max_pool_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.4
     },
     {
       "case_id": "QLINEAR_NUM_001",
@@ -246,7 +306,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.31
+      "duration_sec": 0.29
     },
     {
       "case_id": "QLINEAR_NUM_003",
@@ -286,6 +346,26 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
+      "duration_sec": 0.28
+    },
+    {
+      "case_id": "SOFTMAX_002",
+      "category": "core/softmax",
+      "onnx_path": "tdd/work/models/core/softmax/SOFTMAX_002.onnx",
+      "output_dir": "tdd/work/structural/SOFTMAX_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_softmax_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
       "duration_sec": 0.3
     },
     {
@@ -304,25 +384,31 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 0.1
+      "duration_sec": 0.11
     },
     {
       "case_id": "NET_001",
       "category": "networks",
       "onnx_path": "tdd/work/models/networks/NET_001.onnx",
       "output_dir": "tdd/work/structural/NET_001",
-      "expected": "blocked",
-      "actual": "blocked",
+      "expected": "ok",
+      "actual": "ok",
       "passed": true,
-      "exit_code": 2,
-      "required_apis": [],
+      "exit_code": 0,
+      "required_apis": [
+        "arm_convolve_wrapper_s8",
+        "arm_max_pool_s8",
+        "arm_concatenation_s8_z",
+        "arm_avgpool_s8",
+        "arm_softmax_s8"
+      ],
       "missing_apis": [],
       "api_check_ok": true,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 1.04
+      "duration_sec": 2.21
     },
     {
       "case_id": "NET_002",
@@ -346,7 +432,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 5.67
+      "duration_sec": 5.6
     },
     {
       "case_id": "NET_003",
@@ -364,7 +450,7 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 4.44
+      "duration_sec": 4.08
     },
     {
       "case_id": "NET_004",
@@ -387,7 +473,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.52
     },
     {
       "case_id": "NET_005",
@@ -408,7 +494,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.5
+      "duration_sec": 0.52
     },
     {
       "case_id": "NET_006",
@@ -426,7 +512,7 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 11.14
+      "duration_sec": 10.69
     },
     {
       "case_id": "TS_001",
@@ -444,7 +530,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.57
+      "duration_sec": 0.69
     },
     {
       "case_id": "TS_002",
@@ -462,7 +548,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.35
+      "duration_sec": 0.42
     },
     {
       "case_id": "TS_003",
@@ -480,7 +566,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.37
+      "duration_sec": 0.52
     },
     {
       "case_id": "TS_004",
@@ -498,7 +584,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.34
+      "duration_sec": 0.43
     },
     {
       "case_id": "TS_005",
@@ -516,7 +602,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.33
+      "duration_sec": 0.36
     },
     {
       "case_id": "TOPO_001",
@@ -538,7 +624,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.52
+      "duration_sec": 0.59
     },
     {
       "case_id": "TOPO_002",
@@ -559,7 +645,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.51
+      "duration_sec": 0.66
     },
     {
       "case_id": "TOPO_003",
@@ -582,7 +668,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.33
+      "duration_sec": 0.31
     }
   ]
 }

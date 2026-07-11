@@ -1,0 +1,21 @@
+{
+  "dataset_id": "concat_requant_smoke",
+  "case_id": "CONCAT_002",
+  "status": "numeric_regression",
+  "samples": [
+    {
+      "id": "requant_branch_a",
+      "inputs": {
+        "input_a": [[[[0.1, 0.2], [0.3, 0.4]]]],
+        "input_b": [[[[0.2, -0.2], [0.6, -0.6]]]]
+      }
+    },
+    {
+      "id": "mixed_quant_steps",
+      "inputs": {
+        "input_a": [[[[1.0, -1.0], [0.5, -0.5]]]],
+        "input_b": [[[[0.8, -0.8], [0.4, -0.4]]]]
+      }
+    }
+  ]
+}

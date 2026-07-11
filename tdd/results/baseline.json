@@ -1,13 +1,73 @@
 {
-  "timestamp": "2026-07-11T03:35:31.292535",
+  "timestamp": "2026-07-11T21:48:24.561353",
   "mode": "baseline",
-  "git_commit": "537eb10",
+  "git_commit": "43e7830",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_tests.py --mode baseline --generate",
-  "total": 9,
-  "passed": 9,
+  "total": 15,
+  "passed": 15,
   "failed": 0,
   "results": [
+    {
+      "case_id": "AVGPOOL_001",
+      "category": "core/avgpool",
+      "onnx_path": "tdd/work/models/core/avgpool/AVGPOOL_001.onnx",
+      "output_dir": "tdd/work/structural/AVGPOOL_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_avgpool_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.29
+    },
+    {
+      "case_id": "CONCAT_001",
+      "category": "core/concat",
+      "onnx_path": "tdd/work/models/core/concat/CONCAT_001.onnx",
+      "output_dir": "tdd/work/structural/CONCAT_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_concatenation_s8_z"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.27
+    },
+    {
+      "case_id": "CONCAT_002",
+      "category": "core/concat",
+      "onnx_path": "tdd/work/models/core/concat/CONCAT_002.onnx",
+      "output_dir": "tdd/work/structural/CONCAT_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_concatenation_s8_z"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.27
+    },
     {
       "case_id": "MAXPOOL_001",
       "category": "core/maxpool",
@@ -26,7 +86,27 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.29
+      "duration_sec": 0.27
+    },
+    {
+      "case_id": "MAXPOOL_002",
+      "category": "core/maxpool",
+      "onnx_path": "tdd/work/models/core/maxpool/MAXPOOL_002.onnx",
+      "output_dir": "tdd/work/structural/MAXPOOL_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_max_pool_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.26
     },
     {
       "case_id": "SOFTMAX_001",
@@ -46,7 +126,51 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.3
+      "duration_sec": 0.28
+    },
+    {
+      "case_id": "SOFTMAX_002",
+      "category": "core/softmax",
+      "onnx_path": "tdd/work/models/core/softmax/SOFTMAX_002.onnx",
+      "output_dir": "tdd/work/structural/SOFTMAX_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_softmax_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.28
+    },
+    {
+      "case_id": "NET_001",
+      "category": "networks",
+      "onnx_path": "tdd/work/models/networks/NET_001.onnx",
+      "output_dir": "tdd/work/structural/NET_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_convolve_wrapper_s8",
+        "arm_max_pool_s8",
+        "arm_concatenation_s8_z",
+        "arm_avgpool_s8",
+        "arm_softmax_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 2.21
     },
     {
       "case_id": "NET_005",
@@ -67,7 +191,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.52
+      "duration_sec": 0.49
     },
     {
       "case_id": "TS_001",
@@ -85,7 +209,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.31
+      "duration_sec": 0.3
     },
     {
       "case_id": "TS_002",
@@ -103,7 +227,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.36
+      "duration_sec": 0.35
     },
     {
       "case_id": "TS_003",
@@ -121,7 +245,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.36
+      "duration_sec": 0.35
     },
     {
       "case_id": "TS_004",
@@ -139,7 +263,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.35
+      "duration_sec": 0.32
     },
     {
       "case_id": "TS_005",
@@ -157,7 +281,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.31
+      "duration_sec": 0.29
     },
     {
       "case_id": "TOPO_003",
@@ -180,7 +304,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.52
+      "duration_sec": 0.54
     }
   ]
 }

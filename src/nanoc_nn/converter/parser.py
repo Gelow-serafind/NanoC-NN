@@ -666,6 +666,7 @@ def _extract_quantization(
 
     _propagate_passthrough_quant(nodes, tensor_quant)
     _propagate_fused_activation_quant(nodes, tensor_quant)
+    _propagate_pool_boundary_quant(nodes, tensor_quant)
 
     node_quant: dict[str, dict[str, Any]] = {}
     for node in nodes:
@@ -915,6 +916,32 @@ def _propagate_fused_activation_quant(
         copied["source"] = node.name or node.op_type
         copied["fused_activation"] = node.op_type
         tensors[input_name] = copied
+
+
+def _propagate_pool_boundary_quant(
+    nodes: list[NodeInfo],
+    tensors: dict[str, dict[str, Any]],
+) -> None:
+    changed = True
+    while changed:
+        changed = False
+        for node in nodes:
+            if node.op_type not in {"MaxPool", "AveragePool", "GlobalAveragePool"}:
+                continue
+            if not node.inputs or not node.outputs:
+                continue
+            input_name = node.inputs[0]
+            output_name = node.outputs[0]
+            if input_name in tensors:
+                continue
+            output_quant = tensors.get(output_name)
+            if output_quant is None:
+                continue
+            copied = dict(output_quant)
+            copied["source"] = node.name or node.op_type
+            copied["pool_boundary_inferred"] = True
+            tensors[input_name] = copied
+            changed = True
 
 
 def _quantized_weight_info(
@@ -1240,6 +1267,16 @@ def _qlinear_global_avgpool_quant_info(
     input_shape = node.input_shapes.get(x, [])
     if len(input_shape) != 4:
         return None
+    quantization_differs = (
+        float(input_quant["scale"]) != float(output_quant["scale"])
+        or int(input_quant["zero_point"]) != int(output_quant["zero_point"])
+    )
+    requant_multiplier = 0
+    requant_shift = 0
+    if quantization_differs:
+        requant_multiplier, requant_shift = _quantize_multiplier(
+            float(input_quant["scale"]) / float(output_quant["scale"])
+        )
     qmin, qmax = _activation_range(output_quant)
     return {
         "op_type": node.op_type,
@@ -1253,6 +1290,11 @@ def _qlinear_global_avgpool_quant_info(
             "activation_min": qmin,
             "activation_max": qmax,
             "scratch_getter": "arm_avgpool_s8_get_buffer_size",
+            "requantize_output": quantization_differs,
+            "requantize_multiplier": requant_multiplier,
+            "requantize_shift": requant_shift,
+            "requantize_input_zero_point": int(input_quant["zero_point"]),
+            "requantize_output_zero_point": int(output_quant["zero_point"]),
         },
     }
 
@@ -1684,6 +1726,7 @@ def _concat_quant_info(
     reference = input_quants[0]
     assert reference is not None
     all_quants = [*input_quants, output_quant]
+    input_requantize: list[dict[str, Any]] = []
     for quant in all_quants[1:]:
         assert quant is not None
         if (
@@ -1691,12 +1734,36 @@ def _concat_quant_info(
             or int(quant["zero_point"]) != int(reference["zero_point"])
             or str(quant["zero_point_dtype"]) != str(reference["zero_point_dtype"])
         ):
+            break
+    for quant in input_quants:
+        assert quant is not None
+        if str(quant["zero_point_dtype"]) != str(output_quant["zero_point_dtype"]):
             warnings.append(
-                f"node '{node.name}' is Concat but input/output quantization differs; "
-                "first CMSIS-NN concat renderer only supports byte-copy concat with identical "
-                "scale/zero_point."
+                f"node '{node.name}' is Concat but input/output zero_point dtype differs; "
+                "this renderer only supports a single int8 dtype across concat branches."
             )
             return None
+        differs = (
+            float(quant["scale"]) != float(output_quant["scale"])
+            or int(quant["zero_point"]) != int(output_quant["zero_point"])
+        )
+        multiplier = 0
+        shift = 0
+        if differs:
+            multiplier, shift = _quantize_multiplier(
+                float(quant["scale"]) / float(output_quant["scale"])
+            )
+        input_requantize.append(
+            {
+                "required": differs,
+                "input_scale": quant["scale"],
+                "input_zero_point": quant["zero_point"],
+                "output_scale": output_quant["scale"],
+                "output_zero_point": output_quant["zero_point"],
+                "multiplier": multiplier,
+                "shift": shift,
+            }
+        )
 
     return {
         "op_type": node.op_type,
@@ -1708,10 +1775,11 @@ def _concat_quant_info(
         "outputs": {output_name: output_quant},
         "cmsis_nn": {
             "api": "arm_concatenation_s8",
-            "same_quantization": True,
-            "scale": reference["scale"],
-            "zero_point": reference["zero_point"],
-            "zero_point_dtype": reference["zero_point_dtype"],
+            "same_quantization": not any(item["required"] for item in input_requantize),
+            "scale": output_quant["scale"],
+            "zero_point": output_quant["zero_point"],
+            "zero_point_dtype": output_quant["zero_point_dtype"],
+            "input_requantize": input_requantize,
         },
     }
 
@@ -1726,8 +1794,20 @@ def _softmax_quant_info(
     output_name = node.outputs[0]
     input_quant = tensor_quant.get(input_name)
     output_quant = tensor_quant.get(output_name)
-    if input_quant is None or output_quant is None:
+    if input_quant is None:
         return None
+    if output_quant is None:
+        output_quant = {
+            "scale": 1.0 / 256.0,
+            "zero_point": -128,
+            "zero_point_dtype": "INT8",
+            "scale_tensor": "",
+            "zero_point_tensor": "",
+            "axis": None,
+            "source": node.name or node.op_type,
+            "softmax_output_inferred": True,
+        }
+        tensor_quant[output_name] = output_quant
     input_integer_bits = 5
     real_multiplier = float(input_quant["scale"]) * float(1 << (31 - input_integer_bits))
     multiplier, shift = _quantize_multiplier(real_multiplier)

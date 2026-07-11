@@ -8,14 +8,16 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 截至 2026-07-11：
 
-- target 结构回归：`29/29 PASS`
-- 稳定回归入口：`python tdd/scripts/run_regression.py --generate` 已通过
-- 数值回归：`8/8 PASS`，新增 `CONCAT_001` ONNX-vs-C `top1=2/2`，`max_abs=0.0`
+- target 结构回归：`33/33 PASS`
+- 稳定回归入口：`python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `15/15 PASS`
+- 数值回归：`11/11 PASS`，`NET_001` SqueezeNet 已加入 ONNX-vs-C 并行推理验收，`top1=4/4`，饱和率 `0.00`，最大绝对误差 `0.2`
 - 真实网络导入测试扩展到 `NET_001~NET_006`
-- 新增结构 `ok` 网络：`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
+- 新增/晋升结构 `ok` 网络：`NET_001` SqueezeNet 1.0 int8、`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
 - 新增正确拒绝网络：`NET_003` SSD-MobileNet int8、`NET_006` EfficientNet-Lite4 int8，当前为 `unsupported`
 - 平台预算拦截已从 `blocked` 拆出为 `oversize`
 - ONNX 官方 `Concat` 已按 schema-driven TDD 进入能力集，当前确认子形态为 rank=4 NCHW、`axis=1` channel concat、同量化 QDQ/int8，lowering 到 `arm_concatenation_s8_z`
+- SqueezeNet 暴露出的 Microsoft 扩展 `QLinearGlobalAveragePool` 已提炼为独立最小用例 `AVGPOOL_001`，当前确认静态 rank=4 NCHW、全局 H/W 池化，lowering 到 `arm_avgpool_s8`
+- `NET_001` SqueezeNet 1.0 int8 已完成结构与数值闭环：完整网络可生成真实 CMSIS-NN C 工程，通过 C99 smoke compile/run，并在统一 smoke 数据集上通过 ONNX-vs-C 并行推理验收。
 
 ## 状态语义
 
@@ -32,14 +34,14 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 29 |
-| target 通过 | 29 |
+| 测试用例总数 | 33 |
+| target 通过 | 33 |
 | target 失败 | 0 |
-| 稳定结构回归 | 4/4 PASS |
-| 数值回归 | 8/8 PASS |
+| 稳定结构回归 | 15/15 PASS |
+| 数值回归 | 11/11 PASS |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
-| 最新迭代记录 | `tdd/iterations/016_concat_schema_tdd_pass.md` |
+| 最新迭代记录 | `tdd/iterations/019_squeezenet_numeric_pass.md` |
 
 ## 已确认主线能力
 
@@ -47,13 +49,14 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 |------|----------|----------|
 | Conv / QLinearConv CMSIS-NN 生成 | `CONV_001~004`, `QLINEAR_NUM_001~003` | PASS |
 | Gemm / MatMul / FC 生成 | `GEMM_001~004` | PASS |
-| MaxPool int8 生成 | `MAXPOOL_001` | PASS |
-| Softmax int8 生成 | `SOFTMAX_001` | PASS |
-| Concat int8 channel 拼接 | `CONCAT_001` | 结构 PASS + 数值 PASS |
+| MaxPool int8 生成 | `MAXPOOL_001`, `MAXPOOL_002` | PASS |
+| QLinearGlobalAveragePool int8 生成 | `AVGPOOL_001` | PASS |
+| Softmax int8 生成 | `SOFTMAX_001`, `SOFTMAX_002` | PASS，`SOFTMAX_002` 数值 PASS |
+| Concat int8 channel 拼接 | `CONCAT_001`, `CONCAT_002` | 结构 PASS + 数值 PASS |
 | 组合拓扑生成 | `TOPO_001`, `TOPO_002` | PASS |
 | 真实 MNIST QLinear int8 完整网络 | `TOPO_003` | 结构 PASS + 数值 PASS |
 | float32 无 Q/DQ 模型拒绝 | `NEG_001` | PASS |
-| 真实 SqueezeNet int8 导入边界 | `NET_001` | 正确 blocked |
+| 真实 SqueezeNet int8 完整网络 | `NET_001` | 结构 PASS + 数值 PASS |
 | 真实 MobileNetV2 int8 结构生成 | `NET_002` | 结构 PASS |
 | 真实 SSD-MobileNet int8 检测边界 | `NET_003` | 正确 unsupported |
 | KWS DS-CNN-style int8 结构生成 | `NET_004` | 结构 PASS |
@@ -80,15 +83,26 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 - ONNX fixture: `tdd/fixtures/onnx/squeezenet1.0-12-int8.onnx`
 - 来源记录：`tdd/fixtures/onnx/MANIFEST.md`
-- 当前预期：`blocked`
-- 当前意义：确认真实网络能被导入、解析、生成报告，并且不会被误判为可交付 `ok`
+- 当前预期：`ok`
+- 当前意义：确认真实 SqueezeNet fire module 网络能被导入、解析，并生成包含真实 CMSIS-NN 调用的 C 工程。生成物已通过 C99 smoke compile/run，并完成 ONNX-vs-C 并行推理数值验收。
+- 数据集：`tdd/fixtures/datasets/net_001_squeezenet_smoke/`
+- 数值验收：`top1=4/4`，饱和率 `0.00`，最大绝对误差 `0.2`
+- 判定说明：`midgray` 是低置信 near-tie 样本，ONNX top1 与 C top1 在 ONNX 概率上的 margin 为 `0.0174`，低于 `top1_tie_margin=0.02`，因此计入可接受一致；其余 3 个样本 exact top1 一致。
 
-`NET_001` 暴露出的下一批真实缺口：
+`NET_001` 本轮收敛出的关键能力：
 
-- Q/DQ 与 float-domain `Concat` 交错时的布局和量化处理
-- `QLinearGlobalAveragePool` 量化字段提取与生成闭环
-- float output 侧 `Softmax` 的折叠、拒绝或 int8 生成策略
-- 平台预算与代码生成能力的分层判断
+- `DequantizeLinear -> Concat -> QuantizeLinear` 的不同量化分支拼接，由 `CONCAT_002` 独立保护并完成数值验收。
+- `Concat -> MaxPool -> QuantizeLinear` 边界处缺失输入量化信息时的反向传播，由 `MAXPOOL_002` 独立保护。
+- Microsoft 扩展 `QLinearGlobalAveragePool` 由 `AVGPOOL_001` 独立保护。
+- float output 侧 `Softmax` 折叠为 C 侧 int8 softmax 输出，由 `SOFTMAX_002` 独立保护并完成数值验收。
+- CMSIS-NN `arm_concatenation_s8_z` 的 block-copy 语义不适合内部 NHWC channel concat，codegen 已对 channel concat 生成显式 NHWC channel-copy 循环，同时保留 API 映射报告。
+- 外部 NCHW 输出与内部 NHWC buffer 的边界转置已修正，避免 `return` 前顺序拷贝导致数值验收误判。
+
+仍需后续补齐：
+
+- 明确具体 Cortex-M3/M4/M7 SRAM/Flash 预算下的 `oversize` 门禁。
+- 增加逐层 dump 工具，用于完整网络误差定位。
+- 追加带真实标签的 ImageNet 小样本，区分“ONNX-vs-C 一致性”与“模型真实分类准确率”。
 
 ### NET_002~NET_006: 新一轮真实嵌入式网络
 
@@ -145,12 +159,10 @@ python tdd/tools/mnist_capture/server.py
 
 优先按真实模型暴露的问题继续 TDD 收敛：
 
-1. 从 `NET_001` 提炼最小用例，而不是直接盲修完整 SqueezeNet。
-2. 为 Q/DQ + `Concat` 增加独立最小结构/数值用例。
-3. 为 `QLinearGlobalAveragePool` 增加独立最小用例。
-4. 明确 float 侧 `Softmax` 的处理策略。
-5. 增加逐层 dump 工具，用于 ONNX 节点输出与 C 中间 buffer 对比。
-6. 继续导入 keyword spotting、tiny anomaly detection、简单 IMU 分类等 MCU 常见小模型。
-7. 将 `NET_004` KWS-style 升级为数值验收候选。
-8. 为 `NET_002` 增加显式 SRAM/Flash 预算 probe，验证 Cortex-M3/M4/M7 平台门禁返回 `oversize` 而不是混入结构能力判断。
-9. 为 Conv1d NCW flatten 和 Conv/Relu Q/DQ 折叠补独立最小数值用例，降低完整网络失败时的定位成本。
+1. 为 `NET_001` 追加带真实标签的 ImageNet 小样本，观察模型分类准确率，而不仅是 ONNX-vs-C 一致性。
+2. 为 `AVGPOOL_001` 增加独立 ONNX-vs-C 数值验收，或确认 ONNX Runtime 对 Microsoft 扩展 op 的可执行策略。
+3. 增加逐层 dump 工具，用于 ONNX 节点输出与 C 中间 buffer 对比。
+4. 继续导入 keyword spotting、tiny anomaly detection、简单 IMU 分类等 MCU 常见小模型。
+5. 将 `NET_004` KWS-style 升级为数值验收候选。
+6. 为 `NET_002` 和 `NET_001` 增加显式 SRAM/Flash 预算 probe，验证 Cortex-M3/M4/M7 平台门禁返回 `oversize` 而不是混入结构能力判断。
+7. 为 Conv1d NCW flatten 和 Conv/Relu Q/DQ 折叠补独立最小数值用例，降低完整网络失败时的定位成本。
