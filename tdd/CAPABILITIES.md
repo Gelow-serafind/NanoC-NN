@@ -1,10 +1,10 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-07-11T04:01:39.444761
-> Git commit: `537eb10`
+> 最后更新: 2026-07-11T04:27:31.472571
+> Git commit: `371b42e`
 
-**能力集大小: 28 / 28 (100%)**
+**能力集大小: 29 / 29 (100%)**
 
 ## 已验证能力 (PASS)
 
@@ -12,6 +12,7 @@
 
 | schema source | ONNX op | schema 子形态 | backend | lowering | 用例 ID | 分类 | 能力描述 | 验证日期 |
 |---------------|---------|--------------|---------|----------|---------|------|---------|---------|
+| official | Concat | rank=4 NCHW, axis=1 channel concat, same-quantization QDQ/int8 tensors | cmsis-nn | cmsis_concatenation_s8_z | CONCAT_001 | core/concat | rank=4 channel 维 int8 Concat 数值精度 | 2026-07-11 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_001 | core/conv | 1x1 pointwise 单通道 | 2026-07-11 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_002 | core/conv | 3x3 标准 SAME padding | 2026-07-11 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_003 | core/conv | stride=2 下采样 | 2026-07-11 |
@@ -68,4 +69,3 @@
 | support ID | schema source | ONNX op | schema 子形态 | 目标 lowering | 当前状态 |
 |------------|---------------|---------|--------------|---------------|----------|
 | ONNX_MATMUL_QDQ_INT8 | official | MatMul | static fully connected compatible form, QDQ/int8 parameters | planned_cmsis_fully_connected_s8 | blocked |
-| ONNX_CONCAT_QDQ_INT8 | official | Concat | static same-quantization int8 tensors, explicit axis | planned_cmsis_concatenation_s8 | blocked |

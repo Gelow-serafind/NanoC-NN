@@ -119,6 +119,22 @@ CASE_REGISTRY: list[CaseDef] = [
         schema_refs=("ONNX_SOFTMAX_QDQ_INT8",),
     ),
     CaseDef(
+        "CONCAT_001",
+        "rank=4 channel 维 int8 Concat 数值精度",
+        "ok",
+        "core/concat",
+        ("arm_concatenation_s8_z",),
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="concat_channel_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=0.11,
+            max_saturation_ratio=0.25,
+        ),
+        schema_refs=("ONNX_CONCAT_QDQ_INT8",),
+    ),
+    CaseDef(
         "TOPO_001",
         "Conv->Relu->Pool->Flatten->FC 组合链路",
         "ok",

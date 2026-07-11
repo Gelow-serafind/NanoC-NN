@@ -721,6 +721,10 @@ def _extract_quantization(
             pool_quant = _pool_quant_info(node, tensor_quant, warnings)
             if pool_quant is not None:
                 node_quant[node.name] = pool_quant
+        elif node.op_type == "Concat":
+            concat_quant = _concat_quant_info(node, tensor_quant, warnings)
+            if concat_quant is not None:
+                node_quant[node.name] = concat_quant
         elif node.op_type == "Softmax":
             softmax_quant = _softmax_quant_info(node, tensor_quant)
             if softmax_quant is not None:
@@ -748,6 +752,7 @@ def _int8_contract(
     runtime_op_types = {
         "Add",
         "AveragePool",
+        "Concat",
         "Conv",
         "Gemm",
         "GlobalAveragePool",
@@ -762,7 +767,7 @@ def _int8_contract(
     runtime_nodes = [
         node
         for node in nodes
-        if node.op_type in runtime_op_types
+        if node.op_type in runtime_op_types and not _is_shape_helper_concat(node)
     ]
     unsupported_nodes = [node for node in runtime_nodes if node.status == "unsupported"]
     missing_quant_nodes = [
@@ -809,6 +814,16 @@ def _int8_contract(
             "Codegen may still block if a CMSIS-NN renderer is not implemented."
         ),
     }
+
+
+def _is_shape_helper_concat(node: NodeInfo) -> bool:
+    if node.op_type != "Concat":
+        return False
+    shapes = [
+        *[shape for shape in node.input_shapes.values()],
+        *[shape for shape in node.output_shapes.values()],
+    ]
+    return bool(shapes) and all(len(shape) <= 1 for shape in shapes)
 
 
 def _qdq_info(
@@ -1649,6 +1664,54 @@ def _pool_quant_info(
             "requantize_shift": requant_shift,
             "requantize_input_zero_point": int(input_quant["zero_point"]),
             "requantize_output_zero_point": int(output_quant["zero_point"]),
+        },
+    }
+
+
+def _concat_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs:
+        return None
+    output_name = node.outputs[0]
+    input_quants = [tensor_quant.get(input_name) for input_name in node.inputs]
+    output_quant = tensor_quant.get(output_name)
+    if output_quant is None or any(item is None for item in input_quants):
+        return None
+
+    reference = input_quants[0]
+    assert reference is not None
+    all_quants = [*input_quants, output_quant]
+    for quant in all_quants[1:]:
+        assert quant is not None
+        if (
+            float(quant["scale"]) != float(reference["scale"])
+            or int(quant["zero_point"]) != int(reference["zero_point"])
+            or str(quant["zero_point_dtype"]) != str(reference["zero_point_dtype"])
+        ):
+            warnings.append(
+                f"node '{node.name}' is Concat but input/output quantization differs; "
+                "first CMSIS-NN concat renderer only supports byte-copy concat with identical "
+                "scale/zero_point."
+            )
+            return None
+
+    return {
+        "op_type": node.op_type,
+        "inputs": {
+            input_name: quant
+            for input_name, quant in zip(node.inputs, input_quants, strict=True)
+            if quant is not None
+        },
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "arm_concatenation_s8",
+            "same_quantization": True,
+            "scale": reference["scale"],
+            "zero_point": reference["zero_point"],
+            "zero_point_dtype": reference["zero_point_dtype"],
         },
     }
 

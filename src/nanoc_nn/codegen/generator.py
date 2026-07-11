@@ -244,6 +244,7 @@ def _model_c(
     ]
     # Declare NHWC input buffer if the model input is multi-channel 4-D
     input_shape = _graph_input_shape(graph)
+    output_shape = _graph_output_shape(graph)
     need_input_xpose = (
         input_shape is not None
         and len(input_shape) == 4
@@ -253,6 +254,10 @@ def _model_c(
     if need_input_xpose:
         input_count = element_count_from_shape(input_shape) or max(1, memory_plan.input_buffers[0].size_bytes)
         lines.append(f"static int8_t nanoc_input_nhwc[{input_count}u];")
+    need_output_xpose = _needs_nchw_to_nhwc_boundary_transpose(output_shape)
+    if need_output_xpose:
+        output_count = element_count_from_shape(output_shape) or max(1, memory_plan.output_buffers[0].size_bytes)
+        lines.append(f"static int8_t nanoc_output_nhwc[{output_count}u];")
     lines.extend(tensor_buffers)
     lines.extend(
         [
@@ -278,6 +283,8 @@ def _model_c(
         ]
         if need_input_xpose:
             void_lines.append("    (void)nanoc_input_nhwc;")
+        if need_output_xpose:
+            void_lines.append("    (void)nanoc_output_nhwc;")
         tensor_symbols = _tensor_symbol_map(graph, runtime_layers)
         for sym in tensor_symbols.values():
             void_lines.append(f"    (void){sym};")
@@ -366,10 +373,6 @@ def _cmsis_tensor_runtime_run_body_with_transpose(
       - Output: NHWC → NCHW transpose after last layer
     Transposes are only emitted for 4-D tensors with C > 1.
     """
-    body = _cmsis_tensor_runtime_run_body(graph, layers)
-    if not body:
-        return body
-
     # Determine if input/output need 4-D transposes
     input_shape = None
     output_shape = None
@@ -378,27 +381,27 @@ def _cmsis_tensor_runtime_run_body_with_transpose(
     if graph.outputs:
         output_shape = _tensor_shape(graph, graph.outputs[0].name)
 
-    need_input_xpose = (
-        input_shape is not None
-        and len(input_shape) == 4
-        and isinstance(input_shape[1], int)
-        and input_shape[1] > 1
+    need_input_xpose = _needs_nchw_to_nhwc_boundary_transpose(input_shape)
+    need_output_xpose = _needs_nchw_to_nhwc_boundary_transpose(output_shape)
+
+    input_expr_overrides: dict[str, str] = {}
+    output_expr_overrides: dict[str, str] = {}
+    if need_input_xpose and graph.inputs:
+        input_expr_overrides[graph.inputs[0].name] = "nanoc_input_nhwc"
+    if need_output_xpose and graph.outputs:
+        output_expr_overrides[graph.outputs[0].name] = "nanoc_output_nhwc"
+
+    body = _cmsis_tensor_runtime_run_body(
+        graph,
+        layers,
+        input_expr_overrides=input_expr_overrides,
+        output_expr_overrides=output_expr_overrides,
     )
-    need_output_xpose = (
-        output_shape is not None
-        and len(output_shape) == 4
-        and isinstance(output_shape[1], int)
-        and output_shape[1] > 1
-    )
+    if not body:
+        return body
 
     if not need_input_xpose and not need_output_xpose:
         return body
-
-    # Replace "input" pointer with NHWC buffer in CMSIS-NN call arguments
-    if need_input_xpose:
-        body = [l.replace("(void)input;", "(void)input; (void)nanoc_input_nhwc;")
-                 .replace("            input,", "            nanoc_input_nhwc,")
-                 for l in body]
 
     # body[0] = "#if NANOC_ENABLE_CMSIS_NN"
     # We insert transposes right after the #if line.
@@ -436,7 +439,7 @@ def _cmsis_tensor_runtime_run_body_with_transpose(
             if resolved not in model_outputs:
                 last_expr = tensor_symbols.get(resolved, last_expr)
             else:
-                last_expr = "output"
+                last_expr = output_expr_overrides.get(resolved, "output")
 
         result.append(f"    /* NHWC→NCHW output transpose ({n}x{c}x{h}x{w}) */")
         result.append(f"    for (int _ni = 0; _ni < {n}; ++_ni)")
@@ -449,6 +452,15 @@ def _cmsis_tensor_runtime_run_body_with_transpose(
         )
 
     return result
+
+
+def _needs_nchw_to_nhwc_boundary_transpose(shape: list[int] | None) -> bool:
+    return (
+        shape is not None
+        and len(shape) == 4
+        and isinstance(shape[1], int)
+        and shape[1] > 1
+    )
 
 
 def _tensor_shape(graph: ModelGraph, name: str) -> list[int] | None:
@@ -466,20 +478,26 @@ def _tensor_shape(graph: ModelGraph, name: str) -> list[int] | None:
 def _cmsis_tensor_runtime_run_body(
     graph: ModelGraph,
     layers: list[dict[str, Any]],
+    *,
+    input_expr_overrides: dict[str, str] | None = None,
+    output_expr_overrides: dict[str, str] | None = None,
 ) -> list[str]:
     aliases = _tensor_aliases(graph)
     flatten_transforms = _flatten_layout_transforms(graph)
     tensor_symbols = _tensor_symbol_map(graph, layers)
     model_inputs = {tensor.name for tensor in graph.inputs}
     model_outputs = {tensor.name for tensor in graph.outputs}
+    model_input_exprs = _model_input_expr_map(graph)
+    input_expr_overrides = input_expr_overrides or {}
+    output_expr_overrides = output_expr_overrides or {}
     last_output_expr = "output"
 
     def tensor_expr(name: str) -> str | None:
         resolved = _resolve_tensor_alias(name, aliases)
         if resolved in model_inputs:
-            return "input"
+            return input_expr_overrides.get(resolved, model_input_exprs.get(resolved, "input"))
         if resolved in model_outputs:
-            return "output"
+            return output_expr_overrides.get(resolved, "output")
         return tensor_symbols.get(resolved)
 
     lines = [
@@ -789,6 +807,26 @@ def _graph_input_shape(graph: ModelGraph) -> list[int] | None:
     if shape and all(isinstance(d, int) for d in shape):
         return [int(d) for d in shape]
     return None
+
+
+def _graph_output_shape(graph: ModelGraph) -> list[int] | None:
+    """Return the NCHW shape of the first model output, or None."""
+    if not graph.outputs:
+        return None
+    shape = graph.outputs[0].shape
+    if shape and all(isinstance(d, int) for d in shape):
+        return [int(d) for d in shape]
+    return None
+
+
+def _model_input_expr_map(graph: ModelGraph) -> dict[str, str]:
+    """Map each graph input to its packed offset in nanoc_model_run(input, output)."""
+    result: dict[str, str] = {}
+    offset = 0
+    for tensor in graph.inputs:
+        result[tensor.name] = "input" if offset == 0 else f"(input + {offset}u)"
+        offset += int(tensor.element_count or 0)
+    return result
 
 
 def _graph_output_size(graph: ModelGraph) -> int:

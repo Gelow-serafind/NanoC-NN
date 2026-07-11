@@ -1,0 +1,21 @@
+{
+  "dataset_id": "concat_channel_smoke",
+  "case_id": "CONCAT_001",
+  "status": "numeric_regression",
+  "samples": [
+    {
+      "id": "positive_and_negative",
+      "inputs": {
+        "input_a": [[[[0.1, 0.2], [0.3, 0.4]]]],
+        "input_b": [[[[-0.1, -0.2], [0.5, 0.6]]]]
+      }
+    },
+    {
+      "id": "mixed_sign_order",
+      "inputs": {
+        "input_a": [[[[1.2, -1.1], [0.0, 0.7]]]],
+        "input_b": [[[[0.8, -0.6], [0.4, -0.3]]]]
+      }
+    }
+  ]
+}

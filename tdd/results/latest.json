@@ -1,13 +1,33 @@
 {
-  "timestamp": "2026-07-11T04:01:39.444761",
+  "timestamp": "2026-07-11T04:27:31.472571",
   "mode": "target",
-  "git_commit": "537eb10",
+  "git_commit": "371b42e",
   "platform": "Darwin 25.2.0 (arm64)",
-  "command": "tdd/scripts/run_tests.py --mode target",
-  "total": 28,
-  "passed": 28,
+  "command": "tdd/scripts/run_tests.py --mode target --generate",
+  "total": 29,
+  "passed": 29,
   "failed": 0,
   "results": [
+    {
+      "case_id": "CONCAT_001",
+      "category": "core/concat",
+      "onnx_path": "tdd/work/models/core/concat/CONCAT_001.onnx",
+      "output_dir": "tdd/work/structural/CONCAT_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_concatenation_s8_z"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.29
+    },
     {
       "case_id": "CONV_001",
       "category": "core/conv",
@@ -26,7 +46,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 1.02
+      "duration_sec": 0.33
     },
     {
       "case_id": "CONV_002",
@@ -46,7 +66,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.29
     },
     {
       "case_id": "CONV_003",
@@ -66,7 +86,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.55
+      "duration_sec": 0.3
     },
     {
       "case_id": "CONV_004",
@@ -86,7 +106,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.33
+      "duration_sec": 0.29
     },
     {
       "case_id": "GEMM_001",
@@ -106,7 +126,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.29
     },
     {
       "case_id": "GEMM_002",
@@ -126,7 +146,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.28
     },
     {
       "case_id": "GEMM_003",
@@ -146,7 +166,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.51
+      "duration_sec": 0.29
     },
     {
       "case_id": "GEMM_004",
@@ -166,7 +186,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.31
     },
     {
       "case_id": "MAXPOOL_001",
@@ -186,7 +206,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.58
+      "duration_sec": 0.3
     },
     {
       "case_id": "QLINEAR_NUM_001",
@@ -206,7 +226,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.52
+      "duration_sec": 0.31
     },
     {
       "case_id": "QLINEAR_NUM_002",
@@ -226,7 +246,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.92
+      "duration_sec": 0.31
     },
     {
       "case_id": "QLINEAR_NUM_003",
@@ -246,7 +266,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.29
     },
     {
       "case_id": "SOFTMAX_001",
@@ -266,7 +286,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.52
+      "duration_sec": 0.3
     },
     {
       "case_id": "NEG_001",
@@ -302,7 +322,7 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 1.05
+      "duration_sec": 1.04
     },
     {
       "case_id": "NET_002",
@@ -326,7 +346,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 6.26
+      "duration_sec": 5.67
     },
     {
       "case_id": "NET_003",
@@ -344,7 +364,7 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 4.29
+      "duration_sec": 4.44
     },
     {
       "case_id": "NET_004",
@@ -367,7 +387,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.54
+      "duration_sec": 0.53
     },
     {
       "case_id": "NET_005",
@@ -406,7 +426,7 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 10.95
+      "duration_sec": 11.14
     },
     {
       "case_id": "TS_001",
@@ -424,7 +444,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.92
+      "duration_sec": 0.57
     },
     {
       "case_id": "TS_002",
@@ -442,7 +462,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.56
+      "duration_sec": 0.35
     },
     {
       "case_id": "TS_003",
@@ -460,7 +480,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.56
+      "duration_sec": 0.37
     },
     {
       "case_id": "TS_004",
@@ -478,7 +498,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.56
+      "duration_sec": 0.34
     },
     {
       "case_id": "TS_005",
@@ -496,7 +516,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.58
+      "duration_sec": 0.33
     },
     {
       "case_id": "TOPO_001",
@@ -518,7 +538,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.68
+      "duration_sec": 0.52
     },
     {
       "case_id": "TOPO_002",
@@ -562,7 +582,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.64
+      "duration_sec": 0.33
     }
   ]
 }

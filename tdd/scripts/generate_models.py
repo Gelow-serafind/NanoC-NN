@@ -296,6 +296,83 @@ def gen_softmax_001() -> Path:
 
 
 # ---------------------------------------------------------------------------
+# CONCAT 用例生成
+# ---------------------------------------------------------------------------
+
+def gen_concat_001() -> Path:
+    """CONCAT_001: 双输入 channel 维 Concat — [1,1,2,2] + [1,1,2,2] → [1,2,2,2]"""
+    path = MODELS_ROOT / "core" / "concat" / "CONCAT_001.onnx"
+    input_a = "input_a"
+    input_b = "input_b"
+    input_shape = [1, 1, 2, 2]
+    output_shape = [1, 2, 2, 2]
+    scale = 0.1
+    zero_point = 0
+
+    nodes = []
+    initializers = []
+    value_infos = []
+
+    inputs = [
+        helper.make_tensor_value_info(input_a, TensorProto.FLOAT, input_shape),
+        helper.make_tensor_value_info(input_b, TensorProto.FLOAT, input_shape),
+    ]
+    output = helper.make_tensor_value_info("concat_out_dq", TensorProto.FLOAT, output_shape)
+
+    for tensor_name in (input_a, input_b):
+        q_nodes, q_inits, q_vis = make_qdq_wrapper(
+            f"{tensor_name}_qdq",
+            tensor_name,
+            input_shape,
+            scale,
+            zero_point,
+            is_input=True,
+        )
+        nodes.extend(q_nodes)
+        initializers.extend(q_inits)
+        value_infos.extend(q_vis)
+        value_infos.append(
+            helper.make_tensor_value_info(f"{tensor_name}_dq", TensorProto.FLOAT, input_shape)
+        )
+
+    nodes.append(
+        helper.make_node(
+            "Concat",
+            ["input_a_dq", "input_b_dq"],
+            ["concat_out"],
+            name="concat",
+            axis=1,
+        )
+    )
+    value_infos.append(
+        helper.make_tensor_value_info("concat_out", TensorProto.FLOAT, output_shape)
+    )
+
+    out_nodes, out_inits, out_vis = make_qdq_wrapper(
+        "output_qdq",
+        "concat_out",
+        output_shape,
+        scale,
+        zero_point,
+        is_input=False,
+    )
+    nodes.extend(out_nodes)
+    initializers.extend(out_inits)
+    value_infos.extend(out_vis)
+
+    build_and_save(
+        nodes=nodes,
+        inputs=inputs,
+        outputs=[output],
+        initializers=initializers,
+        save_path=path,
+        graph_name="concat_001",
+        value_infos=value_infos,
+    )
+    return path
+
+
+# ---------------------------------------------------------------------------
 # TOPOLOGY 用例生成
 # ---------------------------------------------------------------------------
 
@@ -794,6 +871,7 @@ _GENERATORS: dict[str, object] = {
     "CONV_004": gen_conv_004,
     "MAXPOOL_001": gen_maxpool_001,
     "SOFTMAX_001": gen_softmax_001,
+    "CONCAT_001": gen_concat_001,
     "TOPO_001": gen_topo_001,
     "TOPO_002": gen_topo_002,
     "TOPO_003": gen_topo_003,

@@ -459,10 +459,9 @@ def _write_c_runner(
     graph: dict[str, Any],
     check: NumericCheck,
 ) -> None:
-    input_quant = _model_input_quant(graph)
     input_arrays = []
     for index, sample in enumerate(samples):
-        quantized = _quantize_input(sample["pixels"], input_quant, check)
+        quantized = _pack_quantized_inputs(sample, graph, check)
         values = ", ".join(str(int(value)) for value in quantized.reshape(-1).tolist())
         input_arrays.append(f"static const int8_t sample_{index}[{quantized.size}] = {{{values}}};")
 
@@ -497,6 +496,30 @@ int main(void)
 }}
 """
     path.write_text(code, encoding="utf-8")
+
+
+def _pack_quantized_inputs(
+    sample: dict[str, Any],
+    graph: dict[str, Any],
+    check: NumericCheck,
+) -> np.ndarray:
+    input_specs = graph.get("inputs", [])
+    input_quants = _model_input_quants(graph)
+    if sample.get("inputs") is not None:
+        sample_inputs = sample["inputs"]
+        packed: list[np.ndarray] = []
+        for spec in input_specs:
+            name = str(spec["name"])
+            if name not in sample_inputs:
+                raise ValueError(f"sample {sample['id']} missing input {name!r}")
+            quant = input_quants[name]
+            packed.append(_quantize_input(np.asarray(sample_inputs[name]), quant, check).reshape(-1))
+        return np.concatenate(packed).astype(np.int8)
+
+    if not input_specs:
+        raise ValueError("model graph has no inputs")
+    first_name = str(input_specs[0]["name"])
+    return _quantize_input(sample["pixels"], input_quants[first_name], check).reshape(-1)
 
 
 def _quantize_input(
@@ -714,6 +737,14 @@ def _compare_outputs(
 def _model_input_quant(graph: dict[str, Any]) -> dict[str, Any]:
     input_name = graph["inputs"][0]["name"]
     return graph["quantization"]["tensors"][input_name]
+
+
+def _model_input_quants(graph: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    tensor_quants = graph["quantization"]["tensors"]
+    return {
+        str(item["name"]): tensor_quants[str(item["name"])]
+        for item in graph.get("inputs", [])
+    }
 
 
 def _model_output_quant(graph: dict[str, Any]) -> dict[str, Any]:
