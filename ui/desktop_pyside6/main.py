@@ -12,7 +12,7 @@ except Exception:  # noqa: BLE001 - displayed in the UI.
     onnx = None
 
 from PySide6.QtCore import QEvent, Qt, QThread, Signal
-from PySide6.QtGui import QAction, QBrush, QColor, QFont, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QAction, QBrush, QColor, QFont, QIcon, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -67,6 +67,7 @@ def app_root() -> Path:
 
 REPO_ROOT = app_root()
 WORK_ROOT = Path.home() / "Library" / "Application Support" / "NanoC-NN" / "work"
+APP_ICON_PATH = REPO_ROOT / "ui" / "desktop_pyside6" / "assets" / "app_icon.png"
 
 
 class PipelineWorker(QThread):
@@ -357,6 +358,8 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("NanoC-NN Desktop")
+        if APP_ICON_PATH.exists():
+            self.setWindowIcon(QIcon(str(APP_ICON_PATH)))
         self.resize(1320, 840)
         self.model_path: Path | None = None
         self.current_out_root: Path | None = None
@@ -1286,6 +1289,8 @@ def safe_prefix(value: str) -> str:
 def main() -> int:
     WORK_ROOT.mkdir(parents=True, exist_ok=True)
     app = QApplication(sys.argv)
+    if APP_ICON_PATH.exists():
+        app.setWindowIcon(QIcon(str(APP_ICON_PATH)))
     window = MainWindow()
     window.show()
     return app.exec()

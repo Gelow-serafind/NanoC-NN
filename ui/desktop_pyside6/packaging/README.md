@@ -40,6 +40,7 @@ dist\NanoC-NN
 ## 当前策略
 
 - 使用 PyInstaller 打包 PySide6 桌面程序。
+- 桌面图标源文件为 `ui/desktop_pyside6/assets/app_icon.png`，macOS bundle 使用 `ui/desktop_pyside6/packaging/app_icon.icns`。
 - 将 `src/` 放入 app bundle，用于继续调用现有 `nanoc_nn` pipeline。
 - 将 `tdd/fixtures/` 放入 app bundle，用于桌面 UI 的 MNIST / SqueezeNet 示例。
 - 运行期输出写入用户目录：
