@@ -68,7 +68,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name="NanoC-NN.app",
-    icon=None,
+    icon=str(repo_root / "ui" / "desktop_pyside6" / "packaging" / "app_icon.icns"),
     bundle_identifier="com.nanocnn.desktop",
     info_plist={
         "CFBundleName": "NanoC-NN",
