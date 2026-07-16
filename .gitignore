@@ -40,6 +40,27 @@ CMakeFiles/
 CMakeCache.txt
 compile_commands.json
 
+# Embedded firmware build outputs
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+*.list
+*.su
+*.cyclo
+*.dis
+*.gcno
+*.gcda
+*.gcov
+
+# STM32 / Arm local build and IDE artifacts
+ARM-PROJ/**/build/
+ARM-PROJ/**/Debug/
+ARM-PROJ/**/Release/
+ARM-PROJ/**/.settings/
+ARM-PROJ/**/.metadata/
+
 # Generated model/export artifacts
 **/build/
 **/export/
@@ -66,3 +87,5 @@ tdd/results/tmp/
 
 # UI local runtime artifacts
 ui/work/
+ui/desktop_pyside6/assets/app_icon 2.png
+ui/desktop_pyside6/packaging/app_icon 2.icns
