@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-07-11T21:48:31.580068",
-  "git_commit": "43e7830",
+  "timestamp": "2026-07-17T01:04:52.173969",
+  "git_commit": "bd24531",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py --generate",
   "total": 11,
@@ -101,7 +101,7 @@
           "max_abs_error": 0.001285940408706665
         }
       ],
-      "duration_sec": 2.55
+      "duration_sec": 2.77
     },
     {
       "case_id": "CONCAT_001",
@@ -217,7 +217,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.38
+      "duration_sec": 2.82
     },
     {
       "case_id": "CONCAT_002",
@@ -333,7 +333,7 @@
           "max_abs_error": 0.20000001788139343
         }
       ],
-      "duration_sec": 2.42
+      "duration_sec": 2.6
     },
     {
       "case_id": "TOPO_003",
@@ -849,7 +849,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.38
+      "duration_sec": 2.89
     },
     {
       "case_id": "NET_001",
@@ -8991,7 +8991,7 @@
           "max_abs_error": 0.0569949634373188
         }
       ],
-      "duration_sec": 4.87
+      "duration_sec": 6.34
     },
     {
       "case_id": "NET_005",
@@ -9110,7 +9110,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.34
+      "duration_sec": 2.52
     },
     {
       "case_id": "TS_001",
@@ -9256,7 +9256,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.32
+      "duration_sec": 0.46
     },
     {
       "case_id": "TS_002",
@@ -9482,7 +9482,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.59
+      "duration_sec": 0.79
     },
     {
       "case_id": "TS_003",
@@ -9708,7 +9708,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.58
+      "duration_sec": 0.79
     },
     {
       "case_id": "TS_004",
@@ -9854,7 +9854,7 @@
           "max_abs_error": 2.9802322387695312e-08
         }
       ],
-      "duration_sec": 0.4
+      "duration_sec": 0.66
     },
     {
       "case_id": "TS_005",
@@ -10045,7 +10045,7 @@
           "max_abs_error": 5.960464477539063e-08
         }
       ],
-      "duration_sec": 0.35
+      "duration_sec": 0.51
     }
   ]
 }

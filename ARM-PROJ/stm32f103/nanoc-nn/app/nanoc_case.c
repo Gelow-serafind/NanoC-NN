@@ -3,6 +3,8 @@
 #include <stddef.h>
 
 #include "cases/nanoc_case_dummy_echo.h"
+#include "cases/nanoc_case_mnist_int8.h"
+#include "cases/nanoc_case_terminal_model.h"
 #include "nanoc_config.h"
 #include "nanoc_time.h"
 
@@ -13,6 +15,20 @@ static const nanoc_case_desc_t g_cases[] = {
         NANOC_APP_MAX_INPUT_SIZE,
         NANOC_APP_MAX_OUTPUT_SIZE,
         nanoc_case_dummy_echo_run,
+    },
+    {
+        NANOC_CASE_MNIST_INT8,
+        "mnist_int8",
+        784U,
+        10U,
+        nanoc_case_mnist_int8_run,
+    },
+    {
+        NANOC_CASE_TERMINAL_MODEL,
+        "terminal_model",
+        NANOC_APP_MAX_INPUT_SIZE,
+        NANOC_APP_MAX_OUTPUT_SIZE,
+        nanoc_case_terminal_model_run,
     },
 };
 

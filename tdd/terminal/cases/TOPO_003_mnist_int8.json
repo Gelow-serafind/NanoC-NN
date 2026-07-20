@@ -1,0 +1,29 @@
+{
+  "case_id": "TOPO_003",
+  "terminal_case_id": "TOPO_003_mnist_int8",
+  "description": "MNIST int8 real-board terminal check",
+  "board_ids": ["stm32f103vetx_uart_tim6"],
+  "arm_case_id": 2,
+  "dataset_id": "mnist_synthetic_smoke",
+  "input_bytes": 784,
+  "output_bytes": 10,
+  "arm_project": "ARM-PROJ/stm32f103/nanoc-nn",
+  "firmware_elf": "ARM-PROJ/stm32f103/nanoc-nn/build/Debug/nanoc-nn.elf",
+  "sync_codegen": {
+    "enabled": true,
+    "include_dir": "ARM-PROJ/stm32f103/nanoc-nn/app/models/mnist_int8/include",
+    "src_dir": "ARM-PROJ/stm32f103/nanoc-nn/app/models/mnist_int8/src",
+    "files": [
+      ["include/model.h", "include/model.h"],
+      ["include/model_weights.h", "include/model_weights.h"],
+      ["include/converter_weights.h", "include/converter_weights.h"],
+      ["src/model.c", "src/model.c"]
+    ]
+  },
+  "compare": {
+    "require_exact_int8": true,
+    "require_top1_match": true,
+    "max_abs_error": 0,
+    "max_saturation_ratio": 0.5
+  }
+}

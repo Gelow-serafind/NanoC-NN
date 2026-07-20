@@ -11,6 +11,8 @@ extern "C" {
 typedef enum {
     NANOC_CASE_NONE = 0,
     NANOC_CASE_DUMMY_ECHO = 1,
+    NANOC_CASE_MNIST_INT8 = 2,
+    NANOC_CASE_TERMINAL_MODEL = 100,
 } nanoc_case_id_t;
 
 typedef nanoc_status_t (*nanoc_case_run_fn)(

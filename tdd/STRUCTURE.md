@@ -8,6 +8,7 @@
 tdd/
 ├── cases/                 # 永久：测试需求规格
 ├── fixtures/              # 永久：真实 ONNX、数据集、期望输出、外部问题样本
+├── terminal/              # 永久：ARM 终端实机验收配置、脚本和报告
 ├── scripts/               # 永久：生成、结构测试、数值测试脚本
 ├── tools/                 # 永久：TDD 辅助工具，如数据集采集 UI
 ├── iterations/            # 永久：每轮 TDD 迭代记录
@@ -66,9 +67,15 @@ TDD 测试分三层：
 | 规格校验 | `run_tests.py --validate-only` | case、registry、模型生成器一致 |
 | 结构验收 | `run_tests.py --mode target --generate` | converter/codegen、CMSIS-NN API、C99 smoke compile/run |
 | 数值验收 | `run_numeric_tests.py --case <ID> --generate` | ONNX Runtime 输出与生成 C 输出对比 |
+| 终端实机验收 | `terminal/scripts/run_terminal_tests.py --case <ID>` | ONNX Runtime、Host C、ARM C 三路对比 |
 | 稳定回归 | `run_regression.py --generate` | baseline 结构验收 + 已登记 numeric 验收 |
 
 结构验收只能说明“生成物存在并可启动”，不能说明“推理结果正确”。完整网络能力必须进入数值验收。常规 ONNX 能力测试默认关注代码生成完整性和数值正确性，不把某个具体 MCU 的 SRAM/Flash 预算作为通用能力门槛；目标平台预算拦截应通过显式传入预算触发，并以 `oversize` 表达。
+
+终端实机验收是可选硬件在位门禁。普通全量回归不要求连接 STM32；当执行
+`run_regression.py --terminal auto` 时，检测不到板卡会记录 `SKIP` 并继续通过；
+当执行 `--terminal required` 或终端 runner 的 `--require-board` 时，检测不到板卡
+会作为失败处理。终端报告位于 `tdd/terminal/reports/`，并会被 ONNX 支持图谱读取。
 
 ## 完整网络测试
 

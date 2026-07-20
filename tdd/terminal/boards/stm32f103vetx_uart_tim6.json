@@ -1,0 +1,21 @@
+{
+  "board_id": "stm32f103vetx_uart_tim6",
+  "description": "STM32F103 high-density board with USART1 data channel and TIM6 1us timer",
+  "mcu": "stm32f103vetx",
+  "core": "cortex-m3",
+  "flash_kb": 512,
+  "sram_kb": 64,
+  "uart": {
+    "port": "/dev/cu.usbserial-11430",
+    "baudrate": 115200
+  },
+  "programmer": {
+    "type": "stm32cubeprogrammer",
+    "cli": "/opt/ST/STM32CubeCLT_1.21.0/STM32CubeProgrammer/bin/STM32_Programmer_CLI",
+    "interface": "SWD"
+  },
+  "timebase": {
+    "timer": "TIM6",
+    "tick_us": 1
+  }
+}

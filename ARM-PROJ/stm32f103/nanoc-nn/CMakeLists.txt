@@ -34,6 +34,15 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
+# CMSIS-NN source set for terminal TDD. Keep this in the project file instead
+# of editing third_party/CMSIS-NN.
+file(GLOB_RECURSE NANOC_CMSIS_NN_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../../third_party/CMSIS-NN/Source/*.c
+)
+list(FILTER NANOC_CMSIS_NN_SOURCES EXCLUDE REGEX ".*_f16\\.c$")
+list(FILTER NANOC_CMSIS_NN_SOURCES EXCLUDE REGEX ".*_f32\\.c$")
+list(FILTER NANOC_CMSIS_NN_SOURCES EXCLUDE REGEX ".*/LSTMFunctions/.*")
+
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
@@ -51,6 +60,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     app/nanoc_time.c
     app/nanoc_uart.c
     app/cases/nanoc_case_dummy_echo.c
+    app/cases/nanoc_case_mnist_int8.c
+    app/cases/nanoc_case_terminal_model.c
+    app/models/terminal_model/src/model.c
+    ${NANOC_CMSIS_NN_SOURCES}
 )
 
 # Add include paths
@@ -58,11 +71,15 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     app
     app/cases
+    app/models/terminal_model/include
+    ${CMAKE_SOURCE_DIR}/../../../third_party/CMSIS-NN/Include
+    ${CMAKE_SOURCE_DIR}/../../../third_party/CMSIS-NN/Include/Internal
 )
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+    NANOC_ENABLE_CMSIS_NN=1
 )
 
 # Remove wrong libob.a library dependency when using cpp files

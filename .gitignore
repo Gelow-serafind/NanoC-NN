@@ -84,6 +84,7 @@ tdd/models/
 tdd/work/
 tdd/results/history/
 tdd/results/tmp/
+tdd/terminal/reports/history/
 
 # UI local runtime artifacts
 ui/work/

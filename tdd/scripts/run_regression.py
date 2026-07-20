@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -54,6 +55,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--skip-structural", action="store_true", help="skip structural tests")
     parser.add_argument("--skip-numeric", action="store_true", help="skip numeric tests")
+    parser.add_argument("--structural-python", default=sys.executable, help="python executable for structural tests")
+    parser.add_argument("--numeric-python", default=sys.executable, help="python executable for numeric tests")
+    parser.add_argument("--terminal-python", default=sys.executable, help="python executable for terminal tests")
+    parser.add_argument(
+        "--numeric-pythonpath",
+        help="optional PYTHONPATH for numeric and terminal subprocesses, for example src",
+    )
+    parser.add_argument(
+        "--terminal",
+        choices=["off", "auto", "required"],
+        default="off",
+        help="optional ARM terminal checks after Host numeric tests",
+    )
+    parser.add_argument("--terminal-case", help="only run one terminal case")
+    parser.add_argument("--terminal-board", help="board id for terminal checks")
+    parser.add_argument("--no-terminal-flash", action="store_true", help="do not flash firmware during terminal checks")
     args = parser.parse_args(argv)
 
     report = RegressionReport(
@@ -69,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.skip_structural:
         structural_cmd = [
-            sys.executable,
+            args.structural_python,
             str(_SCRIPT_DIR / "run_tests.py"),
             "--mode",
             args.structural_mode,
@@ -79,10 +96,40 @@ def main(argv: list[str] | None = None) -> int:
         report.steps.append(asdict(_run_step("structural", structural_cmd, "latest.json")))
 
     if not args.skip_numeric:
-        numeric_cmd = [sys.executable, str(_SCRIPT_DIR / "run_numeric_tests.py")]
+        numeric_cmd = [args.numeric_python, str(_SCRIPT_DIR / "run_numeric_tests.py")]
         if args.generate:
             numeric_cmd.append("--generate")
-        report.steps.append(asdict(_run_step("numeric", numeric_cmd, "numeric_latest.json")))
+        report.steps.append(
+            asdict(_run_step("numeric", numeric_cmd, "numeric_latest.json", pythonpath=args.numeric_pythonpath))
+        )
+
+    if args.terminal != "off":
+        terminal_cmd = [
+            args.terminal_python,
+            str(TDD_ROOT / "terminal" / "scripts" / "run_terminal_tests.py"),
+        ]
+        if args.terminal_case:
+            terminal_cmd.extend(["--case", args.terminal_case])
+        if args.terminal_board:
+            terminal_cmd.extend(["--board", args.terminal_board])
+        if args.generate:
+            terminal_cmd.append("--generate")
+        if args.no_terminal_flash:
+            terminal_cmd.append("--no-flash")
+        if args.terminal == "auto":
+            terminal_cmd.append("--auto")
+        else:
+            terminal_cmd.append("--require-board")
+        report.steps.append(
+            asdict(
+                _run_step(
+                    "terminal",
+                    terminal_cmd,
+                    "terminal/reports/terminal_latest.json",
+                    pythonpath=args.numeric_pythonpath,
+                )
+            )
+        )
 
     report.passed = all(step["exit_code"] == 0 for step in report.steps) and bool(report.steps)
     out_path = _save_report(report)
@@ -94,10 +141,15 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if report.passed else 1
 
 
-def _run_step(name: str, command: list[str], report_name: str) -> StepResult:
+def _run_step(name: str, command: list[str], report_name: str, *, pythonpath: str | None = None) -> StepResult:
     print(f"[{name}] {' '.join(command)}", flush=True)
-    completed = subprocess.run(command, cwd=str(REPO_ROOT), check=False)
-    report_path = RESULTS_DIR / report_name
+    env = None
+    if pythonpath:
+        env = dict(**os.environ)
+        current = env.get("PYTHONPATH")
+        env["PYTHONPATH"] = pythonpath if not current else f"{pythonpath}:{current}"
+    completed = subprocess.run(command, cwd=str(REPO_ROOT), check=False, env=env)
+    report_path = (TDD_ROOT / report_name) if "/" in report_name else (RESULTS_DIR / report_name)
     return StepResult(
         name=name,
         command=command,

@@ -11,6 +11,7 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 - target 结构回归：`33/33 PASS`
 - 稳定回归入口：`python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `15/15 PASS`
 - 数值回归：`11/11 PASS`，`NET_001` SqueezeNet 已加入 ONNX-vs-C 并行推理验收，`top1=4/4`，饱和率 `0.00`，最大绝对误差 `0.2`
+- 终端实机验收层已建立：`tdd/terminal/` 支持 ONNX-vs-HostC-vs-ARMC 三路对比，当前首个接入目标为 `TOPO_003` MNIST int8 on STM32F103
 - 真实网络导入测试扩展到 `NET_001~NET_006`
 - 新增/晋升结构 `ok` 网络：`NET_001` SqueezeNet 1.0 int8、`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
 - 新增正确拒绝网络：`NET_003` SSD-MobileNet int8、`NET_006` EfficientNet-Lite4 int8，当前为 `unsupported`
@@ -39,6 +40,7 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 | target 失败 | 0 |
 | 稳定结构回归 | 15/15 PASS |
 | 数值回归 | 11/11 PASS |
+| 终端实机验收 | 可选门禁，接入 STM32 时执行 |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
 | 最新迭代记录 | `tdd/iterations/019_squeezenet_numeric_pass.md` |
@@ -74,6 +76,7 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
   - `tdd/fixtures/datasets/mnist_synthetic_smoke/`
   - `tdd/fixtures/datasets/mnist_hand_drawn/`
 - 数值验收：ONNX Runtime 与生成 C 并行推理一致
+- 终端实机验收：`tdd/terminal/cases/TOPO_003_mnist_int8.json` 绑定 STM32F103 runner，目标是 ONNX / Host C / ARM C 三路一致
 - 关键修复：`auto_pad`、NHWC 到 NCHW flatten、per-channel FC、`QLinearAdd left_shift=0`
 - 复盘文档：`tdd/cases/topology/TOPO_003_mnist/CODEGEN_CASE_STUDY.md`
 
@@ -142,6 +145,9 @@ python tdd/scripts/run_tests.py --validate-only
 # 稳定回归：baseline 结构验收 + 已登记 numeric 验收
 python tdd/scripts/run_regression.py --generate
 
+# 稳定回归 + 可选 ARM 终端实机验收；无板卡时自动跳过
+python tdd/scripts/run_regression.py --generate --terminal auto
+
 # 全量 target：更新 CAPABILITIES.md + latest.json
 python tdd/scripts/run_tests.py --mode target --generate
 
@@ -150,6 +156,9 @@ python tdd/scripts/generate_support_map.py
 
 # MNIST 数值验收
 python tdd/scripts/run_numeric_tests.py --case TOPO_003 --dataset mnist_synthetic_smoke --generate
+
+# MNIST 终端实机验收：ONNX vs Host C vs ARM C
+python tdd/terminal/scripts/run_terminal_tests.py --case TOPO_003 --generate --flash --require-board
 
 # 手写 MNIST 数据集采集 UI
 python tdd/tools/mnist_capture/server.py

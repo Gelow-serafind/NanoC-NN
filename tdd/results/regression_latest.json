@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-07-11T21:48:24.282814",
-  "git_commit": "43e7830",
+  "timestamp": "2026-07-17T01:04:43.657627",
+  "git_commit": "bd24531",
   "platform": "Darwin 25.2.0 (arm64)",
-  "command": "tdd/scripts/run_regression.py --generate",
+  "command": "tdd/scripts/run_regression.py --generate --terminal auto --terminal-case TOPO_003 --no-terminal-flash --numeric-python /Users/tiedan/anaconda3/envs/tiedanPython/bin/python --terminal-python /Users/tiedan/anaconda3/envs/tiedanPython/bin/python --numeric-pythonpath src",
   "passed": true,
   "steps": [
     {
       "name": "structural",
       "command": [
-        "/Users/tiedan/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/Users/tiedan/anaconda3/envs/nanoc-onnx-examples/bin/python",
         "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_tests.py",
         "--mode",
         "baseline",
@@ -20,12 +20,26 @@
     {
       "name": "numeric",
       "command": [
-        "/Users/tiedan/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/Users/tiedan/anaconda3/envs/tiedanPython/bin/python",
         "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py",
         "--generate"
       ],
       "exit_code": 0,
       "report_path": "tdd/results/numeric_latest.json"
+    },
+    {
+      "name": "terminal",
+      "command": [
+        "/Users/tiedan/anaconda3/envs/tiedanPython/bin/python",
+        "/Users/tiedan/Desktop/NanoC-NN/tdd/terminal/scripts/run_terminal_tests.py",
+        "--case",
+        "TOPO_003",
+        "--generate",
+        "--no-flash",
+        "--auto"
+      ],
+      "exit_code": 0,
+      "report_path": "tdd/terminal/reports/terminal_latest.json"
     }
   ]
 }

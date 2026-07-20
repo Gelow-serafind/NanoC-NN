@@ -67,6 +67,13 @@ def _build_payload(catalog: dict[str, Any], latest: dict[str, Any]) -> dict[str,
         for item in latest.get("results", [])
         if isinstance(item, dict) and item.get("case_id")
     }
+    terminal_latest = _load_terminal_results()
+    terminal_results = {
+        str(item.get("case_id")): item
+        for item in terminal_latest.get("results", [])
+        if isinstance(item, dict) and item.get("case_id")
+    }
+    terminal_configs = _load_terminal_case_configs()
     support_to_cases = _support_to_cases()
     support_by_op: dict[str, list] = defaultdict(list)
     extension_by_op: dict[str, list] = defaultdict(list)
@@ -80,7 +87,10 @@ def _build_payload(catalog: dict[str, Any], latest: dict[str, Any]) -> dict[str,
         catalog.get("operators", []),
         key=lambda item: (str(item.get("domain", "")), str(item.get("name", ""))),
     )
-    op_nodes = [_official_op_node(op, support_by_op, support_to_cases, case_results) for op in operators]
+    op_nodes = [
+        _official_op_node(op, support_by_op, support_to_cases, case_results, terminal_configs, terminal_results)
+        for op in operators
+    ]
     supported = [node for node in op_nodes if node["support_state"] == "supported"]
     planned = [node for node in op_nodes if node["support_state"] == "planned"]
     unsupported = [node for node in op_nodes if node["support_state"] == "not_started"]
@@ -90,7 +100,7 @@ def _build_payload(catalog: dict[str, Any], latest: dict[str, Any]) -> dict[str,
         for op_type, entries in sorted(extension_by_op.items())
     ]
     boundary_nodes = [
-        _mixed_entry_node(entry, support_to_cases, case_results)
+        _mixed_entry_node(entry, support_to_cases, case_results, terminal_configs, terminal_results)
         for entry in SUPPORT_MATRIX
         if entry.schema_source == "mixed"
     ]
@@ -154,6 +164,14 @@ def _build_payload(catalog: dict[str, Any], latest: dict[str, Any]) -> dict[str,
                 "summary": f"{len(boundary_nodes)} negative, reference, or network boundary rows",
                 "children": boundary_nodes,
             },
+            {
+                "id": "terminal",
+                "label": "ARM 终端实机验收",
+                "kind": "group",
+                "state": "terminal",
+                "summary": _terminal_summary(terminal_latest, terminal_configs),
+                "children": _terminal_group_nodes(terminal_configs, terminal_results),
+            },
         ],
     }
 
@@ -171,6 +189,13 @@ def _build_payload(catalog: dict[str, Any], latest: dict[str, Any]) -> dict[str,
             "total": latest.get("total", 0),
             "passed": latest.get("passed", 0),
             "failed": latest.get("failed", 0),
+        },
+        "terminal": {
+            "timestamp": terminal_latest.get("timestamp", "unknown"),
+            "total": terminal_latest.get("total", 0),
+            "passed": terminal_latest.get("passed", 0),
+            "failed": terminal_latest.get("failed", 0),
+            "skipped": terminal_latest.get("skipped", 0),
         },
         "summary": {
             "official_total": len(operators),
@@ -198,6 +223,8 @@ def _official_op_node(
     support_by_op: dict[str, list],
     support_to_cases: dict[str, list],
     case_results: dict[str, dict],
+    terminal_configs: dict[str, dict],
+    terminal_results: dict[str, dict],
 ) -> dict[str, Any]:
     name = str(op.get("name", "unknown"))
     entries = sorted(support_by_op.get(name, []), key=lambda item: (item.status != "ok", item.support_id))
@@ -208,7 +235,7 @@ def _official_op_node(
     else:
         state = "not_started"
     children = [
-        _support_entry_node(entry, support_to_cases.get(entry.support_id, []), case_results)
+        _support_entry_node(entry, support_to_cases.get(entry.support_id, []), case_results, terminal_configs, terminal_results)
         for entry in entries
     ]
     if not children:
@@ -251,13 +278,36 @@ def _extension_op_node(op_type: str, entries: list, support_to_cases: dict[str, 
     }
 
 
-def _mixed_entry_node(entry, support_to_cases: dict[str, list], case_results: dict[str, dict]) -> dict[str, Any]:
-    return _support_entry_node(entry, support_to_cases.get(entry.support_id, []), case_results)
+def _mixed_entry_node(
+    entry,
+    support_to_cases: dict[str, list],
+    case_results: dict[str, dict],
+    terminal_configs: dict[str, dict],
+    terminal_results: dict[str, dict],
+) -> dict[str, Any]:
+    return _support_entry_node(
+        entry,
+        support_to_cases.get(entry.support_id, []),
+        case_results,
+        terminal_configs,
+        terminal_results,
+    )
 
 
-def _support_entry_node(entry, cases: list, case_results: dict[str, dict]) -> dict[str, Any]:
+def _support_entry_node(
+    entry,
+    cases: list,
+    case_results: dict[str, dict],
+    terminal_configs: dict[str, dict] | None = None,
+    terminal_results: dict[str, dict] | None = None,
+) -> dict[str, Any]:
     state = "planned" if entry.planned else _state_from_status(entry.status)
-    case_children = [_case_node(case, case_results.get(case.case_id)) for case in cases]
+    terminal_configs = terminal_configs or {}
+    terminal_results = terminal_results or {}
+    case_children = [
+        _case_node(case, case_results.get(case.case_id), terminal_configs.get(case.case_id), terminal_results.get(case.case_id))
+        for case in cases
+    ]
     if not case_children:
         case_children = [
             {
@@ -289,7 +339,7 @@ def _support_entry_node(entry, cases: list, case_results: dict[str, dict]) -> di
     }
 
 
-def _case_node(case, result: dict | None) -> dict[str, Any]:
+def _case_node(case, result: dict | None, terminal_config: dict | None = None, terminal_result: dict | None = None) -> dict[str, Any]:
     actual = str(result.get("actual", "not-run")) if result else "not-run"
     passed = bool(result and result.get("passed"))
     state = "supported" if passed else "planned"
@@ -301,12 +351,106 @@ def _case_node(case, result: dict | None) -> dict[str, Any]:
     ]
     if case.numeric:
         details.append(f"numeric dataset: {case.numeric.dataset_id}")
+    children = []
+    if terminal_config or terminal_result:
+        children.append(_terminal_node(case.case_id, terminal_config, terminal_result))
     return {
         "id": f"case-{case.case_id}",
         "label": case.case_id,
         "kind": "case",
         "state": state,
         "summary": case.description,
+        "details": details,
+        "children": children,
+    }
+
+
+def _load_terminal_results() -> dict[str, Any]:
+    path = TDD_ROOT / "terminal" / "reports" / "terminal_latest.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _load_terminal_case_configs() -> dict[str, dict]:
+    cases_dir = TDD_ROOT / "terminal" / "cases"
+    if not cases_dir.exists():
+        return {}
+    configs = {}
+    for path in sorted(cases_dir.glob("*.json")):
+        item = json.loads(path.read_text(encoding="utf-8"))
+        if item.get("case_id"):
+            configs[str(item["case_id"])] = item
+    return configs
+
+
+def _terminal_summary(terminal_latest: dict[str, Any], terminal_configs: dict[str, dict]) -> str:
+    if not terminal_configs:
+        return "no terminal cases configured"
+    if not terminal_latest:
+        return f"{len(terminal_configs)} configured, no terminal run yet"
+    return (
+        f"{terminal_latest.get('passed', 0)}/{terminal_latest.get('total', 0)} PASS · "
+        f"{terminal_latest.get('skipped', 0)} skipped"
+    )
+
+
+def _terminal_group_nodes(terminal_configs: dict[str, dict], terminal_results: dict[str, dict]) -> list[dict[str, Any]]:
+    nodes = []
+    for case_id, config in sorted(terminal_configs.items()):
+        nodes.append(_terminal_node(case_id, config, terminal_results.get(case_id)))
+    if not nodes:
+        nodes.append(
+            {
+                "id": "terminal-empty",
+                "label": "尚无终端 case",
+                "kind": "terminal_empty",
+                "state": "planned",
+                "summary": "可在 tdd/terminal/cases/ 中绑定已通过 Host numeric 的 case",
+                "details": [],
+                "children": [],
+            }
+        )
+    return nodes
+
+
+def _terminal_node(case_id: str, config: dict | None, result: dict | None) -> dict[str, Any]:
+    if result:
+        if result.get("passed"):
+            state = "supported"
+        elif result.get("skipped"):
+            state = "planned"
+        else:
+            state = "unsupported"
+        summary = (
+            f"board {result.get('board_id', '-')} · "
+            f"host/arm exact {result.get('host_c_arm_c_exact_matches', 0)}/{result.get('sample_count', 0)} · "
+            f"onnx/arm top1 {result.get('onnx_arm_c_top1_matches', 0)}/{result.get('sample_count', 0)}"
+        )
+        details = [
+            f"terminal case: {result.get('terminal_case_id', '-')}",
+            f"dataset: {result.get('dataset_id', '-')}",
+            f"board: {result.get('board_id', '-')}",
+            f"passed: {result.get('passed')}",
+            f"skipped: {result.get('skipped')}",
+            f"elapsed avg us: {result.get('elapsed_us_avg', '-')}",
+            f"error: {result.get('error_msg', '')}" if result.get("error_msg") else "",
+        ]
+    else:
+        state = "planned"
+        boards = ", ".join(config.get("board_ids", [])) if config else "-"
+        summary = f"configured for {boards}, not run yet"
+        details = [
+            f"terminal case: {config.get('terminal_case_id', '-') if config else '-'}",
+            f"dataset: {config.get('dataset_id', '-') if config else '-'}",
+            f"arm case id: {config.get('arm_case_id', '-') if config else '-'}",
+        ]
+    return {
+        "id": f"terminal-{case_id}",
+        "label": f"{case_id} ARM C",
+        "kind": "terminal",
+        "state": state,
+        "summary": summary,
         "details": details,
         "children": [],
     }
@@ -370,6 +514,7 @@ def _render_html(payload: dict[str, Any]) -> str:
       --root: #1d4f91;
       --extension: #5f4b99;
       --boundary: #56616f;
+      --terminal: #0b7794;
       --shadow: 0 12px 28px rgba(22, 34, 49, 0.10);
     }}
     * {{ box-sizing: border-box; }}
@@ -490,6 +635,7 @@ def _render_html(payload: dict[str, Any]) -> str:
     .state-not_started rect {{ stroke: var(--not-started); }}
     .state-extension rect {{ stroke: var(--extension); }}
     .state-boundary rect {{ stroke: var(--boundary); }}
+    .state-terminal rect {{ stroke: var(--terminal); }}
     .state-official rect {{ stroke: var(--root); }}
     .node.selected rect {{ stroke-width: 2.8; }}
     .badge-bg.root {{ fill: var(--root); }}
@@ -499,6 +645,7 @@ def _render_html(payload: dict[str, Any]) -> str:
     .badge-bg.not_started {{ fill: var(--not-started); }}
     .badge-bg.extension {{ fill: var(--extension); }}
     .badge-bg.boundary {{ fill: var(--boundary); }}
+    .badge-bg.terminal {{ fill: var(--terminal); }}
     .badge-bg.official {{ fill: var(--root); }}
     #detail {{
       position: absolute;
@@ -585,6 +732,7 @@ def _render_html(payload: dict[str, Any]) -> str:
         <span class="pill">已登记未完成 {payload["summary"]["official_planned"]}</span>
         <span class="pill">尚未开始 {payload["summary"]["official_not_started"]}</span>
         <span class="pill">target {payload["latest"]["passed"]}/{payload["latest"]["total"]} PASS</span>
+        <span class="pill">ARM terminal {payload["terminal"]["passed"]}/{payload["terminal"]["total"]} PASS · skip {payload["terminal"]["skipped"]}</span>
       </div>
     </div>
     <div class="toolbar">
@@ -614,13 +762,14 @@ def _render_html(payload: dict[str, Any]) -> str:
       <span class="legend-item"><span class="dot unsupported"></span>明确不支持</span>
       <span class="legend-item"><span class="dot not_started"></span>尚未开始</span>
       <span class="legend-item"><span class="dot extension"></span>观察扩展</span>
+      <span class="legend-item"><span class="dot" style="background: var(--terminal);"></span>ARM 终端</span>
     </div>
   </section>
 </div>
 <script>
 const PAYLOAD = {payload_json};
 const tree = PAYLOAD.tree;
-const expanded = new Set(["root", "official", "official-supported", "official-planned", "extension", "boundary"]);
+const expanded = new Set(["root", "official", "official-supported", "official-planned", "extension", "boundary", "terminal"]);
 let selectedId = "root";
 let transform = {{ x: 70, y: 90, k: 1 }};
 const nodeW = 250;
@@ -646,7 +795,8 @@ function stateLabel(state) {{
     unsupported: "unsupported",
     not_started: "not started",
     extension: "extension",
-    boundary: "boundary"
+    boundary: "boundary",
+    terminal: "terminal"
   }}[state] || state || "node";
 }}
 

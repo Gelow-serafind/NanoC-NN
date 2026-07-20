@@ -195,6 +195,13 @@ TDD 执行分为两种模式：
 - 将 C 输出反量化到 ONNX 输出语义，比较 top1、误差阈值和饱和情况。
 - 若 ONNX 与 C 输出差异超过用例阈值，即使结构验收 PASS，也不能宣称该完整网络转换正确。
 
+对已经接入真实开发板的核心用例，还可以执行终端实机验收：
+
+- 使用同一组输入样本运行原始 ONNX、Host C 和 ARM C。
+- ARM C 通过 `tdd/terminal/` 中的板卡配置、烧录流程和 UART 协议执行。
+- 比较 ONNX top1、Host C int8 输出和 ARM C int8 输出，并记录板端 `elapsed_us`。
+- 终端实机验收是可选门禁：没有 STM32 接入时不阻塞普通全量回归；接入后可作为发布前最后一环。
+
 对 `blocked` / `unsupported` 用例，PASS 表示 pipeline 明确拒绝并返回非零，而不是崩溃或静默产出可交付代码。
 对 `oversize` 用例，PASS 表示生成语义本身没有进入 blocked/unsupported，但给定目标内核、SRAM/Flash 预算无法承载该模型。
 
@@ -313,12 +320,27 @@ python tdd/scripts/run_tests.py --validate-only
 python tdd/scripts/run_tests.py --mode baseline --generate
 python tdd/scripts/run_tests.py --mode target --generate
 python tdd/scripts/run_regression.py --generate
+python tdd/scripts/run_regression.py --generate --terminal auto
+python tdd/terminal/scripts/run_terminal_tests.py --case TOPO_003 --generate --flash --require-board
 python tdd/scripts/run_tests.py --case GEMM_001 --generate
+```
+
+如果本机没有单一 Python 环境同时满足 ONNX schema 校验和 ONNX Runtime
+执行需求，可以在稳定回归中显式拆分解释器：
+
+```bash
+python tdd/scripts/run_regression.py --generate --terminal auto \
+  --structural-python /path/to/onnx-1.22-python \
+  --numeric-python /path/to/ort-python \
+  --terminal-python /path/to/ort-python \
+  --numeric-pythonpath src
 ```
 
 具体的测试用例规格见 `tdd/cases/`，当前能力集见 `tdd/CAPABILITIES.md`，迭代记录见 `tdd/iterations/`。本文件不会改变——因为开发理念不会改变。
 
 目录结构、持久 fixture、临时 workdir 和数值测试规则见 `tdd/STRUCTURE.md`。任何人工数据集、真实用户模型或调试样本都必须放入 `tdd/fixtures/`，不得放入 `tdd/work/` 或 `tdd/results/tmp/`。
+
+终端实机验收见 `tdd/terminal/`。它是 ONNX-vs-HostC-vs-ARMC 的硬件在位测试层，结果会被 `tdd/scripts/generate_support_map.py` 读取并显示到 ONNX 支持思维导图中。
 
 新增完整网络能力时，优先使用：
 
