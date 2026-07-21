@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-07-17T01:04:44.023005",
+  "timestamp": "2026-07-21T22:46:51.884347",
   "mode": "baseline",
-  "git_commit": "bd24531",
+  "git_commit": "0965943",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_tests.py --mode baseline --generate",
-  "total": 15,
-  "passed": 15,
+  "total": 18,
+  "passed": 18,
   "failed": 0,
   "results": [
     {
@@ -26,7 +26,27 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.65
+      "duration_sec": 0.64
+    },
+    {
+      "case_id": "AVGPOOL_002",
+      "category": "core/avgpool",
+      "onnx_path": "tdd/work/models/core/avgpool/AVGPOOL_002.onnx",
+      "output_dir": "tdd/work/structural/AVGPOOL_002",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_avgpool_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.39
     },
     {
       "case_id": "CONCAT_001",
@@ -46,7 +66,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.33
+      "duration_sec": 0.66
     },
     {
       "case_id": "CONCAT_002",
@@ -66,7 +86,45 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.29
+      "duration_sec": 0.41
+    },
+    {
+      "case_id": "FLATTEN_001",
+      "category": "core/flatten",
+      "onnx_path": "tdd/work/models/core/flatten/FLATTEN_001.onnx",
+      "output_dir": "tdd/work/structural/FLATTEN_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 0,
+      "error_msg": "",
+      "duration_sec": 0.38
+    },
+    {
+      "case_id": "MATMUL_001",
+      "category": "core/matmul",
+      "onnx_path": "tdd/work/models/core/matmul/MATMUL_001.onnx",
+      "output_dir": "tdd/work/structural/MATMUL_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_fully_connected_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.38
     },
     {
       "case_id": "MAXPOOL_001",
@@ -86,7 +144,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.29
+      "duration_sec": 0.38
     },
     {
       "case_id": "MAXPOOL_002",
@@ -106,7 +164,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.3
+      "duration_sec": 0.37
     },
     {
       "case_id": "SOFTMAX_001",
@@ -126,7 +184,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.29
+      "duration_sec": 0.38
     },
     {
       "case_id": "SOFTMAX_002",
@@ -146,7 +204,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.3
+      "duration_sec": 0.41
     },
     {
       "case_id": "NET_001",
@@ -170,7 +228,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 2.42
+      "duration_sec": 2.47
     },
     {
       "case_id": "NET_005",
@@ -191,7 +249,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.56
+      "duration_sec": 0.59
     },
     {
       "case_id": "TS_001",
@@ -209,7 +267,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.31
+      "duration_sec": 0.41
     },
     {
       "case_id": "TS_002",
@@ -227,7 +285,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.34
+      "duration_sec": 0.44
     },
     {
       "case_id": "TS_003",
@@ -245,7 +303,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.34
+      "duration_sec": 0.43
     },
     {
       "case_id": "TS_004",
@@ -263,7 +321,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.34
+      "duration_sec": 0.42
     },
     {
       "case_id": "TS_005",
@@ -281,7 +339,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.3
+      "duration_sec": 0.4
     },
     {
       "case_id": "TOPO_003",
@@ -304,7 +362,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.51
+      "duration_sec": 1.21
     }
   ]
 }

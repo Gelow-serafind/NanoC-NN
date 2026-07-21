@@ -6,17 +6,20 @@
 
 NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
-截至 2026-07-11：
+截至 2026-07-21：
 
-- target 结构回归：`33/33 PASS`
-- 稳定回归入口：`python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `15/15 PASS`
-- 数值回归：`11/11 PASS`，`NET_001` SqueezeNet 已加入 ONNX-vs-C 并行推理验收，`top1=4/4`，饱和率 `0.00`，最大绝对误差 `0.2`
+- target 结构回归：`36/36 PASS`
+- 稳定回归入口：`python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `18/18 PASS`
+- 数值回归：`14/14 PASS`，`MATMUL_001` 官方 `MatMul` FC-compatible 形态已加入 ONNX-vs-C 并行推理验收；`NET_001` SqueezeNet 数值验收维持 `top1=4/4`，饱和率 `0.00`，最大绝对误差 `0.2`
 - 终端实机验收层已建立：`tdd/terminal/` 支持 ONNX-vs-HostC-vs-ARMC 三路对比，当前首个接入目标为 `TOPO_003` MNIST int8 on STM32F103
 - 真实网络导入测试扩展到 `NET_001~NET_006`
 - 新增/晋升结构 `ok` 网络：`NET_001` SqueezeNet 1.0 int8、`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
 - 新增正确拒绝网络：`NET_003` SSD-MobileNet int8、`NET_006` EfficientNet-Lite4 int8，当前为 `unsupported`
 - 平台预算拦截已从 `blocked` 拆出为 `oversize`
 - ONNX 官方 `Concat` 已按 schema-driven TDD 进入能力集，当前确认子形态为 rank=4 NCHW、`axis=1` channel concat、同量化 QDQ/int8，lowering 到 `arm_concatenation_s8_z`
+- ONNX 官方 `GlobalAveragePool` 已按 schema-driven TDD 进入能力集，当前确认子形态为 rank=4 NCHW、QDQ/int8、全局 H/W 池化，lowering 到 `arm_avgpool_s8`
+- ONNX 官方 `Flatten` 已按 schema-driven TDD 进入能力集，当前确认子形态为 QDQ/int8、`axis=1`、保持 ONNX row-major flatten 顺序；无 CMSIS 算术 kernel，codegen 生成 layout-only copy 路径。
+- ONNX 官方 `MatMul` 已按 schema-driven TDD 进入能力集，当前确认子形态为 `A[1,I] x B[I,O] -> Y[1,O]`、QDQ/int8、静态常量权重，lowering 到 `arm_fully_connected_s8`。
 - SqueezeNet 暴露出的 Microsoft 扩展 `QLinearGlobalAveragePool` 已提炼为独立最小用例 `AVGPOOL_001`，当前确认静态 rank=4 NCHW、全局 H/W 池化，lowering 到 `arm_avgpool_s8`
 - `NET_001` SqueezeNet 1.0 int8 已完成结构与数值闭环：完整网络可生成真实 CMSIS-NN C 工程，通过 C99 smoke compile/run，并在统一 smoke 数据集上通过 ONNX-vs-C 并行推理验收。
 
@@ -35,24 +38,26 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 33 |
-| target 通过 | 33 |
+| 测试用例总数 | 36 |
+| target 通过 | 36 |
 | target 失败 | 0 |
-| 稳定结构回归 | 15/15 PASS |
-| 数值回归 | 11/11 PASS |
+| 稳定结构回归 | 18/18 PASS |
+| 数值回归 | 14/14 PASS |
 | 终端实机验收 | 可选门禁，接入 STM32 时执行 |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
-| 最新迭代记录 | `tdd/iterations/019_squeezenet_numeric_pass.md` |
+| 最新迭代记录 | `tdd/iterations/021_graph_matmul_fc.md` |
 
 ## 已确认主线能力
 
 | 能力 | 代表用例 | 当前结论 |
 |------|----------|----------|
 | Conv / QLinearConv CMSIS-NN 生成 | `CONV_001~004`, `QLINEAR_NUM_001~003` | PASS |
-| Gemm / MatMul / FC 生成 | `GEMM_001~004` | PASS |
+| Gemm / MatMul / FC 生成 | `GEMM_001~004`, `MATMUL_001` | PASS |
 | MaxPool int8 生成 | `MAXPOOL_001`, `MAXPOOL_002` | PASS |
+| GlobalAveragePool int8 生成 | `AVGPOOL_002` | 结构 PASS + 数值 PASS |
 | QLinearGlobalAveragePool int8 生成 | `AVGPOOL_001` | PASS |
+| Flatten int8 布局折叠 / copy | `FLATTEN_001` | 结构 PASS + 数值 PASS |
 | Softmax int8 生成 | `SOFTMAX_001`, `SOFTMAX_002` | PASS，`SOFTMAX_002` 数值 PASS |
 | Concat int8 channel 拼接 | `CONCAT_001`, `CONCAT_002` | 结构 PASS + 数值 PASS |
 | 组合拓扑生成 | `TOPO_001`, `TOPO_002` | PASS |
@@ -174,4 +179,4 @@ python tdd/tools/mnist_capture/server.py
 4. 继续导入 keyword spotting、tiny anomaly detection、简单 IMU 分类等 MCU 常见小模型。
 5. 将 `NET_004` KWS-style 升级为数值验收候选。
 6. 为 `NET_002` 和 `NET_001` 增加显式 SRAM/Flash 预算 probe，验证 Cortex-M3/M4/M7 平台门禁返回 `oversize` 而不是混入结构能力判断。
-7. 为 Conv1d NCW flatten 和 Conv/Relu Q/DQ 折叠补独立最小数值用例，降低完整网络失败时的定位成本。
+7. 继续沿 ONNX 官方图谱推进下一个 MCU 常见算子形态，例如 `AveragePool` 非全局池化、`Reshape` 独立数值用例，或从 `NET_004` KWS-style 升级数值验收反向提炼下一批 case。

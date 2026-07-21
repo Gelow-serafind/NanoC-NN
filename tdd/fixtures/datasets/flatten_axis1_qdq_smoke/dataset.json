@@ -1,0 +1,26 @@
+{
+  "dataset_id": "flatten_axis1_qdq_smoke",
+  "case_id": "FLATTEN_001",
+  "input_tensor": "input",
+  "input_shape": [1, 2, 2, 3],
+  "samples": [
+    {
+      "id": "ordered_values",
+      "values": [
+        -0.25, -0.20, -0.15,
+        -0.10, -0.05, 0.00,
+        0.05, 0.10, 0.15,
+        0.20, 0.25, 0.30
+      ]
+    },
+    {
+      "id": "top1_last_channel",
+      "values": [
+        0.00, 0.05, 0.10,
+        0.15, 0.20, 0.25,
+        -0.10, -0.05, 0.00,
+        0.05, 0.10, 0.35
+      ]
+    }
+  ]
+}

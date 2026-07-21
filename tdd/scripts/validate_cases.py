@@ -131,7 +131,12 @@ def _check_support_matrix(errors: list[str]) -> None:
             errors.append(
                 f"{entry.support_id}: 非法 capability_type={entry.capability_type!r}"
             )
-        if entry.backend == "cmsis-nn" and entry.status == "ok" and not entry.cmsis_apis:
+        if (
+            entry.backend == "cmsis-nn"
+            and entry.status == "ok"
+            and not entry.cmsis_apis
+            and not entry.lowering.startswith("generation_time_")
+        ):
             errors.append(f"{entry.support_id}: cmsis-nn ok 行必须声明 cmsis_apis")
         if entry.support_id not in referenced and not entry.planned:
             errors.append(
@@ -196,7 +201,8 @@ def _check_case_support_refs(case_id: str, case_def, errors: list[str]) -> None:
     cmsis_entries = [
         entry for entry in entries if entry.backend == "cmsis-nn" and entry.status == "ok"
     ]
-    if cmsis_entries and not case_def.required_apis:
+    cmsis_api_entries = [entry for entry in cmsis_entries if entry.cmsis_apis]
+    if cmsis_api_entries and not case_def.required_apis:
         errors.append(f"{case_id}: cmsis-nn ok 用例必须声明 required_apis")
 
     declared_apis = set(case_def.required_apis)

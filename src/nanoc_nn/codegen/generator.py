@@ -240,6 +240,8 @@ def _model_c(
         "#include \"arm_nnsupportfunctions.h\"",
         "#endif",
         "",
+        "#include <string.h>",
+        "",
         "static int8_t nanoc_activation_a[NANOC_MODEL_ACTIVATION_A_BYTES];",
         "static int8_t nanoc_activation_b[NANOC_MODEL_ACTIVATION_B_BYTES];",
         "static int8_t nanoc_scratch[NANOC_MODEL_SCRATCH_BYTES];",
@@ -303,6 +305,22 @@ def _model_c(
             ]
         )
         lines.extend(void_lines)
+    elif status == "ok":
+        copy_lines = _folded_runtime_copy_body(graph)
+        if copy_lines:
+            lines.extend(copy_lines)
+        else:
+            lines.extend(
+                [
+                    "    (void)input;",
+                    "    (void)output;",
+                    "    (void)nanoc_activation_a;",
+                    "    (void)nanoc_activation_b;",
+                    "    (void)nanoc_scratch;",
+                    "",
+                    "    return NANOC_STATUS_BLOCKED;",
+                ]
+            )
     else:
         lines.extend(
             [
@@ -329,6 +347,40 @@ def _model_c(
         )
     lines.extend(["}", ""])
     return "\n".join(lines)
+
+
+def _folded_runtime_copy_body(graph: ModelGraph) -> list[str]:
+    if not graph.inputs or not graph.outputs:
+        return []
+    aliases = _tensor_aliases(graph)
+    model_inputs = {tensor.name for tensor in graph.inputs}
+    output_name = graph.outputs[0].name
+    source_name = _resolve_tensor_alias(output_name, aliases)
+    if source_name not in model_inputs:
+        return []
+    input_size = _graph_input_size(graph)
+    output_size = _graph_output_size(graph)
+    if input_size != output_size:
+        return []
+    lines = [
+        "    (void)nanoc_activation_a;",
+        "    (void)nanoc_activation_b;",
+        "    (void)nanoc_scratch;",
+    ]
+    input_shape = _graph_input_shape(graph)
+    if _needs_nchw_to_nhwc_boundary_transpose(input_shape):
+        lines.append("    (void)nanoc_input_nhwc;")
+    output_shape = _graph_output_shape(graph)
+    if _needs_nchw_to_nhwc_boundary_transpose(output_shape):
+        lines.append("    (void)nanoc_output_nhwc;")
+    lines.extend(
+        [
+            "",
+            f"    memcpy(output, input, {output_size}u);",
+            "    return NANOC_STATUS_OK;",
+        ]
+    )
+    return lines
 
 
 def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
@@ -948,6 +1000,12 @@ def _graph_output_size(graph: ModelGraph) -> int:
     if not graph.outputs:
         return 1
     return graph.outputs[0].element_count or 1
+
+
+def _graph_input_size(graph: ModelGraph) -> int:
+    if not graph.inputs:
+        return 1
+    return graph.inputs[0].element_count or 1
 
 
 def _cmsis_fc_call(layer: dict[str, Any], current_output: str) -> list[str]:

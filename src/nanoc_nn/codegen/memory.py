@@ -113,7 +113,10 @@ def _two_largest_activation_buffers(candidates: list[BufferPlan]) -> list[Buffer
     sorted_candidates = sorted(candidates, key=lambda item: item.size_bytes, reverse=True)
     selected = sorted_candidates[:2]
     if not selected:
-        return [BufferPlan("activation:empty", 1, "minimum C99-safe placeholder")]
+        selected = [
+            BufferPlan("activation:empty_a", 1, "minimum C99-safe placeholder"),
+            BufferPlan("activation:empty_b", 1, "minimum C99-safe placeholder"),
+        ]
     if len(selected) == 1:
         selected.append(BufferPlan("activation:secondary_placeholder", 1, "double-buffer reserve"))
     return [

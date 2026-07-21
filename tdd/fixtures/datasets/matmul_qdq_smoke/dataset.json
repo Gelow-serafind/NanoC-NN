@@ -1,0 +1,16 @@
+{
+  "dataset_id": "matmul_qdq_smoke",
+  "case_id": "MATMUL_001",
+  "input_tensor": "input",
+  "input_shape": [1, 4],
+  "samples": [
+    {
+      "id": "class_0_probe",
+      "values": [0.30, -0.10, -0.20, 0.15]
+    },
+    {
+      "id": "class_2_probe",
+      "values": [-0.15, -0.10, 0.35, 0.25]
+    }
+  ]
+}

@@ -798,7 +798,11 @@ def _int8_contract(
         )
     if unsupported_nodes:
         status = "unsupported"
-    elif missing_quant_nodes or not node_quant:
+    elif missing_quant_nodes:
+        status = "blocked"
+    elif not runtime_nodes:
+        status = "ok"
+    elif not node_quant:
         status = "blocked"
     else:
         status = "ok"
@@ -1475,12 +1479,6 @@ def _fully_connected_quant_info(
             "FC renderer requires row-major [out, in] weights."
         )
         return None
-    if node.op_type == "MatMul":
-        warnings.append(
-            f"node '{node.name}' is quantized MatMul; first CMSIS-NN FC renderer only "
-            "supports Gemm with transB=1."
-        )
-        return None
     input_name = node.inputs[0]
     weight_input = node.inputs[1]
     output_name = node.outputs[0] if node.outputs else ""
@@ -1490,6 +1488,17 @@ def _fully_connected_quant_info(
     output_quant = tensor_quant.get(output_name)
     if input_quant is None or output_quant is None or weight_info is None:
         return None
+    if node.op_type == "MatMul":
+        matmul_weight = _matmul_fc_weight_info(
+            node,
+            quant_weight_name,
+            weight_info,
+            warnings,
+        )
+        if matmul_weight is None:
+            return None
+        quant_weight_name, weight_info = matmul_weight
+        quantized_weights[quant_weight_name] = weight_info
 
     real_multiplier = (
         float(input_quant["scale"]) * float(weight_info["scale"]) / float(output_quant["scale"])
@@ -1537,6 +1546,62 @@ def _fully_connected_quant_info(
             "scratch_getter": "arm_fully_connected_s8_get_buffer_size",
         },
     }
+
+
+def _matmul_fc_weight_info(
+    node: NodeInfo,
+    quant_weight_name: str,
+    weight_info: dict[str, Any],
+    warnings: list[str],
+) -> tuple[str, dict[str, Any]] | None:
+    weight_shape = weight_info.get("shape", [])
+    if not isinstance(weight_shape, list) or len(weight_shape) != 2:
+        warnings.append(
+            f"node '{node.name}' is quantized MatMul but constant weight is not rank-2."
+        )
+        return None
+    input_name = node.inputs[0] if node.inputs else ""
+    output_name = node.outputs[0] if node.outputs else ""
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if (
+        len(input_shape) != 2
+        or len(output_shape) != 2
+        or not all(isinstance(dim, int) and dim > 0 for dim in input_shape + output_shape)
+        or int(input_shape[0]) != 1
+        or int(output_shape[0]) != 1
+    ):
+        warnings.append(
+            f"node '{node.name}' is quantized MatMul but is not the supported [1,I] x [I,O] FC form."
+        )
+        return None
+    input_size = int(input_shape[1])
+    output_size = int(output_shape[1])
+    if int(weight_shape[0]) != input_size or int(weight_shape[1]) != output_size:
+        warnings.append(
+            f"node '{node.name}' MatMul weight shape {weight_shape} does not match [I,O]=[{input_size},{output_size}]."
+        )
+        return None
+    values = weight_info.get("values", [])
+    if not isinstance(values, list) or len(values) != input_size * output_size:
+        warnings.append(f"node '{node.name}' MatMul weight values are incomplete.")
+        return None
+    transposed_values = (
+        np.asarray(values, dtype=np.int8)
+        .reshape(input_size, output_size)
+        .T
+        .reshape(-1)
+        .astype(np.int8)
+        .tolist()
+    )
+    cmsis_weight_name = f"{quant_weight_name}__cmsis_fc"
+    cmsis_weight = dict(weight_info)
+    cmsis_weight["name"] = cmsis_weight_name
+    cmsis_weight["shape"] = [output_size, input_size]
+    cmsis_weight["values"] = [int(item) for item in transposed_values]
+    cmsis_weight["source_initializer"] = quant_weight_name
+    cmsis_weight["layout_transform"] = "MatMul B[I,O] -> CMSIS FC weight[O,I]"
+    return cmsis_weight_name, cmsis_weight
 
 
 def _conv_quant_info(

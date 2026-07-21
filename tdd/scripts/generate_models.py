@@ -27,6 +27,7 @@ from common.model_builder import (  # noqa: E402
     make_conv_node,
     make_flatten_node,
     make_gemm_node,
+    make_global_avgpool_node,
     make_maxpool_node,
     make_qdq_wrapper,
     make_relu_node,
@@ -168,6 +169,80 @@ def gen_gemm_004() -> Path:
         output_shape=[1, 32], output_scale=0.02, output_zp=0,
         runtime_nodes=gemm_nodes,
         runtime_initializers=gemm_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_matmul_001() -> Path:
+    """MATMUL_001: 官方 MatMul FC-compatible — [1,4] x [4,3] -> [1,3]."""
+    path = MODELS_ROOT / "core" / "matmul" / "MATMUL_001.onnx"
+    weight_q = np.array(
+        [
+            [3, -2, 1],
+            [1, 4, -3],
+            [-2, 1, 5],
+            [2, -1, 3],
+        ],
+        dtype=np.int8,
+    )
+    runtime_nodes = [
+        helper.make_node(
+            "DequantizeLinear",
+            ["matmul.weight.q", "matmul.weight.scale", "matmul.weight.zero_point"],
+            ["matmul.weight.dq"],
+            name="matmul_weight_dequant",
+        ),
+        helper.make_node(
+            "MatMul",
+            ["input_dq", "matmul.weight.dq"],
+            ["output"],
+            name="matmul",
+        ),
+    ]
+    runtime_initializers = [
+        numpy_helper.from_array(weight_q, name="matmul.weight.q"),
+        numpy_helper.from_array(np.array(0.04, dtype=np.float32), name="matmul.weight.scale"),
+        numpy_helper.from_array(np.array(0, dtype=np.int8), name="matmul.weight.zero_point"),
+    ]
+    _build_qdq_model(
+        graph_name="matmul_001",
+        input_shape=[1, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 3],
+        output_scale=0.04,
+        output_zp=0,
+        runtime_nodes=runtime_nodes,
+        runtime_initializers=runtime_initializers,
+        save_path=path,
+    )
+    return path
+
+
+# ---------------------------------------------------------------------------
+# CONV 用例生成
+# ---------------------------------------------------------------------------
+
+def gen_flatten_001() -> Path:
+    """FLATTEN_001: official Flatten QDQ axis=1 — [1,2,2,3] → [1,12]"""
+    path = MODELS_ROOT / "core" / "flatten" / "FLATTEN_001.onnx"
+    flatten_node = make_flatten_node(
+        "flatten",
+        ["input_dq"],
+        ["output"],
+        axis=1,
+    )
+    _build_qdq_model(
+        graph_name="flatten_001_axis1_qdq",
+        input_shape=[1, 2, 2, 3],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 12],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[flatten_node],
+        runtime_initializers=[],
         save_path=path,
     )
     return path
@@ -404,6 +479,29 @@ def gen_avgpool_001() -> Path:
     onnx.checker.check_model(model)
     path.parent.mkdir(parents=True, exist_ok=True)
     onnx.save(model, path)
+    return path
+
+
+def gen_avgpool_002() -> Path:
+    """AVGPOOL_002: official GlobalAveragePool QDQ — [1,4,3,3] → [1,4,1,1]"""
+    path = MODELS_ROOT / "core" / "avgpool" / "AVGPOOL_002.onnx"
+    pool_node = make_global_avgpool_node(
+        "global_avgpool",
+        ["input_dq"],
+        ["output"],
+    )
+    _build_qdq_model(
+        graph_name="avgpool_002_official_global",
+        input_shape=[1, 4, 3, 3],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 4, 1, 1],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[pool_node],
+        runtime_initializers=[],
+        save_path=path,
+    )
     return path
 
 
@@ -1107,6 +1205,8 @@ _GENERATORS: dict[str, object] = {
     "GEMM_002": gen_gemm_002,
     "GEMM_003": gen_gemm_003,
     "GEMM_004": gen_gemm_004,
+    "MATMUL_001": gen_matmul_001,
+    "FLATTEN_001": gen_flatten_001,
     "CONV_001": gen_conv_001,
     "CONV_002": gen_conv_002,
     "CONV_003": gen_conv_003,
@@ -1114,6 +1214,7 @@ _GENERATORS: dict[str, object] = {
     "MAXPOOL_001": gen_maxpool_001,
     "MAXPOOL_002": gen_maxpool_002,
     "AVGPOOL_001": gen_avgpool_001,
+    "AVGPOOL_002": gen_avgpool_002,
     "SOFTMAX_001": gen_softmax_001,
     "SOFTMAX_002": gen_softmax_002,
     "CONCAT_001": gen_concat_001,
