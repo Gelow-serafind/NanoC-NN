@@ -99,8 +99,8 @@ def make_qdq_wrapper(
 
     s_name = f"{base_name}_scale"
     zp_name = f"{base_name}_zp"
-    s_init = numpy_helper.from_array(np.array([scale], dtype=np.float32), name=s_name)
-    zp_init = numpy_helper.from_array(np.array([zero_point], dtype=np.int8), name=zp_name)
+    s_init = numpy_helper.from_array(np.array(scale, dtype=np.float32), name=s_name)
+    zp_init = numpy_helper.from_array(np.array(zero_point, dtype=np.int8), name=zp_name)
     initializers.extend([s_init, zp_init])
 
     int_name = f"{base_name}_int8"

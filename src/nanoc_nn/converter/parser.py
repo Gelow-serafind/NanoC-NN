@@ -20,6 +20,7 @@ from .naming import make_unique_c_names
 from .shape import tensor_dtype_name, tensor_info_from_value_info
 
 SUPPORTED_OPS = {
+    "Abs",
     "Add",
     "AveragePool",
     "BatchNormalization",
@@ -46,6 +47,7 @@ SUPPORTED_OPS = {
     "Shape",
     "Slice",
     "Softmax",
+    "Squeeze",
     "Transpose",
     "Unsqueeze",
 }
@@ -72,6 +74,7 @@ AUXILIARY_INITIALIZER_INPUTS = {
     "QLinearMatMul": {1, 2, 4, 5, 6, 7},
     "QuantizeLinear": {1, 2},
     "Reshape": {1},
+    "Squeeze": {1},
 }
 
 
@@ -549,6 +552,10 @@ def normalize_attributes(
         return {
             "broadcast": "numpy",
         }
+    if op_type == "Mul":
+        return {
+            "broadcast": "numpy",
+        }
     if op_type == "Constant":
         return attributes
     if op_type == "Concat":
@@ -556,6 +563,8 @@ def normalize_attributes(
     if op_type == "Gather":
         return {"axis": int(attributes.get("axis", 0))}
     if op_type == "Unsqueeze":
+        return {"axes": _as_int_list(attributes.get("axes"))}
+    if op_type == "Squeeze":
         return {"axes": _as_int_list(attributes.get("axes"))}
     if op_type == "Slice":
         return attributes
@@ -696,6 +705,24 @@ def _extract_quantization(
             if qlinear_pool_quant is not None:
                 node_quant[node.name] = qlinear_pool_quant
                 _attach_qlinear_node_tensors(tensor_quant, qlinear_pool_quant, node.name)
+        elif node.op_type == "Abs":
+            abs_quant = _abs_quant_info(node, tensor_quant, warnings)
+            if abs_quant is not None:
+                node_quant[node.name] = abs_quant
+        elif node.op_type in {"Add", "Mul"}:
+            elementwise_quant = _elementwise_quant_info(
+                node,
+                tensor_quant,
+                dq_aliases,
+                quantized_weights,
+                warnings,
+            )
+            if elementwise_quant is not None:
+                node_quant[node.name] = elementwise_quant
+        elif node.op_type == "Transpose":
+            transpose_quant = _transpose_quant_info(node, tensor_quant, warnings)
+            if transpose_quant is not None:
+                node_quant[node.name] = transpose_quant
         elif node.op_type in {"Gemm", "MatMul"}:
             fc_quant = _fully_connected_quant_info(
                 node,
@@ -751,6 +778,7 @@ def _int8_contract(
     node_quant: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     runtime_op_types = {
+        "Abs",
         "Add",
         "AveragePool",
         "Concat",
@@ -759,11 +787,13 @@ def _int8_contract(
         "GlobalAveragePool",
         "MatMul",
         "MaxPool",
+        "Mul",
         "QLinearAdd",
         "QLinearConv",
         "QLinearGlobalAveragePool",
         "QLinearMatMul",
         "Softmax",
+        "Transpose",
     }
     runtime_nodes = [
         node
@@ -886,7 +916,7 @@ def _propagate_passthrough_quant(
     nodes: list[NodeInfo],
     tensors: dict[str, dict[str, Any]],
 ) -> None:
-    passthrough_ops = {"Dropout", "Flatten", "Reshape", "Transpose"}
+    passthrough_ops = {"Dropout", "Flatten", "Reshape", "Squeeze", "Transpose"}
     changed = True
     while changed:
         changed = False
@@ -1253,6 +1283,185 @@ def _qlinear_add_quant_info(
             "activation_max": qmax,
             "block_size": block_size,
             "constant_input": b if weight_info is not None else "",
+        },
+    }
+
+
+def _abs_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    if (
+        float(input_quant["scale"]) != float(output_quant["scale"])
+        or int(input_quant["zero_point"]) != int(output_quant["zero_point"])
+    ):
+        warnings.append(
+            f"node '{node.name}' Abs has different input/output quantization; "
+            "first generated int8 Abs path requires identical scale and zero_point."
+        )
+        return None
+    block_size = 1
+    output_shape = next(iter(node.output_shapes.values()), [])
+    for dim in output_shape:
+        if isinstance(dim, int) and dim > 0:
+            block_size *= dim
+        else:
+            warnings.append(f"node '{node.name}' Abs output shape is dynamic.")
+            return None
+    qmin, qmax = _activation_range(output_quant)
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "generated_c_abs_s8",
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "block_size": block_size,
+        },
+    }
+
+
+def _elementwise_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    dq_aliases: dict[str, str],
+    quantized_weights: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 2 or not node.outputs:
+        return None
+    a, b = node.inputs[:2]
+    output_name = node.outputs[0]
+    input_1_quant = tensor_quant.get(a)
+    input_2_quant = tensor_quant.get(b)
+    output_quant = tensor_quant.get(output_name)
+    if input_1_quant is None or input_2_quant is None or output_quant is None:
+        return None
+    output_shape = next(iter(node.output_shapes.values()), [])
+    input_1_shape = node.input_shapes.get(a, [])
+    input_2_shape = node.input_shapes.get(b, [])
+    if input_1_shape != output_shape or input_2_shape != output_shape:
+        warnings.append(
+            f"node '{node.name}' {node.op_type} first generated int8 path requires same-shape inputs."
+        )
+        return None
+    block_size = 1
+    for dim in output_shape:
+        if isinstance(dim, int) and dim > 0:
+            block_size *= dim
+        else:
+            warnings.append(f"node '{node.name}' {node.op_type} output shape is dynamic.")
+            return None
+    qmin, qmax = _activation_range(output_quant)
+    weights = {"weight": "", "bias": "", "bias_values": []}
+    second_quantized = dq_aliases.get(b, b)
+    weight_info = quantized_weights.get(second_quantized)
+    if weight_info is not None:
+        weights["weight"] = second_quantized
+        weights["weight_info"] = weight_info
+    if node.op_type == "Add":
+        input_1_multiplier, input_1_shift = _quantize_multiplier(
+            float(input_1_quant["scale"]) / float(output_quant["scale"])
+        )
+        input_2_multiplier, input_2_shift = _quantize_multiplier(
+            float(input_2_quant["scale"]) / float(output_quant["scale"])
+        )
+        output_multiplier, output_shift = _quantize_multiplier(1.0)
+        cmsis_nn = {
+            "api": "arm_elementwise_add_s8",
+            "input_1_offset": -int(input_1_quant["zero_point"]),
+            "input_1_multiplier": input_1_multiplier,
+            "input_1_shift": input_1_shift,
+            "input_2_offset": -int(input_2_quant["zero_point"]),
+            "input_2_multiplier": input_2_multiplier,
+            "input_2_shift": input_2_shift,
+            "left_shift": 0,
+            "output_offset": int(output_quant["zero_point"]),
+            "output_multiplier": output_multiplier,
+            "output_shift": output_shift,
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "block_size": block_size,
+            "constant_input": second_quantized if weight_info is not None else "",
+        }
+    else:
+        output_multiplier, output_shift = _quantize_multiplier(
+            float(input_1_quant["scale"]) * float(input_2_quant["scale"]) / float(output_quant["scale"])
+        )
+        cmsis_nn = {
+            "api": "arm_elementwise_mul_s8",
+            "input_1_offset": -int(input_1_quant["zero_point"]),
+            "input_2_offset": -int(input_2_quant["zero_point"]),
+            "output_offset": int(output_quant["zero_point"]),
+            "output_multiplier": output_multiplier,
+            "output_shift": output_shift,
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "block_size": block_size,
+            "constant_input": second_quantized if weight_info is not None else "",
+        }
+    return {
+        "op_type": node.op_type,
+        "inputs": {a: input_1_quant, b: input_2_quant},
+        "outputs": {output_name: output_quant},
+        "weights": weights,
+        "cmsis_nn": cmsis_nn,
+    }
+
+
+def _transpose_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    if (
+        float(input_quant["scale"]) != float(output_quant["scale"])
+        or int(input_quant["zero_point"]) != int(output_quant["zero_point"])
+    ):
+        warnings.append(
+            f"node '{node.name}' Transpose first generated int8 path requires identical input/output quantization."
+        )
+        return None
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if len(input_shape) != 4 or len(output_shape) != 4:
+        warnings.append(f"node '{node.name}' Transpose first CMSIS-NN path requires rank=4 tensors.")
+        return None
+    if not all(isinstance(dim, int) and dim > 0 for dim in [*input_shape, *output_shape]):
+        warnings.append(f"node '{node.name}' Transpose shape is dynamic.")
+        return None
+    raw_perm = node.normalized_attributes.get("perm", node.attributes.get("perm", []))
+    perm = [int(item) for item in raw_perm] if isinstance(raw_perm, list) else []
+    if len(perm) != 4:
+        warnings.append(f"node '{node.name}' Transpose first CMSIS-NN path requires explicit rank=4 perm.")
+        return None
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "arm_transpose_s8",
+            "perm": perm,
+            "input_dims": [int(dim) for dim in input_shape],
+            "output_dims": [int(dim) for dim in output_shape],
         },
     }
 

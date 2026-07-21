@@ -25,12 +25,14 @@ from cases_registry import CASE_MAP  # noqa: E402
 from common.model_builder import (  # noqa: E402
     build_and_save,
     make_conv_node,
+    make_avgpool_node,
     make_flatten_node,
     make_gemm_node,
     make_global_avgpool_node,
     make_maxpool_node,
     make_qdq_wrapper,
     make_relu_node,
+    make_reshape_node,
     make_softmax_node,
 )
 
@@ -98,6 +100,25 @@ def _build_qdq_model(
 # ---------------------------------------------------------------------------
 # GEMM 用例生成
 # ---------------------------------------------------------------------------
+
+def gen_abs_001() -> Path:
+    """ABS_001: 官方 Abs QDQ/int8，同量化输入输出。"""
+    path = MODELS_ROOT / "core" / "abs" / "ABS_001.onnx"
+    abs_node = helper.make_node("Abs", ["input_dq"], ["output"], name="abs")
+    _build_qdq_model(
+        graph_name="abs_001",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[abs_node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
 
 def gen_gemm_001() -> Path:
     """GEMM_001: 最小对称 FC 无 bias — [1,2] → [1,3]"""
@@ -243,6 +264,56 @@ def gen_flatten_001() -> Path:
         output_zp=0,
         runtime_nodes=[flatten_node],
         runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_reshape_001() -> Path:
+    """RESHAPE_001: official Reshape QDQ — [1,2,3] -> [1,3,2]."""
+    path = MODELS_ROOT / "core" / "reshape" / "RESHAPE_001.onnx"
+    reshape_node, reshape_inits = make_reshape_node(
+        "reshape",
+        ["input_dq"],
+        ["output"],
+        target_shape=[1, 3, 2],
+    )
+    _build_qdq_model(
+        graph_name="reshape_001_qdq",
+        input_shape=[1, 2, 3],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 3, 2],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[reshape_node],
+        runtime_initializers=reshape_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_squeeze_001() -> Path:
+    """SQUEEZE_001: official Squeeze QDQ — [1,1,2,3] -> [1,2,3]."""
+    path = MODELS_ROOT / "core" / "squeeze" / "SQUEEZE_001.onnx"
+    axes_name = "squeeze.axes"
+    axes_init = numpy_helper.from_array(np.array([1], dtype=np.int64), name=axes_name)
+    squeeze_node = helper.make_node(
+        "Squeeze",
+        ["input_dq", axes_name],
+        ["output"],
+        name="squeeze",
+    )
+    _build_qdq_model(
+        graph_name="squeeze_001_qdq",
+        input_shape=[1, 1, 2, 3],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 2, 3],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[squeeze_node],
+        runtime_initializers=[axes_init],
         save_path=path,
     )
     return path
@@ -505,6 +576,72 @@ def gen_avgpool_002() -> Path:
     return path
 
 
+def gen_avgpool_003() -> Path:
+    """AVGPOOL_003: official AveragePool QDQ — [1,2,4,4] -> [1,2,2,2]."""
+    path = MODELS_ROOT / "core" / "avgpool" / "AVGPOOL_003.onnx"
+    input_shape = [1, 2, 4, 4]
+    output_shape = [1, 2, 2, 2]
+    scale = 0.05
+    zero_point = 0
+    input_name = "input"
+    output_name = "output"
+    pool_node = make_avgpool_node(
+        "avgpool",
+        ["input_dq"],
+        ["output"],
+        kernel_shape=[2, 2],
+        strides=[2, 2],
+        pads=[0, 0, 0, 0],
+    )
+    nodes = [
+        helper.make_node(
+            "QuantizeLinear",
+            [input_name, "avgpool_003_scale", "avgpool_003_zp"],
+            ["input_q"],
+            name="input_quant",
+        ),
+        helper.make_node(
+            "DequantizeLinear",
+            ["input_q", "avgpool_003_scale", "avgpool_003_zp"],
+            ["input_dq"],
+            name="input_dequant",
+        ),
+        pool_node,
+        helper.make_node(
+            "QuantizeLinear",
+            [output_name, "avgpool_003_scale", "avgpool_003_zp"],
+            ["output_q"],
+            name="output_quant",
+        ),
+        helper.make_node(
+            "DequantizeLinear",
+            ["output_q", "avgpool_003_scale", "avgpool_003_zp"],
+            ["output_dq"],
+            name="output_dequant",
+        ),
+    ]
+    initializers = [
+        numpy_helper.from_array(np.array(scale, dtype=np.float32), name="avgpool_003_scale"),
+        numpy_helper.from_array(np.array(zero_point, dtype=np.int8), name="avgpool_003_zp"),
+    ]
+    value_infos = [
+        helper.make_tensor_value_info("input_q", TensorProto.INT8, input_shape),
+        helper.make_tensor_value_info("input_dq", TensorProto.FLOAT, input_shape),
+        helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape),
+        helper.make_tensor_value_info("output_q", TensorProto.INT8, output_shape),
+    ]
+    build_and_save(
+        nodes=nodes,
+        inputs=[helper.make_tensor_value_info(input_name, TensorProto.FLOAT, input_shape)],
+        outputs=[helper.make_tensor_value_info("output_dq", TensorProto.FLOAT, output_shape)],
+        initializers=initializers,
+        save_path=path,
+        graph_name="avgpool_003_official_window",
+        value_infos=value_infos,
+    )
+    return path
+
+
 # ---------------------------------------------------------------------------
 # SOFTMAX 用例生成
 # ---------------------------------------------------------------------------
@@ -708,6 +845,119 @@ def gen_concat_002() -> Path:
         save_path=path,
         graph_name="concat_002_requant",
         value_infos=value_infos,
+    )
+    return path
+
+
+def _make_qdq_constant(
+    *,
+    prefix: str,
+    values: np.ndarray,
+    scale: float,
+    zero_point: int,
+) -> tuple[list, list, list, str]:
+    q_name = f"{prefix}.q"
+    scale_name = f"{prefix}.scale"
+    zp_name = f"{prefix}.zero_point"
+    dq_name = f"{prefix}.dq"
+    initializers = [
+        numpy_helper.from_array(values.astype(np.int8), name=q_name),
+        numpy_helper.from_array(np.array(scale, dtype=np.float32), name=scale_name),
+        numpy_helper.from_array(np.array(zero_point, dtype=np.int8), name=zp_name),
+    ]
+    nodes = [
+        helper.make_node(
+            "DequantizeLinear",
+            [q_name, scale_name, zp_name],
+            [dq_name],
+            name=f"{prefix}_dequant",
+        )
+    ]
+    value_infos = [helper.make_tensor_value_info(dq_name, TensorProto.FLOAT, list(values.shape))]
+    return nodes, initializers, value_infos, dq_name
+
+
+def gen_add_001() -> Path:
+    """ADD_001: official Add QDQ with constant second input — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "add" / "ADD_001.onnx"
+    const_nodes, const_inits, const_vis, const_dq = _make_qdq_constant(
+        prefix="add.const",
+        values=np.array([2, -1, 3, -2, 1, -3, 2, 0], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    add_node = helper.make_node(
+        "Add",
+        ["input_dq", const_dq],
+        ["output"],
+        name="add",
+    )
+    _build_qdq_model(
+        graph_name="add_001_qdq_const",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [add_node],
+        runtime_initializers=const_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_mul_001() -> Path:
+    """MUL_001: official Mul QDQ with constant second input — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "mul" / "MUL_001.onnx"
+    const_nodes, const_inits, const_vis, const_dq = _make_qdq_constant(
+        prefix="mul.const",
+        values=np.array([2, -1, 1, 3, -2, 2, 1, -1], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    mul_node = helper.make_node(
+        "Mul",
+        ["input_dq", const_dq],
+        ["output"],
+        name="mul",
+    )
+    _build_qdq_model(
+        graph_name="mul_001_qdq_const",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [mul_node],
+        runtime_initializers=const_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_transpose_001() -> Path:
+    """TRANSPOSE_001: official Transpose QDQ — [1,2,2,3] -> [1,2,3,2]."""
+    path = MODELS_ROOT / "core" / "transpose" / "TRANSPOSE_001.onnx"
+    transpose_node = helper.make_node(
+        "Transpose",
+        ["input_dq"],
+        ["output"],
+        name="transpose",
+        perm=[0, 2, 3, 1],
+    )
+    _build_qdq_model(
+        graph_name="transpose_001_qdq",
+        input_shape=[1, 2, 2, 3],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 2, 3, 2],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[transpose_node],
+        runtime_initializers=[],
+        save_path=path,
     )
     return path
 
@@ -1201,12 +1451,15 @@ def gen_qlinear_num_003() -> Path:
 # ---------------------------------------------------------------------------
 
 _GENERATORS: dict[str, object] = {
+    "ABS_001": gen_abs_001,
     "GEMM_001": gen_gemm_001,
     "GEMM_002": gen_gemm_002,
     "GEMM_003": gen_gemm_003,
     "GEMM_004": gen_gemm_004,
     "MATMUL_001": gen_matmul_001,
     "FLATTEN_001": gen_flatten_001,
+    "RESHAPE_001": gen_reshape_001,
+    "SQUEEZE_001": gen_squeeze_001,
     "CONV_001": gen_conv_001,
     "CONV_002": gen_conv_002,
     "CONV_003": gen_conv_003,
@@ -1215,10 +1468,14 @@ _GENERATORS: dict[str, object] = {
     "MAXPOOL_002": gen_maxpool_002,
     "AVGPOOL_001": gen_avgpool_001,
     "AVGPOOL_002": gen_avgpool_002,
+    "AVGPOOL_003": gen_avgpool_003,
     "SOFTMAX_001": gen_softmax_001,
     "SOFTMAX_002": gen_softmax_002,
     "CONCAT_001": gen_concat_001,
     "CONCAT_002": gen_concat_002,
+    "ADD_001": gen_add_001,
+    "MUL_001": gen_mul_001,
+    "TRANSPOSE_001": gen_transpose_001,
     "TOPO_001": gen_topo_001,
     "TOPO_002": gen_topo_002,
     "TOPO_003": gen_topo_003,

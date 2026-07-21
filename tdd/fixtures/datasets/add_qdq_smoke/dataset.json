@@ -1,0 +1,10 @@
+{
+  "dataset_id": "add_qdq_smoke",
+  "case_id": "ADD_001",
+  "input_tensor": "input",
+  "input_shape": [1, 8],
+  "samples": [
+    {"id": "mixed", "values": [-0.20, -0.05, 0.00, 0.10, 0.15, 0.20, -0.10, 0.05]},
+    {"id": "top_shift", "values": [0.00, 0.05, -0.15, 0.20, -0.05, 0.10, 0.25, -0.10]}
+  ]
+}

@@ -3,6 +3,7 @@ from __future__ import annotations
 from .model import ModelGraph, NodeSpec, OpMapping, element_count_from_shape
 
 RUNTIME_ACTIONS = {
+    "Abs": ("direct_api", "generated_c_abs_s8", False),
     "Add": ("direct_api", "arm_elementwise_add_s8", True),
     "AveragePool": ("direct_api", "arm_avgpool_s8", True),
     "Concat": ("direct_api", "arm_concatenation_s8_x/y/z/w", False),
@@ -21,6 +22,8 @@ RUNTIME_ACTIONS = {
 }
 
 RENDERED_RUNTIME_OPS = {
+    "Abs",
+    "Add",
     "AveragePool",
     "Concat",
     "Conv",
@@ -28,11 +31,13 @@ RENDERED_RUNTIME_OPS = {
     "GlobalAveragePool",
     "MatMul",
     "MaxPool",
+    "Mul",
     "QLinearAdd",
     "QLinearConv",
     "QLinearGlobalAveragePool",
     "QLinearMatMul",
     "Softmax",
+    "Transpose",
 }
 
 FOLDED_ACTIONS = {
@@ -44,6 +49,7 @@ FOLDED_ACTIONS = {
     "Gather": "generation-time shape/index helper",
     "QuantizeLinear": "generation-time quantization boundary",
     "Reshape": "generation-time shape fold",
+    "Squeeze": "generation-time shape fold",
     "Shape": "generation-time shape helper",
     "Slice": "generation-time shape/slice helper",
     "Unsqueeze": "generation-time shape helper",

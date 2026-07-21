@@ -11,6 +11,8 @@
 #include "arm_nnsupportfunctions.h"
 #endif
 
+#include <string.h>
+
 static int8_t nanoc_activation_a[NANOC_MODEL_ACTIVATION_A_BYTES];
 static int8_t nanoc_activation_b[NANOC_MODEL_ACTIVATION_B_BYTES];
 static int8_t nanoc_scratch[NANOC_MODEL_SCRATCH_BYTES];

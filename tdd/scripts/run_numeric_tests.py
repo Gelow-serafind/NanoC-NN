@@ -605,6 +605,7 @@ def _compile_c_runner(codegen_dir: Path, runner_c: Path, binary: Path) -> tuple[
         cc,
         "-std=c99",
         "-O2",
+        "-Wno-unknown-attributes",
         "-DNANOC_ENABLE_CMSIS_NN=1",
         "-I",
         str(codegen_dir / "include"),
@@ -655,6 +656,7 @@ def _collect_cmsis_sources() -> list[Path]:
         CMSIS_NN_ROOT / "Source" / "ActivationFunctions",
         CMSIS_NN_ROOT / "Source" / "SoftmaxFunctions",
         CMSIS_NN_ROOT / "Source" / "ConcatenationFunctions",
+        CMSIS_NN_ROOT / "Source" / "TransposeFunctions",
     ]
     sources: list[Path] = []
     for directory in dirs:

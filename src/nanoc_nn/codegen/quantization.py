@@ -3,6 +3,36 @@ from __future__ import annotations
 from .model import ModelGraph, OpMapping, QuantizationIssue
 
 REQUIRED_NODE_QUANT_FIELDS = {
+    "Abs": {
+        "cmsis_nn": {
+            "api",
+            "activation_min",
+            "activation_max",
+            "block_size",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "Add": {
+        "cmsis_nn": {
+            "api",
+            "input_1_offset",
+            "input_1_multiplier",
+            "input_1_shift",
+            "input_2_offset",
+            "input_2_multiplier",
+            "input_2_shift",
+            "left_shift",
+            "output_offset",
+            "output_multiplier",
+            "output_shift",
+            "activation_min",
+            "activation_max",
+            "block_size",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
     "Conv": {
         "cmsis_nn": {
             "api",
@@ -64,6 +94,31 @@ REQUIRED_NODE_QUANT_FIELDS = {
             "kernel_shape",
             "activation_min",
             "activation_max",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "Mul": {
+        "cmsis_nn": {
+            "api",
+            "input_1_offset",
+            "input_2_offset",
+            "output_offset",
+            "output_multiplier",
+            "output_shift",
+            "activation_min",
+            "activation_max",
+            "block_size",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    },
+    "Transpose": {
+        "cmsis_nn": {
+            "api",
+            "perm",
+            "input_dims",
+            "output_dims",
         },
         "inputs": "non_empty_dict",
         "outputs": "non_empty_dict",

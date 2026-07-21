@@ -95,6 +95,8 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
         if mapping.status in {"wrapper_api", "direct_api"}
         and mapping.onnx_op
         in {
+            "Abs",
+            "Add",
             "AveragePool",
             "Concat",
             "Conv",
@@ -102,11 +104,13 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "GlobalAveragePool",
             "MatMul",
             "MaxPool",
+            "Mul",
             "QLinearAdd",
             "QLinearConv",
             "QLinearGlobalAveragePool",
             "QLinearMatMul",
             "Softmax",
+            "Transpose",
         }
     ]
     generated_layers = _runtime_layers(graph, generated_runtime_mappings)
@@ -406,6 +410,12 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             lines.extend(_cmsis_pool_call(layer, current_output))
         elif layer["kind"] == "add":
             lines.extend(_cmsis_add_call(layer, current_output))
+        elif layer["kind"] == "mul":
+            lines.extend(_cmsis_mul_call(layer, current_output))
+        elif layer["kind"] == "abs":
+            lines.extend(_generated_abs_call(layer, current_output))
+        elif layer["kind"] == "transpose":
+            lines.extend(_cmsis_transpose_call(layer, current_output))
         elif layer["kind"] == "concat":
             lines.extend(_cmsis_concat_call(layer, current_output))
         elif layer["kind"] == "softmax":
@@ -439,8 +449,11 @@ def _cmsis_tensor_runtime_run_body_with_transpose(
     if graph.outputs:
         output_shape = _tensor_shape(graph, graph.outputs[0].name)
 
-    need_input_xpose = _needs_nchw_to_nhwc_boundary_transpose(input_shape)
-    need_output_xpose = _needs_nchw_to_nhwc_boundary_transpose(output_shape)
+    uses_nhwc_runtime = any(
+        layer.get("kind") in {"conv", "depthwise", "pool", "concat"} for layer in layers
+    )
+    need_input_xpose = uses_nhwc_runtime and _needs_nchw_to_nhwc_boundary_transpose(input_shape)
+    need_output_xpose = uses_nhwc_runtime and _needs_nchw_to_nhwc_boundary_transpose(output_shape)
 
     input_expr_overrides: dict[str, str] = {}
     output_expr_overrides: dict[str, str] = {}
@@ -606,6 +619,10 @@ def _cmsis_tensor_runtime_run_body(
             layer["input_1_expr"] = input_exprs[0]
             if not constant_symbol:
                 layer["input_2_expr"] = input_exprs[1]
+        if layer["kind"] == "mul" and len(input_exprs) >= 2:
+            layer["input_1_expr"] = input_exprs[0]
+            if not constant_symbol:
+                layer["input_2_expr"] = input_exprs[1]
         if layer["kind"] == "concat":
             layer["input_exprs"] = input_exprs
         if layer["kind"] == "conv":
@@ -616,6 +633,12 @@ def _cmsis_tensor_runtime_run_body(
             lines.extend(_cmsis_pool_call(layer, output_expr))
         elif layer["kind"] == "add":
             lines.extend(_cmsis_add_call(layer, output_expr))
+        elif layer["kind"] == "mul":
+            lines.extend(_cmsis_mul_call(layer, output_expr))
+        elif layer["kind"] == "abs":
+            lines.extend(_generated_abs_call(layer, output_expr))
+        elif layer["kind"] == "transpose":
+            lines.extend(_cmsis_transpose_call(layer, output_expr))
         elif layer["kind"] == "concat":
             lines.extend(_cmsis_concat_call(layer, output_expr))
         elif layer["kind"] == "softmax":
@@ -799,6 +822,7 @@ def _tensor_aliases(graph: ModelGraph) -> dict[str, str]:
         "QuantizeLinear",
         "Relu",
         "Reshape",
+        "Squeeze",
     }
     for node in graph.nodes:
         if node.op_type not in alias_ops or not node.inputs:
@@ -959,7 +983,11 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         return count
     if layer["kind"] == "fc":
         return int(layer.get("output_size", 0))
-    if layer["kind"] == "add":
+    if layer["kind"] in {"add", "mul"}:
+        return int(layer.get("block_size", 0))
+    if layer["kind"] == "abs":
+        return int(layer.get("block_size", 0))
+    if layer["kind"] == "transpose":
         return int(layer.get("block_size", 0))
     if layer["kind"] == "softmax":
         return int(layer.get("num_rows", 0)) * int(layer.get("row_size", 0))
@@ -1297,6 +1325,80 @@ def _cmsis_add_call(layer: dict[str, Any], current_output: str) -> list[str]:
     ]
 
 
+def _cmsis_mul_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_1 = layer.get("input_1_expr", "current_input")
+    input_2 = layer.get("constant_symbol") or "current_input"
+    if not layer.get("constant_symbol"):
+        input_2 = layer.get("input_2_expr", input_2)
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> arm_elementwise_mul_s8 */",
+        "    {",
+        "        cmsis_status = arm_elementwise_mul_s8(",
+        f"            {input_1},",
+        f"            {input_2},",
+        f"            {layer['input_1_offset']},",
+        f"            {layer['input_2_offset']},",
+        f"            {current_output},",
+        f"            {layer['output_offset']},",
+        f"            {layer['output_multiplier']},",
+        f"            {layer['output_shift']},",
+        f"            {layer['activation_min']},",
+        f"            {layer['activation_max']},",
+        f"            {layer['block_size']});",
+        "        if (cmsis_status != ARM_CMSIS_NN_SUCCESS) {",
+        "            return NANOC_STATUS_BLOCKED;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _generated_abs_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> generated_c_abs_s8 */",
+        "    {",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        f"            int32_t nanoc_v = (int32_t){input_expr}[nanoc_i];",
+        "            if (nanoc_v < 0) {",
+        "                nanoc_v = nanoc_v == -128 ? 127 : -nanoc_v;",
+        "            }",
+        f"            if (nanoc_v > {int(layer['activation_max'])}) {{ nanoc_v = {int(layer['activation_max'])}; }}",
+        f"            if (nanoc_v < {int(layer['activation_min'])}) {{ nanoc_v = {int(layer['activation_min'])}; }}",
+        f"            {current_output}[nanoc_i] = (int8_t)nanoc_v;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _cmsis_transpose_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    input_n, input_h, input_w, input_c = layer["input_dims"]
+    output_n, output_h, output_w, output_c = layer["output_dims"]
+    perm_values = ", ".join(f"{int(item)}u" for item in layer["perm"])
+    prefix = layer["symbol"]
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> arm_transpose_s8 */",
+        "    {",
+        f"        const uint32_t {prefix}_perm[{len(layer['perm'])}] = {{{perm_values}}};",
+        f"        const cmsis_nn_dims input_dims = {{{input_n}, {input_h}, {input_w}, {input_c}}};",
+        f"        const cmsis_nn_dims output_dims = {{{output_n}, {output_h}, {output_w}, {output_c}}};",
+        f"        const cmsis_nn_transpose_params transpose_params = {{{len(layer['perm'])}, {prefix}_perm}};",
+        "        cmsis_status = arm_transpose_s8(",
+        f"            {input_expr},",
+        f"            {current_output},",
+        "            &input_dims,",
+        "            &output_dims,",
+        "            &transpose_params);",
+        "        if (cmsis_status != ARM_CMSIS_NN_SUCCESS) {",
+        "            return NANOC_STATUS_BLOCKED;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
 def _cmsis_concat_call(layer: dict[str, Any], current_output: str) -> list[str]:
     input_exprs = layer.get("input_exprs", [])
     input_dims = layer["input_dims"]
@@ -1445,7 +1547,7 @@ def _quantized_weight_declarations(graph: ModelGraph) -> list[str]:
         if "weight_values" not in layer:
             continue
         weight_values = _int_values(layer["weight_values"])
-        if layer["kind"] == "add":
+        if layer["kind"] in {"add", "mul"}:
             lines.extend(
                 [
                     f"/* ONNX node: {layer['name']} constant input */",
@@ -1492,10 +1594,12 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
     mappings: list[OpMapping] = []
     for node in graph.nodes:
         if node.op_type not in {
+            "Add",
             "Conv",
             "Concat",
             "Gemm",
             "MatMul",
+            "Mul",
             "QLinearAdd",
             "QLinearConv",
             "QLinearMatMul",
@@ -1507,8 +1611,10 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
                 if _is_depthwise_conv_node(node)
                 else "arm_convolve_wrapper_s8"
             )
-        elif node.op_type == "QLinearAdd":
+        elif node.op_type in {"Add", "QLinearAdd"}:
             action = "arm_elementwise_add_s8"
+        elif node.op_type == "Mul":
+            action = "arm_elementwise_mul_s8"
         else:
             action = "arm_fully_connected_s8"
         mappings.append(
@@ -1548,10 +1654,16 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             layer = _pool_layer(graph, mapping)
         elif mapping.onnx_op == "Softmax":
             layer = _softmax_layer(graph, mapping)
+        elif mapping.onnx_op == "Abs":
+            layer = _abs_layer(graph, mapping)
         elif mapping.onnx_op in {"Gemm", "MatMul", "QLinearMatMul"}:
             layer = _fc_layer(graph, mapping)
-        elif mapping.onnx_op == "QLinearAdd":
+        elif mapping.onnx_op in {"Add", "QLinearAdd"}:
             layer = _add_layer(graph, mapping)
+        elif mapping.onnx_op == "Mul":
+            layer = _mul_layer(graph, mapping)
+        elif mapping.onnx_op == "Transpose":
+            layer = _transpose_layer(graph, mapping)
         elif mapping.onnx_op == "Concat":
             layer = _concat_layer(graph, mapping)
         else:
@@ -1830,7 +1942,9 @@ def _add_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
         "index": mapping.index,
         "name": mapping.node_name,
         "symbol": symbol,
-        "input_tensors": [node.inputs[0], node.inputs[3]] if len(node.inputs) > 3 else [],
+        "input_tensors": [node.inputs[0], node.inputs[3]]
+        if mapping.onnx_op == "QLinearAdd" and len(node.inputs) > 3
+        else list(node.inputs[:2]),
         "output_tensors": list(node.outputs),
         "input_1_offset": int(cmsis_nn["input_1_offset"]),
         "input_1_multiplier": int(cmsis_nn["input_1_multiplier"]),
@@ -1853,6 +1967,110 @@ def _add_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
         # runtime input for QLinearAdd: [activation, weight]).
         layer["constant_input_index"] = 1
     return layer
+
+
+def _mul_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    if any(field not in cmsis_nn for field in _CMSIS_MUL_REQUIRED_FIELDS):
+        return None
+    output_shape = _first_shape(node.output_shapes, node.outputs)
+    block_size = element_count_from_shape(output_shape or [])
+    if block_size is None:
+        block_size = int(cmsis_nn.get("block_size", 0))
+    if block_size <= 0:
+        return None
+    weights = graph.quantization.get("weights", {}) if graph.quantization else {}
+    quant_weights = quant.get("weights", {})
+    weight_name = str(quant_weights.get("weight", "")) if isinstance(quant_weights, dict) else ""
+    weight_info = weights.get(weight_name, {}) if isinstance(weights, dict) else {}
+    values = weight_info.get("values", []) if isinstance(weight_info, dict) else []
+    symbol = _c_symbol(f"nanoc_{mapping.node_name}")
+    layer: dict[str, Any] = {
+        "kind": "mul",
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": symbol,
+        "input_tensors": list(node.inputs[:2]),
+        "output_tensors": list(node.outputs),
+        "input_1_offset": int(cmsis_nn["input_1_offset"]),
+        "input_2_offset": int(cmsis_nn["input_2_offset"]),
+        "output_offset": int(cmsis_nn["output_offset"]),
+        "output_multiplier": int(cmsis_nn["output_multiplier"]),
+        "output_shift": int(cmsis_nn["output_shift"]),
+        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_max": int(cmsis_nn["activation_max"]),
+        "block_size": int(block_size),
+    }
+    if isinstance(values, list) and values:
+        layer["weight_values"] = values
+        layer["constant_symbol"] = f"{symbol}_weights"
+        layer["constant_input_index"] = 1
+    return layer
+
+
+def _abs_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None or not node.inputs:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    for field in ("activation_min", "activation_max", "block_size"):
+        if field not in cmsis_nn:
+            return None
+    output_shape = _first_shape(node.output_shapes, node.outputs)
+    block_size = element_count_from_shape(output_shape or [])
+    if block_size is None:
+        block_size = int(cmsis_nn.get("block_size", 0))
+    if block_size <= 0:
+        return None
+    return {
+        "kind": "abs",
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "input_tensors": [node.inputs[0]],
+        "output_tensors": list(node.outputs),
+        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_max": int(cmsis_nn["activation_max"]),
+        "block_size": int(block_size),
+    }
+
+
+def _transpose_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None or not node.inputs:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    if any(field not in cmsis_nn for field in _CMSIS_TRANSPOSE_REQUIRED_FIELDS):
+        return None
+    input_dims = [int(item) for item in cmsis_nn["input_dims"]]
+    output_dims = [int(item) for item in cmsis_nn["output_dims"]]
+    perm = [int(item) for item in cmsis_nn["perm"]]
+    if len(input_dims) != 4 or len(output_dims) != 4 or len(perm) != 4:
+        return None
+    return {
+        "kind": "transpose",
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "input_tensors": [node.inputs[0]],
+        "output_tensors": list(node.outputs),
+        "input_dims": input_dims,
+        "output_dims": output_dims,
+        "perm": perm,
+        "block_size": element_count_from_shape(output_dims) or 0,
+    }
 
 
 def _concat_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
@@ -2000,6 +2218,24 @@ _CMSIS_ADD_REQUIRED_FIELDS = (
     "activation_min",
     "activation_max",
     "block_size",
+)
+
+_CMSIS_MUL_REQUIRED_FIELDS = (
+    "input_1_offset",
+    "input_2_offset",
+    "output_offset",
+    "output_multiplier",
+    "output_shift",
+    "activation_min",
+    "activation_max",
+    "block_size",
+)
+
+_CMSIS_TRANSPOSE_REQUIRED_FIELDS = (
+    "api",
+    "perm",
+    "input_dims",
+    "output_dims",
 )
 
 
@@ -2277,6 +2513,7 @@ def _cmake_path(path: Path | None) -> str:
 
 
 REFERENCE_RUNTIME_OPS = {
+    "Abs",
     "Add",
     "Cast",
     "Concat",
@@ -2444,6 +2681,16 @@ def _reference_node_lines(
     if op in {"Flatten", "Reshape", "Dropout", "Cast", "Squeeze", "Unsqueeze"}:
         src = _reference_expr(graph, inputs[0])
         lines.extend(_copy_loop(src, out_expr, out_size))
+    elif op == "Abs":
+        src = _reference_expr(graph, inputs[0])
+        lines.extend(
+            [
+                f"    for (size_t i = 0u; i < {out_size}u; ++i) {{",
+                f"        float v = {src}[i];",
+                f"        {out_expr}[i] = v < 0.0f ? -v : v;",
+                "    }",
+            ]
+        )
     elif op == "Relu":
         src = _reference_expr(graph, inputs[0])
         lines.extend(

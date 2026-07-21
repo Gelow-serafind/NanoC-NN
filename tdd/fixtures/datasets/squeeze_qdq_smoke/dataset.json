@@ -1,0 +1,10 @@
+{
+  "dataset_id": "squeeze_qdq_smoke",
+  "case_id": "SQUEEZE_001",
+  "input_tensor": "input",
+  "input_shape": [1, 1, 2, 3],
+  "samples": [
+    {"id": "ordered", "values": [-0.30, -0.15, 0.00, 0.10, 0.25, 0.40]},
+    {"id": "top_middle", "values": [0.10, 0.15, 0.45, -0.05, -0.10, 0.05]}
+  ]
+}

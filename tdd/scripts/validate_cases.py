@@ -136,6 +136,7 @@ def _check_support_matrix(errors: list[str]) -> None:
             and entry.status == "ok"
             and not entry.cmsis_apis
             and not entry.lowering.startswith("generation_time_")
+            and not entry.lowering.startswith("generated_c_")
         ):
             errors.append(f"{entry.support_id}: cmsis-nn ok 行必须声明 cmsis_apis")
         if entry.support_id not in referenced and not entry.planned:

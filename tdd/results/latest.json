@@ -1,13 +1,51 @@
 {
-  "timestamp": "2026-07-21T22:47:48.521265",
+  "timestamp": "2026-07-22T00:58:25.664100",
   "mode": "target",
-  "git_commit": "0965943",
+  "git_commit": "04d3c5b",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "tdd/scripts/run_tests.py --mode target --generate",
-  "total": 36,
-  "passed": 36,
+  "total": 43,
+  "passed": 43,
   "failed": 0,
   "results": [
+    {
+      "case_id": "ABS_001",
+      "category": "core/abs",
+      "onnx_path": "tdd/work/models/core/abs/ABS_001.onnx",
+      "output_dir": "tdd/work/structural/ABS_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.42
+    },
+    {
+      "case_id": "ADD_001",
+      "category": "core/add",
+      "onnx_path": "tdd/work/models/core/add/ADD_001.onnx",
+      "output_dir": "tdd/work/structural/ADD_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_elementwise_add_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.43
+    },
     {
       "case_id": "AVGPOOL_001",
       "category": "core/avgpool",
@@ -26,7 +64,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.36
+      "duration_sec": 0.41
     },
     {
       "case_id": "AVGPOOL_002",
@@ -46,7 +84,27 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.38
+      "duration_sec": 0.4
+    },
+    {
+      "case_id": "AVGPOOL_003",
+      "category": "core/avgpool",
+      "onnx_path": "tdd/work/models/core/avgpool/AVGPOOL_003.onnx",
+      "output_dir": "tdd/work/structural/AVGPOOL_003",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_avgpool_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.43
     },
     {
       "case_id": "CONCAT_001",
@@ -66,7 +124,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.38
+      "duration_sec": 0.44
     },
     {
       "case_id": "CONCAT_002",
@@ -86,7 +144,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.35
+      "duration_sec": 0.42
     },
     {
       "case_id": "CONV_001",
@@ -106,7 +164,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.67
+      "duration_sec": 0.42
     },
     {
       "case_id": "CONV_002",
@@ -126,7 +184,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.69
+      "duration_sec": 0.43
     },
     {
       "case_id": "CONV_003",
@@ -146,7 +204,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.37
+      "duration_sec": 0.45
     },
     {
       "case_id": "CONV_004",
@@ -166,7 +224,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.35
+      "duration_sec": 0.44
     },
     {
       "case_id": "FLATTEN_001",
@@ -184,7 +242,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 0,
       "error_msg": "",
-      "duration_sec": 0.37
+      "duration_sec": 0.44
     },
     {
       "case_id": "GEMM_001",
@@ -204,7 +262,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.4
+      "duration_sec": 0.48
     },
     {
       "case_id": "GEMM_002",
@@ -224,7 +282,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.38
+      "duration_sec": 0.44
     },
     {
       "case_id": "GEMM_003",
@@ -244,7 +302,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.39
+      "duration_sec": 0.47
     },
     {
       "case_id": "GEMM_004",
@@ -264,7 +322,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.47
     },
     {
       "case_id": "MATMUL_001",
@@ -284,7 +342,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.68
+      "duration_sec": 0.46
     },
     {
       "case_id": "MAXPOOL_001",
@@ -304,7 +362,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.69
+      "duration_sec": 0.45
     },
     {
       "case_id": "MAXPOOL_002",
@@ -324,7 +382,27 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.37
+      "duration_sec": 0.46
+    },
+    {
+      "case_id": "MUL_001",
+      "category": "core/mul",
+      "onnx_path": "tdd/work/models/core/mul/MUL_001.onnx",
+      "output_dir": "tdd/work/structural/MUL_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_elementwise_mul_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.45
     },
     {
       "case_id": "QLINEAR_NUM_001",
@@ -344,7 +422,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.35
+      "duration_sec": 0.42
     },
     {
       "case_id": "QLINEAR_NUM_002",
@@ -364,7 +442,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.38
+      "duration_sec": 0.44
     },
     {
       "case_id": "QLINEAR_NUM_003",
@@ -384,7 +462,25 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.36
+      "duration_sec": 0.44
+    },
+    {
+      "case_id": "RESHAPE_001",
+      "category": "core/reshape",
+      "onnx_path": "tdd/work/models/core/reshape/RESHAPE_001.onnx",
+      "output_dir": "tdd/work/structural/RESHAPE_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 0,
+      "error_msg": "",
+      "duration_sec": 0.44
     },
     {
       "case_id": "SOFTMAX_001",
@@ -404,7 +500,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.35
+      "duration_sec": 0.42
     },
     {
       "case_id": "SOFTMAX_002",
@@ -424,7 +520,45 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.36
+      "duration_sec": 0.43
+    },
+    {
+      "case_id": "SQUEEZE_001",
+      "category": "core/squeeze",
+      "onnx_path": "tdd/work/models/core/squeeze/SQUEEZE_001.onnx",
+      "output_dir": "tdd/work/structural/SQUEEZE_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 0,
+      "error_msg": "",
+      "duration_sec": 0.44
+    },
+    {
+      "case_id": "TRANSPOSE_001",
+      "category": "core/transpose",
+      "onnx_path": "tdd/work/models/core/transpose/TRANSPOSE_001.onnx",
+      "output_dir": "tdd/work/structural/TRANSPOSE_001",
+      "expected": "ok",
+      "actual": "ok",
+      "passed": true,
+      "exit_code": 0,
+      "required_apis": [
+        "arm_transpose_s8"
+      ],
+      "missing_apis": [],
+      "api_check_ok": true,
+      "compile_ok": true,
+      "runtime_ok": true,
+      "runtime_exit_code": 2,
+      "error_msg": "",
+      "duration_sec": 0.42
     },
     {
       "case_id": "NEG_001",
@@ -466,7 +600,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 2.44
+      "duration_sec": 2.5
     },
     {
       "case_id": "NET_002",
@@ -490,7 +624,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 6.04
+      "duration_sec": 6.31
     },
     {
       "case_id": "NET_003",
@@ -508,7 +642,7 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 4.67
+      "duration_sec": 4.69
     },
     {
       "case_id": "NET_004",
@@ -552,7 +686,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.67
+      "duration_sec": 0.61
     },
     {
       "case_id": "NET_006",
@@ -570,7 +704,7 @@
       "runtime_ok": false,
       "runtime_exit_code": null,
       "error_msg": "",
-      "duration_sec": 11.65
+      "duration_sec": 11.68
     },
     {
       "case_id": "TS_001",
@@ -588,7 +722,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.41
+      "duration_sec": 0.55
     },
     {
       "case_id": "TS_002",
@@ -606,7 +740,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.43
+      "duration_sec": 0.54
     },
     {
       "case_id": "TS_003",
@@ -642,7 +776,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.43
+      "duration_sec": 0.42
     },
     {
       "case_id": "TS_005",
@@ -660,7 +794,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.48
+      "duration_sec": 0.37
     },
     {
       "case_id": "TOPO_001",
@@ -682,7 +816,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.6
+      "duration_sec": 0.61
     },
     {
       "case_id": "TOPO_002",
@@ -703,7 +837,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.59
+      "duration_sec": 0.6
     },
     {
       "case_id": "TOPO_003",
@@ -726,7 +860,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.4
+      "duration_sec": 0.59
     }
   ]
 }
