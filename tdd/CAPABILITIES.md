@@ -1,10 +1,10 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-07-22T00:58:25.664100
-> Git commit: `04d3c5b`
+> 最后更新: 2026-07-22T08:19:32.895115
+> Git commit: `09f84c4`
 
-**能力集大小: 43 / 43 (100%)**
+**能力集大小: 49 / 49 (100%)**
 
 ## 已验证能力 (PASS)
 
@@ -23,7 +23,9 @@
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_002 | core/conv | 3x3 标准 SAME padding | 2026-07-22 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_003 | core/conv | stride=2 下采样 | 2026-07-22 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_004 | core/conv | 非对称输入 zp!=0 | 2026-07-22 |
+| official | Div | same-shape QDQ/int8 tensors, non-zero second input may be constant | cmsis-nn | generated_c_div_s8 | DIV_001 | core/div | 官方 Div QDQ/int8 同形状非零常量分支数值精度 | 2026-07-22 |
 | official | Flatten | static QDQ/int8 tensor, axis=1, preserves ONNX row-major flatten order | cmsis-nn | generation_time_shape_alias_or_layout_copy | FLATTEN_001 | core/flatten | 官方 Flatten QDQ/int8 axis=1 数值顺序 | 2026-07-22 |
+| official | Gather | static QDQ/int8 tensor, constant indices, one axis | cmsis-nn | generated_c_gather_s8 | GATHER_001 | core/gather | 官方 Gather QDQ/int8 静态 indices 数值顺序 | 2026-07-22 |
 | official | Gemm | static 2-D fully connected form, optional bias, QDQ/int8 parameters | cmsis-nn | cmsis_fully_connected_s8 | GEMM_001 | core/gemm | 最小对称 FC 无 bias | 2026-07-22 |
 | official | Gemm | static 2-D fully connected form, optional bias, QDQ/int8 parameters | cmsis-nn | cmsis_fully_connected_s8 | GEMM_002 | core/gemm | 非对称输入 zp!=0 含 bias | 2026-07-22 |
 | official | Gemm | static 2-D fully connected form, optional bias, QDQ/int8 parameters | cmsis-nn | cmsis_fully_connected_s8 | GEMM_003 | core/gemm | 非 4 对齐维度 13->7 | 2026-07-22 |
@@ -32,13 +34,17 @@
 | official | MaxPool | rank=4 static NCHW, QDQ/int8 tensor, CMSIS-compatible pool window | cmsis-nn | cmsis_maxpool_s8 | MAXPOOL_001 | core/maxpool | 标准 2x2 stride=2 MaxPool int8 代码生成 | 2026-07-22 |
 | official | MaxPool | rank=4 static NCHW, QDQ/int8 tensor, CMSIS-compatible pool window | cmsis-nn | cmsis_maxpool_s8 | MAXPOOL_002 | core/maxpool | SqueezeNet 风格 DQ/MaxPool/Q int8 边界代码生成 | 2026-07-22 |
 | official | Mul | same-shape QDQ/int8 tensors, second input may be constant | cmsis-nn | cmsis_elementwise_mul_s8 | MUL_001 | core/mul | 官方 Mul QDQ/int8 同形状常量分支数值精度 | 2026-07-22 |
+| official | Pad | static rank=4 QDQ/int8 tensor, constant mode, constant pads initializer | cmsis-nn | generated_c_pad_s8 | PAD_001 | core/pad | 官方 Pad QDQ/int8 rank4 constant mode 数值顺序 | 2026-07-22 |
 | official | QLinearConv | uint8 activation, static rank=4, CMSIS-compatible convolution | cmsis-nn | cmsis_qlinearconv_s8 | QLINEAR_NUM_001 | core/qlinear | QLinearConv uint8 输入数值精度 (CMSIS-NN vs ONNX) | 2026-07-22 |
 | official | QLinearConv | static rank=4 convolution with per-channel weight scale | cmsis-nn | cmsis_qlinearconv_per_channel_s8 | QLINEAR_NUM_002 | core/qlinear | 多通道 QLinearConv + bias + per-channel scale | 2026-07-22 |
 | official | QLinearConv | static rank=4 convolution with per-channel weight scale | cmsis-nn | cmsis_qlinearconv_per_channel_s8 | QLINEAR_NUM_003 | core/qlinear | 高通道 QLinearConv 5×5 per-channel (仿 MNIST Conv1) | 2026-07-22 |
 | official | Reshape | static QDQ/int8 tensor, constant shape, same element count | cmsis-nn | generation_time_shape_alias_or_layout_copy | RESHAPE_001 | core/reshape | 官方 Reshape QDQ/int8 静态形状数值顺序 | 2026-07-22 |
+| official | Sigmoid | static QDQ/int8 tensor | cmsis-nn | generated_c_sigmoid_s8 | SIGMOID_001 | core/sigmoid | 官方 Sigmoid QDQ/int8 静态张量数值精度 | 2026-07-22 |
+| official | Slice | static QDQ/int8 tensor, constant starts/ends/axes/steps | cmsis-nn | generated_c_slice_s8 | SLICE_001 | core/slice | 官方 Slice QDQ/int8 静态区间数值顺序 | 2026-07-22 |
 | official | Softmax | static classification vector, int8 output path | cmsis-nn | cmsis_softmax_s8 | SOFTMAX_001 | core/softmax | 10 分类 Softmax int8 代码生成 | 2026-07-22 |
 | official | Softmax | static classification vector, int8 output path | cmsis-nn | cmsis_softmax_s8 | SOFTMAX_002 | core/softmax | SqueezeNet 末端 float output Softmax int8 C 输出 | 2026-07-22 |
 | official | Squeeze | static QDQ/int8 tensor, explicit axes removing dimensions of size 1 | cmsis-nn | generation_time_shape_alias_or_layout_copy | SQUEEZE_001 | core/squeeze | 官方 Squeeze QDQ/int8 静态去 1 维数值顺序 | 2026-07-22 |
+| official | Sub | same-shape QDQ/int8 tensors, second input may be constant | cmsis-nn | generated_c_sub_s8 | SUB_001 | core/sub | 官方 Sub QDQ/int8 同形状常量分支数值精度 | 2026-07-22 |
 | official | Transpose | static QDQ/int8 tensor, rank=4 explicit perm | cmsis-nn | cmsis_transpose_s8 | TRANSPOSE_001 | core/transpose | 官方 Transpose QDQ/int8 rank4 显式 perm 数值顺序 | 2026-07-22 |
 | mixed | multiple | internal float32 graph without QDQ quantization section | reject | reject_without_quantization | NEG_001 | negative | float32 无 Q/DQ 模型正确拒绝 | 2026-07-22 |
 | mixed | multiple | SqueezeNet int8 with QLinearConv, MaxPool, DQ/Concat/Q, QLinearGlobalAveragePool and terminal Softmax | cmsis-nn | cmsis_nn_squeezenet_int8 | NET_001 | networks | 真实 SqueezeNet 1.0 int8 图像分类网络导入评估 | 2026-07-22 |

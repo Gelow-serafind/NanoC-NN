@@ -258,11 +258,21 @@ def _reset_work_dir(path: Path) -> None:
         return
     marker = path / WORKDIR_MARKER
     if not marker.exists():
-        raise RuntimeError(
-            f"refuse to delete unmarked directory: {path}. "
-            "Move manual assets to tdd/fixtures; tdd/work is runner-owned."
-        )
-    shutil.rmtree(path)
+        try:
+            path.resolve().relative_to(NUMERIC_WORK_ROOT.resolve())
+        except ValueError:
+            raise RuntimeError(
+                f"refuse to delete unmarked directory: {path}. "
+                "Move manual assets to tdd/fixtures; tdd/work is runner-owned."
+            ) from None
+    for attempt in range(3):
+        try:
+            shutil.rmtree(path)
+            return
+        except OSError:
+            if attempt == 2:
+                raise
+            time.sleep(0.1 * (attempt + 1))
 
 
 def _load_dataset(check: NumericCheck) -> list[dict[str, Any]]:

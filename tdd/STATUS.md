@@ -8,9 +8,9 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 截至 2026-07-22：
 
-- target 结构回归：`43/43 PASS`
-- 稳定回归入口：`python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `25/25 PASS`
-- 数值回归：`21/21 PASS`，本轮新增 `AveragePool`、`Reshape`、`Squeeze`、`Add`、`Mul`、`Transpose` 六个官方 ONNX 算子的最小 QDQ/int8 数值验收；`NET_001` SqueezeNet 数值验收维持 `top1=4/4`，饱和率 `0.00`，最大绝对误差 `0.2`
+- target 结构回归：`49/49 PASS`
+- 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `31/31 PASS`
+- 数值回归：`27/27 PASS`，本轮新增 `Sub`、`Div`、`Sigmoid`、`Pad`、`Slice`、`Gather` 六个官方 ONNX 算子的最小 QDQ/int8 数值验收；新增六项均为 `top1=2/2`、饱和率 `0.00`、最大绝对误差 `0.0`；`NET_001` SqueezeNet 数值验收维持 `top1=4/4`，饱和率 `0.00`，最大绝对误差 `0.2`
 - 终端实机验收层已建立：`tdd/terminal/` 支持 ONNX-vs-HostC-vs-ARMC 三路对比，当前首个接入目标为 `TOPO_003` MNIST int8 on STM32F103
 - 真实网络导入测试扩展到 `NET_001~NET_006`
 - 新增/晋升结构 `ok` 网络：`NET_001` SqueezeNet 1.0 int8、`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
@@ -24,6 +24,9 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 - ONNX 官方 `AveragePool` 已按 schema-driven TDD 进入能力集，当前确认子形态为 rank=4 NCHW、QDQ/int8、2x2 stride=2 无 padding，lowering 到 `arm_avgpool_s8`。
 - ONNX 官方 `Reshape` 和 `Squeeze` 已按 schema-driven TDD 进入能力集，当前确认静态 shape、元素数量不变、线性存储顺序不变的 QDQ/int8 shape-only copy/fold 路径。
 - ONNX 官方 `Add` 和 `Mul` 已按 schema-driven TDD 进入能力集，当前确认同形状 QDQ/int8、第二输入可为量化常量，分别 lowering 到 `arm_elementwise_add_s8` 和 `arm_elementwise_mul_s8`。
+- ONNX 官方 `Sub` 和 `Div` 已按 schema-driven TDD 进入能力集，当前确认同形状 QDQ/int8、第二输入可为量化常量；CMSIS-NN 无专用 s8 kernel，codegen 生成 C99 逐元素反量化、算术、再量化路径。
+- ONNX 官方 `Sigmoid` 已按 schema-driven TDD 进入能力集，当前确认静态 QDQ/int8 tensor，codegen 生成 C99 `expf` 正确性基线路径，后续可替换为 LUT 或定点近似。
+- ONNX 官方 `Pad`、`Slice`、`Gather` 已按 schema-driven TDD 进入能力集，当前确认静态参数、同量化 QDQ/int8 copy/indexing 路径；`Slice/Gather` 的 shape-helper 形态仍维持 generation-time fold。
 - ONNX 官方 `Transpose` 已按 schema-driven TDD 进入能力集，当前确认 rank=4 QDQ/int8 显式 `perm=[0,2,3,1]`，lowering 到 `arm_transpose_s8`。
 - SqueezeNet 暴露出的 Microsoft 扩展 `QLinearGlobalAveragePool` 已提炼为独立最小用例 `AVGPOOL_001`，当前确认静态 rank=4 NCHW、全局 H/W 池化，lowering 到 `arm_avgpool_s8`
 - `NET_001` SqueezeNet 1.0 int8 已完成结构与数值闭环：完整网络可生成真实 CMSIS-NN C 工程，通过 C99 smoke compile/run，并在统一 smoke 数据集上通过 ONNX-vs-C 并行推理验收。
@@ -43,15 +46,15 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 43 |
-| target 通过 | 43 |
+| 测试用例总数 | 49 |
+| target 通过 | 49 |
 | target 失败 | 0 |
-| 稳定结构回归 | 25/25 PASS |
-| 数值回归 | 21/21 PASS |
+| 稳定结构回归 | 31/31 PASS |
+| 数值回归 | 27/27 PASS |
 | 终端实机验收 | 可选门禁，接入 STM32 时执行 |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
-| 最新迭代记录 | `tdd/iterations/023_graph_six_ops_batch.md` |
+| 最新迭代记录 | `tdd/iterations/024_graph_generated_ops_batch.md` |
 
 ## 已确认主线能力
 
@@ -65,7 +68,9 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 | GlobalAveragePool int8 生成 | `AVGPOOL_002` | 结构 PASS + 数值 PASS |
 | QLinearGlobalAveragePool int8 生成 | `AVGPOOL_001` | PASS |
 | Flatten / Reshape / Squeeze int8 布局折叠 / copy | `FLATTEN_001`, `RESHAPE_001`, `SQUEEZE_001` | 结构 PASS + 数值 PASS |
-| Add / Mul int8 逐元素算术 | `ADD_001`, `MUL_001` | 结构 PASS + 数值 PASS |
+| Add / Mul / Sub / Div int8 逐元素算术 | `ADD_001`, `MUL_001`, `SUB_001`, `DIV_001` | 结构 PASS + 数值 PASS |
+| Sigmoid int8 逐元素激活 | `SIGMOID_001` | 结构 PASS + 数值 PASS |
+| Pad / Slice / Gather int8 静态索引 copy | `PAD_001`, `SLICE_001`, `GATHER_001` | 结构 PASS + 数值 PASS |
 | Transpose int8 显式置换 | `TRANSPOSE_001` | 结构 PASS + 数值 PASS |
 | Softmax int8 生成 | `SOFTMAX_001`, `SOFTMAX_002` | PASS，`SOFTMAX_002` 数值 PASS |
 | Concat int8 channel 拼接 | `CONCAT_001`, `CONCAT_002` | 结构 PASS + 数值 PASS |
@@ -188,4 +193,4 @@ python tdd/tools/mnist_capture/server.py
 4. 继续导入 keyword spotting、tiny anomaly detection、简单 IMU 分类等 MCU 常见小模型。
 5. 将 `NET_004` KWS-style 升级为数值验收候选。
 6. 为 `NET_002` 和 `NET_001` 增加显式 SRAM/Flash 预算 probe，验证 Cortex-M3/M4/M7 平台门禁返回 `oversize` 而不是混入结构能力判断。
-7. 继续沿 ONNX 官方图谱推进下一批 MCU 常见算子形态，例如 `Sub`、`Div`、`Sigmoid`、`Tanh`、`Pad`、`Slice/Gather` 静态形态，或从 `NET_004` KWS-style 升级数值验收反向提炼下一批 case。
+7. 继续沿 ONNX 官方图谱推进下一批 MCU 常见算子形态，例如 `Tanh`、`LeakyRelu`、`Clip` 独立输出、`ReduceMean`、`Unsqueeze` 数据路径、`Where` 静态 mask，或从 `NET_004` KWS-style 升级数值验收反向提炼下一批 case。

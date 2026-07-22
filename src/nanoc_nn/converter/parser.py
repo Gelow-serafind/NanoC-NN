@@ -34,7 +34,9 @@ SUPPORTED_OPS = {
     "MatMul",
     "MaxPool",
     "Concat",
+    "Div",
     "Mul",
+    "Pad",
     "QLinearAdd",
     "QLinearConv",
     "QLinearGlobalAveragePool",
@@ -46,7 +48,9 @@ SUPPORTED_OPS = {
     "Reshape",
     "Shape",
     "Slice",
+    "Sigmoid",
     "Softmax",
+    "Sub",
     "Squeeze",
     "Transpose",
     "Unsqueeze",
@@ -61,10 +65,13 @@ PARAMETER_INITIALIZER_INPUTS = {
     "DequantizeLinear": {0},
     "Gemm": {1, 2},
     "MatMul": {1},
+    "Mul": {1},
     "QLinearAdd": {3},
     "QLinearConv": {3, 8},
     "QLinearMatMul": {3},
     "QuantizeLinear": {0},
+    "Sub": {1},
+    "Div": {1},
 }
 AUXILIARY_INITIALIZER_INPUTS = {
     "DequantizeLinear": {1, 2},
@@ -73,7 +80,10 @@ AUXILIARY_INITIALIZER_INPUTS = {
     "QLinearGlobalAveragePool": {1, 2, 3, 4},
     "QLinearMatMul": {1, 2, 4, 5, 6, 7},
     "QuantizeLinear": {1, 2},
+    "Gather": {1},
+    "Pad": {1, 2},
     "Reshape": {1},
+    "Slice": {1, 2, 3, 4},
     "Squeeze": {1},
 }
 
@@ -548,7 +558,7 @@ def normalize_attributes(
         }
     if op_type == "Flatten":
         return {"axis": int(attributes.get("axis", 1))}
-    if op_type in {"Add", "QLinearAdd"}:
+    if op_type in {"Add", "QLinearAdd", "Sub", "Div"}:
         return {
             "broadcast": "numpy",
         }
@@ -562,6 +572,8 @@ def normalize_attributes(
         return {"axis": int(attributes.get("axis", 0))}
     if op_type == "Gather":
         return {"axis": int(attributes.get("axis", 0))}
+    if op_type == "Pad":
+        return {"mode": str(attributes.get("mode", "constant"))}
     if op_type == "Unsqueeze":
         return {"axes": _as_int_list(attributes.get("axes"))}
     if op_type == "Squeeze":
@@ -719,6 +731,32 @@ def _extract_quantization(
             )
             if elementwise_quant is not None:
                 node_quant[node.name] = elementwise_quant
+        elif node.op_type in {"Sub", "Div"}:
+            generated_elementwise_quant = _generated_elementwise_quant_info(
+                node,
+                tensor_quant,
+                dq_aliases,
+                quantized_weights,
+                warnings,
+            )
+            if generated_elementwise_quant is not None:
+                node_quant[node.name] = generated_elementwise_quant
+        elif node.op_type == "Sigmoid":
+            sigmoid_quant = _sigmoid_quant_info(node, tensor_quant, warnings)
+            if sigmoid_quant is not None:
+                node_quant[node.name] = sigmoid_quant
+        elif node.op_type == "Pad":
+            pad_quant = _pad_quant_info(node, tensor_quant, initializer_by_name, warnings)
+            if pad_quant is not None:
+                node_quant[node.name] = pad_quant
+        elif node.op_type == "Slice":
+            slice_quant = _slice_quant_info(node, tensor_quant, initializer_by_name, warnings)
+            if slice_quant is not None:
+                node_quant[node.name] = slice_quant
+        elif node.op_type == "Gather":
+            gather_quant = _gather_quant_info(node, tensor_quant, initializer_by_name, warnings)
+            if gather_quant is not None:
+                node_quant[node.name] = gather_quant
         elif node.op_type == "Transpose":
             transpose_quant = _transpose_quant_info(node, tensor_quant, warnings)
             if transpose_quant is not None:
@@ -783,22 +821,30 @@ def _int8_contract(
         "AveragePool",
         "Concat",
         "Conv",
+        "Div",
+        "Gather",
         "Gemm",
         "GlobalAveragePool",
         "MatMul",
         "MaxPool",
         "Mul",
+        "Pad",
         "QLinearAdd",
         "QLinearConv",
         "QLinearGlobalAveragePool",
         "QLinearMatMul",
         "Softmax",
+        "Sigmoid",
+        "Slice",
+        "Sub",
         "Transpose",
     }
     runtime_nodes = [
         node
         for node in nodes
-        if node.op_type in runtime_op_types and not _is_shape_helper_concat(node)
+        if node.op_type in runtime_op_types
+        and not _is_shape_helper_concat(node)
+        and not _is_shape_helper_slice_or_gather(node)
     ]
     unsupported_nodes = [node for node in runtime_nodes if node.status == "unsupported"]
     missing_quant_nodes = [
@@ -853,6 +899,16 @@ def _int8_contract(
 
 def _is_shape_helper_concat(node: NodeInfo) -> bool:
     if node.op_type != "Concat":
+        return False
+    shapes = [
+        *[shape for shape in node.input_shapes.values()],
+        *[shape for shape in node.output_shapes.values()],
+    ]
+    return bool(shapes) and all(len(shape) <= 1 for shape in shapes)
+
+
+def _is_shape_helper_slice_or_gather(node: NodeInfo) -> bool:
+    if node.op_type not in {"Slice", "Gather"}:
         return False
     shapes = [
         *[shape for shape in node.input_shapes.values()],
@@ -1416,6 +1472,258 @@ def _elementwise_quant_info(
         "outputs": {output_name: output_quant},
         "weights": weights,
         "cmsis_nn": cmsis_nn,
+    }
+
+
+def _generated_elementwise_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    dq_aliases: dict[str, str],
+    quantized_weights: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 2 or not node.outputs:
+        return None
+    a, b = node.inputs[:2]
+    output_name = node.outputs[0]
+    input_1_quant = tensor_quant.get(a)
+    input_2_quant = tensor_quant.get(b)
+    output_quant = tensor_quant.get(output_name)
+    if input_1_quant is None or input_2_quant is None or output_quant is None:
+        return None
+    output_shape = next(iter(node.output_shapes.values()), [])
+    input_1_shape = node.input_shapes.get(a, [])
+    input_2_shape = node.input_shapes.get(b, [])
+    if input_1_shape != output_shape or input_2_shape != output_shape:
+        warnings.append(
+            f"node '{node.name}' {node.op_type} first generated int8 path requires same-shape inputs."
+        )
+        return None
+    block_size = _static_element_count(output_shape, node.name, node.op_type, warnings)
+    if block_size is None:
+        return None
+    qmin, qmax = _activation_range(output_quant)
+    weights = {"weight": "", "bias": "", "bias_values": []}
+    second_quantized = dq_aliases.get(b, b)
+    weight_info = quantized_weights.get(second_quantized)
+    if weight_info is not None:
+        weights["weight"] = second_quantized
+        weights["weight_info"] = weight_info
+    return {
+        "op_type": node.op_type,
+        "inputs": {a: input_1_quant, b: input_2_quant},
+        "outputs": {output_name: output_quant},
+        "weights": weights,
+        "cmsis_nn": {
+            "api": f"generated_c_{node.op_type.lower()}_s8",
+            "input_1_scale": float(input_1_quant["scale"]),
+            "input_1_zero_point": int(input_1_quant["zero_point"]),
+            "input_2_scale": float(input_2_quant["scale"]),
+            "input_2_zero_point": int(input_2_quant["zero_point"]),
+            "output_scale": float(output_quant["scale"]),
+            "output_zero_point": int(output_quant["zero_point"]),
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "block_size": block_size,
+            "constant_input": second_quantized if weight_info is not None else "",
+        },
+    }
+
+
+def _sigmoid_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    output_shape = next(iter(node.output_shapes.values()), [])
+    block_size = _static_element_count(output_shape, node.name, node.op_type, warnings)
+    if block_size is None:
+        return None
+    qmin, qmax = _activation_range(output_quant)
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "generated_c_sigmoid_s8",
+            "input_scale": float(input_quant["scale"]),
+            "input_zero_point": int(input_quant["zero_point"]),
+            "output_scale": float(output_quant["scale"]),
+            "output_zero_point": int(output_quant["zero_point"]),
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "block_size": block_size,
+        },
+    }
+
+
+def _pad_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    if _quantization_differs(input_quant, output_quant):
+        warnings.append(f"node '{node.name}' Pad first generated path requires same input/output quantization.")
+        return None
+    mode = str(node.normalized_attributes.get("mode", node.attributes.get("mode", "constant")))
+    if mode != "constant":
+        warnings.append(f"node '{node.name}' Pad first generated path supports constant mode only.")
+        return None
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if len(input_shape) != len(output_shape) or not _is_static_shape(input_shape + output_shape):
+        warnings.append(f"node '{node.name}' Pad first generated path requires static equal-rank shapes.")
+        return None
+    pads = _initializer_int_list(initializer_by_name.get(node.inputs[1]) if len(node.inputs) > 1 else None)
+    if len(pads) != len(input_shape) * 2:
+        warnings.append(f"node '{node.name}' Pad pads input must be a constant [2 * rank] initializer.")
+        return None
+    constant_value = 0.0
+    if len(node.inputs) > 2:
+        values = _initializer_float_list(initializer_by_name.get(node.inputs[2]))
+        if values:
+            constant_value = float(values[0])
+    constant_q = int(round(constant_value / float(output_quant["scale"]))) + int(
+        output_quant["zero_point"]
+    )
+    qmin, qmax = _activation_range(output_quant)
+    constant_q = min(max(constant_q, qmin), qmax)
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "generated_c_pad_s8",
+            "input_shape": [int(dim) for dim in input_shape],
+            "output_shape": [int(dim) for dim in output_shape],
+            "pads": pads,
+            "constant_value": constant_value,
+            "constant_q": constant_q,
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "block_size": _shape_element_count(output_shape),
+        },
+    }
+
+
+def _slice_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs or _is_shape_helper_slice_or_gather(node):
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    if _quantization_differs(input_quant, output_quant):
+        warnings.append(f"node '{node.name}' Slice first generated path requires same input/output quantization.")
+        return None
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if not _is_static_shape(input_shape + output_shape):
+        warnings.append(f"node '{node.name}' Slice first generated path requires static shapes.")
+        return None
+    starts = _initializer_int_list(initializer_by_name.get(node.inputs[1]) if len(node.inputs) > 1 else None)
+    ends = _initializer_int_list(initializer_by_name.get(node.inputs[2]) if len(node.inputs) > 2 else None)
+    axes = _initializer_int_list(initializer_by_name.get(node.inputs[3]) if len(node.inputs) > 3 else None)
+    steps = _initializer_int_list(initializer_by_name.get(node.inputs[4]) if len(node.inputs) > 4 else None)
+    if not axes:
+        axes = list(range(len(starts)))
+    if not steps:
+        steps = [1] * len(starts)
+    if not starts or len(starts) != len(ends) or len(starts) != len(axes) or len(starts) != len(steps):
+        warnings.append(f"node '{node.name}' Slice starts/ends/axes/steps must be constant and same length.")
+        return None
+    if any(int(step) <= 0 for step in steps):
+        warnings.append(f"node '{node.name}' Slice first generated path supports positive steps only.")
+        return None
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "generated_c_slice_s8",
+            "input_shape": [int(dim) for dim in input_shape],
+            "output_shape": [int(dim) for dim in output_shape],
+            "starts": starts,
+            "ends": ends,
+            "axes": axes,
+            "steps": steps,
+            "block_size": _shape_element_count(output_shape),
+        },
+    }
+
+
+def _gather_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 2 or not node.outputs or _is_shape_helper_slice_or_gather(node):
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    if _quantization_differs(input_quant, output_quant):
+        warnings.append(f"node '{node.name}' Gather first generated path requires same input/output quantization.")
+        return None
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if not _is_static_shape(input_shape + output_shape):
+        warnings.append(f"node '{node.name}' Gather first generated path requires static shapes.")
+        return None
+    indices = _initializer_int_list(initializer_by_name.get(node.inputs[1]))
+    if not indices:
+        warnings.append(f"node '{node.name}' Gather indices must be a constant initializer.")
+        return None
+    axis = int(node.normalized_attributes.get("axis", node.attributes.get("axis", 0)))
+    rank = len(input_shape)
+    if axis < 0:
+        axis += rank
+    if axis < 0 or axis >= rank:
+        warnings.append(f"node '{node.name}' Gather axis is out of range.")
+        return None
+    if any(index < 0 or index >= int(input_shape[axis]) for index in indices):
+        warnings.append(f"node '{node.name}' Gather first generated path requires non-negative in-range indices.")
+        return None
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "generated_c_gather_s8",
+            "input_shape": [int(dim) for dim in input_shape],
+            "output_shape": [int(dim) for dim in output_shape],
+            "indices": indices,
+            "axis": axis,
+            "block_size": _shape_element_count(output_shape),
+        },
     }
 
 
@@ -2141,6 +2449,51 @@ def _activation_range(output_quant: dict[str, Any]) -> tuple[int, int]:
     if output_quant.get("fused_activation") == "Relu":
         qmin = max(qmin, int(output_quant["zero_point"]))
     return qmin, qmax
+
+
+def _quantization_differs(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    return (
+        float(a["scale"]) != float(b["scale"])
+        or int(a["zero_point"]) != int(b["zero_point"])
+        or str(a["zero_point_dtype"]) != str(b["zero_point_dtype"])
+    )
+
+
+def _is_static_shape(shape: list[Any]) -> bool:
+    return bool(shape) and all(isinstance(dim, int) and dim > 0 for dim in shape)
+
+
+def _shape_element_count(shape: list[Any]) -> int:
+    count = 1
+    for dim in shape:
+        count *= int(dim)
+    return count
+
+
+def _static_element_count(
+    shape: list[Any],
+    node_name: str,
+    op_type: str,
+    warnings: list[str],
+) -> int | None:
+    if not _is_static_shape(shape):
+        warnings.append(f"node '{node_name}' {op_type} output shape is dynamic.")
+        return None
+    return _shape_element_count(shape)
+
+
+def _initializer_int_list(initializer: InitializerInfo | None) -> list[int]:
+    if initializer is None:
+        return []
+    values = np.asarray(initializer.array, dtype=np.int64).reshape(-1)
+    return [int(item) for item in values.tolist()]
+
+
+def _initializer_float_list(initializer: InitializerInfo | None) -> list[float]:
+    if initializer is None:
+        return []
+    values = np.asarray(initializer.array, dtype=np.float64).reshape(-1)
+    return [float(item) for item in values.tolist()]
 
 
 def _input_radius(input_integer_bits: int, input_left_shift: int) -> int:

@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-07-22T00:57:25.606624",
-  "git_commit": "04d3c5b",
+  "timestamp": "2026-07-22T08:17:02.529219",
+  "git_commit": "09f84c4",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py --generate",
-  "total": 21,
-  "passed": 21,
+  "total": 27,
+  "passed": 27,
   "failed": 0,
   "results": [
     {
@@ -121,7 +121,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.88
+      "duration_sec": 2.76
     },
     {
       "case_id": "MATMUL_001",
@@ -209,7 +209,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.58
+      "duration_sec": 2.65
     },
     {
       "case_id": "FLATTEN_001",
@@ -341,7 +341,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.64
+      "duration_sec": 2.61
     },
     {
       "case_id": "RESHAPE_001",
@@ -449,7 +449,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.66
+      "duration_sec": 2.55
     },
     {
       "case_id": "SQUEEZE_001",
@@ -557,7 +557,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.61
+      "duration_sec": 2.49
     },
     {
       "case_id": "AVGPOOL_002",
@@ -653,7 +653,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.65
+      "duration_sec": 2.52
     },
     {
       "case_id": "AVGPOOL_003",
@@ -769,7 +769,7 @@
           "max_abs_error": 0.05000000447034836
         }
       ],
-      "duration_sec": 2.63
+      "duration_sec": 2.54
     },
     {
       "case_id": "SOFTMAX_002",
@@ -865,7 +865,7 @@
           "max_abs_error": 0.001285940408706665
         }
       ],
-      "duration_sec": 2.58
+      "duration_sec": 2.47
     },
     {
       "case_id": "CONCAT_001",
@@ -981,7 +981,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.6
+      "duration_sec": 2.45
     },
     {
       "case_id": "CONCAT_002",
@@ -1097,7 +1097,7 @@
           "max_abs_error": 0.20000001788139343
         }
       ],
-      "duration_sec": 2.65
+      "duration_sec": 2.48
     },
     {
       "case_id": "ADD_001",
@@ -1213,7 +1213,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.6
+      "duration_sec": 2.48
     },
     {
       "case_id": "MUL_001",
@@ -1329,7 +1329,695 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.63
+      "duration_sec": 2.46
+    },
+    {
+      "case_id": "SUB_001",
+      "dataset_id": "sub_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/sub/SUB_001.onnx",
+      "output_dir": "tdd/work/numeric/SUB_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "mixed",
+          "label": null,
+          "onnx_top1": 5,
+          "c_top1": 5,
+          "onnx_top5": [
+            5,
+            3,
+            7,
+            1,
+            4
+          ],
+          "c_top5": [
+            5,
+            3,
+            7,
+            1,
+            4
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            -5,
+            1,
+            -2,
+            3,
+            0,
+            7,
+            -3,
+            1
+          ],
+          "c_float": [
+            -0.25,
+            0.05000000074505806,
+            -0.10000000149011612,
+            0.15000000596046448,
+            0.0,
+            0.3499999940395355,
+            -0.15000000596046448,
+            0.05000000074505806
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "positive",
+          "label": null,
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "onnx_top5": [
+            1,
+            6,
+            0,
+            5,
+            3
+          ],
+          "c_top5": [
+            1,
+            6,
+            0,
+            5,
+            3
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            2,
+            4,
+            -1,
+            1,
+            -4,
+            1,
+            3,
+            -4
+          ],
+          "c_float": [
+            0.10000000149011612,
+            0.20000000298023224,
+            -0.05000000074505806,
+            0.05000000074505806,
+            -0.20000000298023224,
+            0.05000000074505806,
+            0.15000000596046448,
+            -0.20000000298023224
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.67
+    },
+    {
+      "case_id": "DIV_001",
+      "dataset_id": "div_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/div/DIV_001.onnx",
+      "output_dir": "tdd/work/numeric/DIV_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "mixed",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            5,
+            4,
+            2,
+            0,
+            1
+          ],
+          "c_top5": [
+            5,
+            4,
+            2,
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            40,
+            20,
+            40,
+            -40,
+            40,
+            40,
+            -20,
+            -40
+          ],
+          "c_float": [
+            2.0,
+            1.0,
+            2.0,
+            -2.0,
+            2.0,
+            2.0,
+            -1.0,
+            -2.0
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "small",
+          "label": null,
+          "onnx_top1": 3,
+          "c_top1": 3,
+          "onnx_top5": [
+            3,
+            7,
+            5,
+            4,
+            0
+          ],
+          "c_top5": [
+            3,
+            7,
+            5,
+            4,
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            20,
+            -20,
+            -30,
+            40,
+            20,
+            20,
+            10,
+            30
+          ],
+          "c_float": [
+            1.0,
+            -1.0,
+            -1.5,
+            2.0,
+            1.0,
+            1.0,
+            0.5,
+            1.5
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.73
+    },
+    {
+      "case_id": "SIGMOID_001",
+      "dataset_id": "sigmoid_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/sigmoid/SIGMOID_001.onnx",
+      "output_dir": "tdd/work/numeric/SIGMOID_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "range",
+          "label": null,
+          "onnx_top1": 7,
+          "c_top1": 7,
+          "onnx_top5": [
+            7,
+            6,
+            5,
+            4,
+            3
+          ],
+          "c_top5": [
+            7,
+            6,
+            5,
+            4,
+            3
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            -25,
+            -13,
+            -6,
+            0,
+            6,
+            13,
+            25,
+            37
+          ],
+          "c_float": [
+            0.40234375,
+            0.44921875,
+            0.4765625,
+            0.5,
+            0.5234375,
+            0.55078125,
+            0.59765625,
+            0.64453125
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "near_zero",
+          "label": null,
+          "onnx_top1": 7,
+          "c_top1": 7,
+          "onnx_top5": [
+            7,
+            6,
+            5,
+            4,
+            3
+          ],
+          "c_top5": [
+            7,
+            6,
+            5,
+            4,
+            3
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            -10,
+            -6,
+            -3,
+            0,
+            3,
+            6,
+            10,
+            13
+          ],
+          "c_float": [
+            0.4609375,
+            0.4765625,
+            0.48828125,
+            0.5,
+            0.51171875,
+            0.5234375,
+            0.5390625,
+            0.55078125
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.72
+    },
+    {
+      "case_id": "PAD_001",
+      "dataset_id": "pad_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/pad/PAD_001.onnx",
+      "output_dir": "tdd/work/numeric/PAD_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "grid",
+          "label": null,
+          "onnx_top1": 11,
+          "c_top1": 11,
+          "onnx_top5": [
+            11,
+            7,
+            6,
+            19,
+            18
+          ],
+          "c_top5": [
+            11,
+            7,
+            6,
+            19,
+            18
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2,
+            -1,
+            0,
+            0,
+            3,
+            -2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "c_float": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.05000000074505806,
+            0.10000000149011612,
+            -0.05000000074505806,
+            0.0,
+            0.0,
+            0.15000000596046448,
+            -0.10000000149011612,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "signed",
+          "label": null,
+          "onnx_top1": 13,
+          "c_top1": 13,
+          "onnx_top5": [
+            13,
+            12,
+            11,
+            19,
+            8
+          ],
+          "c_top5": [
+            13,
+            12,
+            11,
+            19,
+            8
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            -4,
+            -2,
+            0,
+            0,
+            0,
+            2,
+            4,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "c_float": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            -0.20000000298023224,
+            -0.10000000149011612,
+            0.0,
+            0.0,
+            0.0,
+            0.10000000149011612,
+            0.20000000298023224,
+            0.30000001192092896,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.68
+    },
+    {
+      "case_id": "SLICE_001",
+      "dataset_id": "slice_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/slice/SLICE_001.onnx",
+      "output_dir": "tdd/work/numeric/SLICE_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "grid",
+          "label": null,
+          "onnx_top1": 3,
+          "c_top1": 3,
+          "onnx_top5": [
+            3,
+            0,
+            1,
+            2
+          ],
+          "c_top5": [
+            3,
+            0,
+            1,
+            2
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            5,
+            -1,
+            -4,
+            6
+          ],
+          "c_float": [
+            0.25,
+            -0.05000000074505806,
+            -0.20000000298023224,
+            0.30000001192092896
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "signed",
+          "label": null,
+          "onnx_top1": 3,
+          "c_top1": 3,
+          "onnx_top5": [
+            3,
+            2,
+            1,
+            0
+          ],
+          "c_top5": [
+            3,
+            2,
+            1,
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            -1,
+            0,
+            3,
+            4
+          ],
+          "c_float": [
+            -0.05000000074505806,
+            0.0,
+            0.15000000596046448,
+            0.20000000298023224
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.7
+    },
+    {
+      "case_id": "GATHER_001",
+      "dataset_id": "gather_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/gather/GATHER_001.onnx",
+      "output_dir": "tdd/work/numeric/GATHER_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "simple",
+          "label": null,
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "onnx_top5": [
+            1,
+            0
+          ],
+          "c_top5": [
+            1,
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            -1,
+            1
+          ],
+          "c_float": [
+            -0.05000000074505806,
+            0.05000000074505806
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "signed",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            1
+          ],
+          "c_top5": [
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            5,
+            -4
+          ],
+          "c_float": [
+            0.25,
+            -0.20000000298023224
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.72
     },
     {
       "case_id": "TRANSPOSE_001",
@@ -1461,7 +2149,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.62
+      "duration_sec": 2.49
     },
     {
       "case_id": "TOPO_003",
@@ -1977,7 +2665,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.66
+      "duration_sec": 2.54
     },
     {
       "case_id": "NET_001",
@@ -10119,7 +10807,7 @@
           "max_abs_error": 0.0569949634373188
         }
       ],
-      "duration_sec": 5.55
+      "duration_sec": 5.48
     },
     {
       "case_id": "NET_005",
@@ -10238,7 +10926,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.52
+      "duration_sec": 2.45
     },
     {
       "case_id": "TS_001",
@@ -10384,7 +11072,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.54
+      "duration_sec": 0.45
     },
     {
       "case_id": "TS_002",
@@ -10610,7 +11298,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.83
+      "duration_sec": 0.76
     },
     {
       "case_id": "TS_003",
@@ -10836,7 +11524,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.79
+      "duration_sec": 0.76
     },
     {
       "case_id": "TS_004",
@@ -10982,7 +11670,7 @@
           "max_abs_error": 2.9802322387695312e-08
         }
       ],
-      "duration_sec": 0.57
+      "duration_sec": 0.53
     },
     {
       "case_id": "TS_005",
@@ -11173,7 +11861,7 @@
           "max_abs_error": 5.960464477539063e-08
         }
       ],
-      "duration_sec": 0.59
+      "duration_sec": 0.49
     }
   ]
 }

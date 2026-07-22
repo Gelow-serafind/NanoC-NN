@@ -8,16 +8,22 @@ RUNTIME_ACTIONS = {
     "AveragePool": ("direct_api", "arm_avgpool_s8", True),
     "Concat": ("direct_api", "arm_concatenation_s8_x/y/z/w", False),
     "Conv": ("wrapper_api", "arm_convolve_wrapper_s8", True),
+    "Div": ("direct_api", "generated_c_div_s8", False),
+    "Gather": ("direct_api", "generated_c_gather_s8", False),
     "Gemm": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
     "GlobalAveragePool": ("direct_api", "arm_avgpool_s8", True),
     "MatMul": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
     "MaxPool": ("direct_api", "arm_max_pool_s8", True),
     "Mul": ("direct_api", "arm_elementwise_mul_s8", True),
+    "Pad": ("direct_api", "generated_c_pad_s8", False),
     "QLinearAdd": ("direct_api", "arm_elementwise_add_s8", True),
     "QLinearConv": ("wrapper_api", "arm_convolve_wrapper_s8", True),
     "QLinearGlobalAveragePool": ("direct_api", "arm_avgpool_s8", True),
     "QLinearMatMul": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
     "Softmax": ("direct_api", "arm_softmax_s8", True),
+    "Sigmoid": ("direct_api", "generated_c_sigmoid_s8", False),
+    "Slice": ("direct_api", "generated_c_slice_s8", False),
+    "Sub": ("direct_api", "generated_c_sub_s8", False),
     "Transpose": ("direct_api", "arm_transpose_s8", True),
 }
 
@@ -27,16 +33,22 @@ RENDERED_RUNTIME_OPS = {
     "AveragePool",
     "Concat",
     "Conv",
+    "Div",
+    "Gather",
     "Gemm",
     "GlobalAveragePool",
     "MatMul",
     "MaxPool",
     "Mul",
+    "Pad",
     "QLinearAdd",
     "QLinearConv",
     "QLinearGlobalAveragePool",
     "QLinearMatMul",
     "Softmax",
+    "Sigmoid",
+    "Slice",
+    "Sub",
     "Transpose",
 }
 
@@ -91,7 +103,16 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
             layout_note=layout_note,
         )
 
-    if node.op_type in FOLDED_ACTIONS:
+    if node.op_type in {"Gather", "Slice"} and _is_shape_helper_slice_or_gather(node):
+        return _mapping(
+            node,
+            status="folded",
+            action=FOLDED_ACTIONS[node.op_type],
+            reason="shape-only helper feeds tensor shape/index construction",
+            layout_note=layout_note,
+        )
+
+    if node.op_type in FOLDED_ACTIONS and node.op_type not in {"Gather", "Slice"}:
         return _mapping(
             node,
             status="folded",
@@ -214,7 +235,9 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
 def _potential_action(node: NodeSpec) -> tuple[str, str, bool] | None:
     if node.op_type in {"Conv", "QLinearConv"} and _is_depthwise_conv(node):
         return ("wrapper_api", "arm_depthwise_conv_wrapper_s8", True)
-    if node.op_type in FOLDED_ACTIONS:
+    if node.op_type in {"Gather", "Slice"} and _is_shape_helper_slice_or_gather(node):
+        return ("folded", FOLDED_ACTIONS[node.op_type], False)
+    if node.op_type in FOLDED_ACTIONS and node.op_type not in {"Gather", "Slice"}:
         return ("folded", FOLDED_ACTIONS[node.op_type], False)
     if node.op_type in FUSED_ACTIONS:
         return ("fused", FUSED_ACTIONS[node.op_type], False)
@@ -316,3 +339,13 @@ def _is_shape_helper_concat(node: NodeSpec) -> bool:
         if len(shape) <= 1:
             return True
     return False
+
+
+def _is_shape_helper_slice_or_gather(node: NodeSpec) -> bool:
+    if node.op_type not in {"Slice", "Gather"}:
+        return False
+    shapes = [
+        *[shape for shape in node.input_shapes.values()],
+        *[shape for shape in node.output_shapes.values()],
+    ]
+    return bool(shapes) and all(len(shape) <= 1 for shape in shapes)

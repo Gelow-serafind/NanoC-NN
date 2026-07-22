@@ -100,16 +100,22 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "AveragePool",
             "Concat",
             "Conv",
+            "Div",
+            "Gather",
             "Gemm",
             "GlobalAveragePool",
             "MatMul",
             "MaxPool",
             "Mul",
+            "Pad",
             "QLinearAdd",
             "QLinearConv",
             "QLinearGlobalAveragePool",
             "QLinearMatMul",
+            "Sigmoid",
+            "Slice",
             "Softmax",
+            "Sub",
             "Transpose",
         }
     ]
@@ -269,6 +275,8 @@ def _model_c(
     lines.extend(tensor_buffers)
     if _needs_stable_softmax(runtime_layers):
         lines.extend(_stable_softmax_helper())
+    if _needs_static_indexing_helpers(runtime_layers):
+        lines.extend(_static_indexing_helpers())
     lines.extend(
         [
         "",
@@ -412,8 +420,18 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             lines.extend(_cmsis_add_call(layer, current_output))
         elif layer["kind"] == "mul":
             lines.extend(_cmsis_mul_call(layer, current_output))
+        elif layer["kind"] in {"sub", "div"}:
+            lines.extend(_generated_binary_call(layer, current_output))
         elif layer["kind"] == "abs":
             lines.extend(_generated_abs_call(layer, current_output))
+        elif layer["kind"] == "sigmoid":
+            lines.extend(_generated_sigmoid_call(layer, current_output))
+        elif layer["kind"] == "pad":
+            lines.extend(_generated_pad_call(layer, current_output))
+        elif layer["kind"] == "slice":
+            lines.extend(_generated_slice_call(layer, current_output))
+        elif layer["kind"] == "gather":
+            lines.extend(_generated_gather_call(layer, current_output))
         elif layer["kind"] == "transpose":
             lines.extend(_cmsis_transpose_call(layer, current_output))
         elif layer["kind"] == "concat":
@@ -623,6 +641,10 @@ def _cmsis_tensor_runtime_run_body(
             layer["input_1_expr"] = input_exprs[0]
             if not constant_symbol:
                 layer["input_2_expr"] = input_exprs[1]
+        if layer["kind"] in {"sub", "div"} and len(input_exprs) >= 2:
+            layer["input_1_expr"] = input_exprs[0]
+            if not constant_symbol:
+                layer["input_2_expr"] = input_exprs[1]
         if layer["kind"] == "concat":
             layer["input_exprs"] = input_exprs
         if layer["kind"] == "conv":
@@ -635,8 +657,18 @@ def _cmsis_tensor_runtime_run_body(
             lines.extend(_cmsis_add_call(layer, output_expr))
         elif layer["kind"] == "mul":
             lines.extend(_cmsis_mul_call(layer, output_expr))
+        elif layer["kind"] in {"sub", "div"}:
+            lines.extend(_generated_binary_call(layer, output_expr))
         elif layer["kind"] == "abs":
             lines.extend(_generated_abs_call(layer, output_expr))
+        elif layer["kind"] == "sigmoid":
+            lines.extend(_generated_sigmoid_call(layer, output_expr))
+        elif layer["kind"] == "pad":
+            lines.extend(_generated_pad_call(layer, output_expr))
+        elif layer["kind"] == "slice":
+            lines.extend(_generated_slice_call(layer, output_expr))
+        elif layer["kind"] == "gather":
+            lines.extend(_generated_gather_call(layer, output_expr))
         elif layer["kind"] == "transpose":
             lines.extend(_cmsis_transpose_call(layer, output_expr))
         elif layer["kind"] == "concat":
@@ -743,6 +775,38 @@ def _needs_stable_softmax(layers: list[dict[str, Any]]) -> bool:
         layer.get("kind") == "softmax" and bool(layer.get("stable_softmax"))
         for layer in layers
     )
+
+
+def _needs_static_indexing_helpers(layers: list[dict[str, Any]]) -> bool:
+    return any(layer.get("kind") in {"pad", "slice", "gather"} for layer in layers)
+
+
+def _static_indexing_helpers() -> list[str]:
+    return [
+        "",
+        "#if NANOC_ENABLE_CMSIS_NN",
+        "static void nanoc_unravel_index(size_t index, int rank, const int *shape, int *coords)",
+        "{",
+        "    for (int axis = rank - 1; axis >= 0; --axis) {",
+        "        int dim = shape[axis];",
+        "        coords[axis] = dim > 0 ? (int)(index % (size_t)dim) : 0;",
+        "        if (dim > 0) {",
+        "            index /= (size_t)dim;",
+        "        }",
+        "    }",
+        "}",
+        "",
+        "static size_t nanoc_ravel_index(int rank, const int *shape, const int *coords)",
+        "{",
+        "    size_t offset = 0u;",
+        "    for (int axis = 0; axis < rank; ++axis) {",
+        "        offset = offset * (size_t)shape[axis] + (size_t)coords[axis];",
+        "    }",
+        "    return offset;",
+        "}",
+        "#endif",
+        "",
+    ]
 
 
 def _stable_softmax_helper() -> list[str]:
@@ -983,9 +1047,9 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         return count
     if layer["kind"] == "fc":
         return int(layer.get("output_size", 0))
-    if layer["kind"] in {"add", "mul"}:
+    if layer["kind"] in {"add", "mul", "sub", "div"}:
         return int(layer.get("block_size", 0))
-    if layer["kind"] == "abs":
+    if layer["kind"] in {"abs", "sigmoid", "pad", "slice", "gather"}:
         return int(layer.get("block_size", 0))
     if layer["kind"] == "transpose":
         return int(layer.get("block_size", 0))
@@ -1372,6 +1436,173 @@ def _generated_abs_call(layer: dict[str, Any], current_output: str) -> list[str]
     ]
 
 
+def _generated_binary_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_1 = layer.get("input_1_expr", "current_input")
+    input_2 = layer.get("constant_symbol") or layer.get("input_2_expr", "current_input")
+    op = str(layer["kind"])
+    api = f"generated_c_{op}_s8"
+    operator = "-" if op == "sub" else "/"
+    guard_lines: list[str] = []
+    expr = f"nanoc_a {operator} nanoc_b"
+    if op == "div":
+        guard_lines = [
+            "            float nanoc_v = 0.0f;",
+            "            if (nanoc_b > 0.0000001f || nanoc_b < -0.0000001f) {",
+            "                nanoc_v = nanoc_a / nanoc_b;",
+            "            }",
+        ]
+    else:
+        guard_lines = [f"            float nanoc_v = {expr};"]
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> {api} */",
+        "    {",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        (
+            f"            float nanoc_a = ((float){input_1}[nanoc_i] - "
+            f"{_c_float_literal(float(layer['input_1_zero_point']))}) * "
+            f"{_c_float_literal(float(layer['input_1_scale']))};"
+        ),
+        (
+            f"            float nanoc_b = ((float){input_2}[nanoc_i] - "
+            f"{_c_float_literal(float(layer['input_2_zero_point']))}) * "
+            f"{_c_float_literal(float(layer['input_2_scale']))};"
+        ),
+        *guard_lines,
+        (
+            f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
+            f"{_c_float_literal(float(layer['output_zero_point']))};"
+        ),
+        "            int32_t nanoc_q = (int32_t)(nanoc_qf >= 0.0f ? nanoc_qf + 0.5f : nanoc_qf - 0.5f);",
+        f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
+        f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
+        f"            {current_output}[nanoc_i] = (int8_t)nanoc_q;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _generated_sigmoid_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> generated_c_sigmoid_s8 */",
+        "    {",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        (
+            f"            float nanoc_x = ((float){input_expr}[nanoc_i] - "
+            f"{_c_float_literal(float(layer['input_zero_point']))}) * "
+            f"{_c_float_literal(float(layer['input_scale']))};"
+        ),
+        "            float nanoc_v = 1.0f / (1.0f + expf(-nanoc_x));",
+        (
+            f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
+            f"{_c_float_literal(float(layer['output_zero_point']))};"
+        ),
+        "            int32_t nanoc_q = (int32_t)(nanoc_qf >= 0.0f ? nanoc_qf + 0.5f : nanoc_qf - 0.5f);",
+        f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
+        f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
+        f"            {current_output}[nanoc_i] = (int8_t)nanoc_q;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _generated_pad_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    input_shape = [int(item) for item in layer["input_shape"]]
+    output_shape = [int(item) for item in layer["output_shape"]]
+    pads = [int(item) for item in layer["pads"]]
+    rank = len(input_shape)
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> generated_c_pad_s8 */",
+        "    {",
+        f"        const int nanoc_input_shape[{rank}] = {{{_c_int_list(input_shape)}}};",
+        f"        const int nanoc_output_shape[{rank}] = {{{_c_int_list(output_shape)}}};",
+        f"        const int nanoc_pads[{rank * 2}] = {{{_c_int_list(pads)}}};",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        f"            {current_output}[nanoc_i] = (int8_t){int(layer['constant_q'])};",
+        "        }",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {_shape_size(input_shape)}u; ++nanoc_i) {{",
+        "            int nanoc_coords[8] = {0};",
+        "            int nanoc_out_coords[8] = {0};",
+        f"            nanoc_unravel_index(nanoc_i, {rank}, nanoc_input_shape, nanoc_coords);",
+        f"            for (int nanoc_axis = 0; nanoc_axis < {rank}; ++nanoc_axis) {{",
+        "                nanoc_out_coords[nanoc_axis] = nanoc_coords[nanoc_axis] + nanoc_pads[nanoc_axis];",
+        "            }",
+        f"            size_t nanoc_out_i = nanoc_ravel_index({rank}, nanoc_output_shape, nanoc_out_coords);",
+        f"            {current_output}[nanoc_out_i] = {input_expr}[nanoc_i];",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _generated_slice_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    input_shape = [int(item) for item in layer["input_shape"]]
+    output_shape = [int(item) for item in layer["output_shape"]]
+    starts = [int(item) for item in layer["starts"]]
+    axes = [int(item) for item in layer["axes"]]
+    steps = [int(item) for item in layer["steps"]]
+    rank = len(input_shape)
+    param_count = len(starts)
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> generated_c_slice_s8 */",
+        "    {",
+        f"        const int nanoc_input_shape[{rank}] = {{{_c_int_list(input_shape)}}};",
+        f"        const int nanoc_output_shape[{rank}] = {{{_c_int_list(output_shape)}}};",
+        f"        const int nanoc_starts[{param_count}] = {{{_c_int_list(starts)}}};",
+        f"        const int nanoc_axes[{param_count}] = {{{_c_int_list(axes)}}};",
+        f"        const int nanoc_steps[{param_count}] = {{{_c_int_list(steps)}}};",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        "            int nanoc_out_coords[8] = {0};",
+        "            int nanoc_in_coords[8] = {0};",
+        f"            nanoc_unravel_index(nanoc_i, {rank}, nanoc_output_shape, nanoc_out_coords);",
+        f"            for (int nanoc_axis = 0; nanoc_axis < {rank}; ++nanoc_axis) {{",
+        "                nanoc_in_coords[nanoc_axis] = nanoc_out_coords[nanoc_axis];",
+        "            }",
+        f"            for (int nanoc_p = 0; nanoc_p < {param_count}; ++nanoc_p) {{",
+        "                int nanoc_axis = nanoc_axes[nanoc_p];",
+        "                nanoc_in_coords[nanoc_axis] = nanoc_starts[nanoc_p] + nanoc_out_coords[nanoc_axis] * nanoc_steps[nanoc_p];",
+        "            }",
+        f"            size_t nanoc_in_i = nanoc_ravel_index({rank}, nanoc_input_shape, nanoc_in_coords);",
+        f"            {current_output}[nanoc_i] = {input_expr}[nanoc_in_i];",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _generated_gather_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    input_shape = [int(item) for item in layer["input_shape"]]
+    output_shape = [int(item) for item in layer["output_shape"]]
+    indices = [int(item) for item in layer["indices"]]
+    rank = len(input_shape)
+    axis = int(layer["axis"])
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> generated_c_gather_s8 */",
+        "    {",
+        f"        const int nanoc_input_shape[{rank}] = {{{_c_int_list(input_shape)}}};",
+        f"        const int nanoc_output_shape[{rank}] = {{{_c_int_list(output_shape)}}};",
+        f"        const int nanoc_indices[{len(indices)}] = {{{_c_int_list(indices)}}};",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        "            int nanoc_out_coords[8] = {0};",
+        "            int nanoc_in_coords[8] = {0};",
+        f"            nanoc_unravel_index(nanoc_i, {rank}, nanoc_output_shape, nanoc_out_coords);",
+        f"            for (int nanoc_axis = 0; nanoc_axis < {rank}; ++nanoc_axis) {{",
+        "                nanoc_in_coords[nanoc_axis] = nanoc_out_coords[nanoc_axis];",
+        "            }",
+        f"            nanoc_in_coords[{axis}] = nanoc_indices[nanoc_out_coords[{axis}]];",
+        f"            size_t nanoc_in_i = nanoc_ravel_index({rank}, nanoc_input_shape, nanoc_in_coords);",
+        f"            {current_output}[nanoc_i] = {input_expr}[nanoc_in_i];",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
 def _cmsis_transpose_call(layer: dict[str, Any], current_output: str) -> list[str]:
     input_expr = layer.get("input_expr", "current_input")
     input_n, input_h, input_w, input_c = layer["input_dims"]
@@ -1547,7 +1778,7 @@ def _quantized_weight_declarations(graph: ModelGraph) -> list[str]:
         if "weight_values" not in layer:
             continue
         weight_values = _int_values(layer["weight_values"])
-        if layer["kind"] in {"add", "mul"}:
+        if layer["kind"] in {"add", "mul", "sub", "div"}:
             lines.extend(
                 [
                     f"/* ONNX node: {layer['name']} constant input */",
@@ -1598,11 +1829,17 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Conv",
             "Concat",
             "Gemm",
+            "Gather",
             "MatMul",
             "Mul",
+            "Pad",
             "QLinearAdd",
             "QLinearConv",
             "QLinearMatMul",
+            "Sigmoid",
+            "Slice",
+            "Sub",
+            "Div",
         }:
             continue
         if node.op_type in {"Conv", "QLinearConv"}:
@@ -1615,6 +1852,8 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             action = "arm_elementwise_add_s8"
         elif node.op_type == "Mul":
             action = "arm_elementwise_mul_s8"
+        elif node.op_type in {"Sub", "Div", "Sigmoid", "Pad", "Slice", "Gather"}:
+            action = f"generated_c_{node.op_type.lower()}_s8"
         else:
             action = "arm_fully_connected_s8"
         mappings.append(
@@ -1662,6 +1901,16 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             layer = _add_layer(graph, mapping)
         elif mapping.onnx_op == "Mul":
             layer = _mul_layer(graph, mapping)
+        elif mapping.onnx_op in {"Sub", "Div"}:
+            layer = _generated_binary_layer(graph, mapping)
+        elif mapping.onnx_op == "Sigmoid":
+            layer = _sigmoid_layer(graph, mapping)
+        elif mapping.onnx_op == "Pad":
+            layer = _pad_layer(graph, mapping)
+        elif mapping.onnx_op == "Slice":
+            layer = _slice_layer(graph, mapping)
+        elif mapping.onnx_op == "Gather":
+            layer = _gather_layer(graph, mapping)
         elif mapping.onnx_op == "Transpose":
             layer = _transpose_layer(graph, mapping)
         elif mapping.onnx_op == "Concat":
@@ -2011,6 +2260,152 @@ def _mul_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
         layer["weight_values"] = values
         layer["constant_symbol"] = f"{symbol}_weights"
         layer["constant_input_index"] = 1
+    return layer
+
+
+def _generated_binary_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    required = (
+        "input_1_scale",
+        "input_1_zero_point",
+        "input_2_scale",
+        "input_2_zero_point",
+        "output_scale",
+        "output_zero_point",
+        "activation_min",
+        "activation_max",
+        "block_size",
+    )
+    if any(field not in cmsis_nn for field in required):
+        return None
+    output_shape = _first_shape(node.output_shapes, node.outputs)
+    block_size = element_count_from_shape(output_shape or [])
+    if block_size is None:
+        block_size = int(cmsis_nn.get("block_size", 0))
+    if block_size <= 0:
+        return None
+    weights = graph.quantization.get("weights", {}) if graph.quantization else {}
+    quant_weights = quant.get("weights", {})
+    weight_name = str(quant_weights.get("weight", "")) if isinstance(quant_weights, dict) else ""
+    weight_info = weights.get(weight_name, {}) if isinstance(weights, dict) else {}
+    values = weight_info.get("values", []) if isinstance(weight_info, dict) else []
+    kind = str(mapping.onnx_op).lower()
+    symbol = _c_symbol(f"nanoc_{mapping.node_name}")
+    layer: dict[str, Any] = {
+        "kind": kind,
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": symbol,
+        "input_tensors": list(node.inputs[:2]),
+        "output_tensors": list(node.outputs),
+        "input_1_scale": float(cmsis_nn["input_1_scale"]),
+        "input_1_zero_point": int(cmsis_nn["input_1_zero_point"]),
+        "input_2_scale": float(cmsis_nn["input_2_scale"]),
+        "input_2_zero_point": int(cmsis_nn["input_2_zero_point"]),
+        "output_scale": float(cmsis_nn["output_scale"]),
+        "output_zero_point": int(cmsis_nn["output_zero_point"]),
+        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_max": int(cmsis_nn["activation_max"]),
+        "block_size": int(block_size),
+    }
+    if isinstance(values, list) and values:
+        layer["weight_values"] = values
+        layer["constant_symbol"] = f"{symbol}_weights"
+        layer["constant_input_index"] = 1
+    return layer
+
+
+def _sigmoid_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    required = (
+        "input_scale",
+        "input_zero_point",
+        "output_scale",
+        "output_zero_point",
+        "activation_min",
+        "activation_max",
+        "block_size",
+    )
+    if any(field not in cmsis_nn for field in required):
+        return None
+    return {
+        "kind": "sigmoid",
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "input_tensors": [node.inputs[0]] if node.inputs else [],
+        "output_tensors": list(node.outputs),
+        "input_scale": float(cmsis_nn["input_scale"]),
+        "input_zero_point": int(cmsis_nn["input_zero_point"]),
+        "output_scale": float(cmsis_nn["output_scale"]),
+        "output_zero_point": int(cmsis_nn["output_zero_point"]),
+        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_max": int(cmsis_nn["activation_max"]),
+        "block_size": int(cmsis_nn["block_size"]),
+    }
+
+
+def _pad_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    return _static_indexing_layer(graph, mapping, "pad", ("input_shape", "output_shape", "pads", "constant_q"))
+
+
+def _slice_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    return _static_indexing_layer(
+        graph,
+        mapping,
+        "slice",
+        ("input_shape", "output_shape", "starts", "ends", "axes", "steps"),
+    )
+
+
+def _gather_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    return _static_indexing_layer(graph, mapping, "gather", ("input_shape", "output_shape", "indices", "axis"))
+
+
+def _static_indexing_layer(
+    graph: ModelGraph,
+    mapping: OpMapping,
+    kind: str,
+    required: tuple[str, ...],
+) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict) or any(field not in cmsis_nn for field in required):
+        return None
+    layer: dict[str, Any] = {
+        "kind": kind,
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "input_tensors": [node.inputs[0]] if node.inputs else [],
+        "output_tensors": list(node.outputs),
+        "block_size": int(cmsis_nn.get("block_size", 0)),
+    }
+    for field in required:
+        value = cmsis_nn[field]
+        if isinstance(value, list):
+            layer[field] = [int(item) for item in value]
+        elif isinstance(value, float):
+            layer[field] = float(value)
+        else:
+            layer[field] = int(value)
+    if layer["block_size"] <= 0:
+        layer["block_size"] = _shape_size(layer.get("output_shape", []))
     return layer
 
 
@@ -3157,3 +3552,7 @@ def _c_float_literal(value: float) -> str:
     if "e" not in text.lower() and "." not in text:
         text = f"{text}.0"
     return f"{text}f"
+
+
+def _c_int_list(values: list[int]) -> str:
+    return ", ".join(str(int(item)) for item in values)

@@ -1,0 +1,10 @@
+{
+  "dataset_id": "pad_qdq_smoke",
+  "case_id": "PAD_001",
+  "input_tensor": "input",
+  "input_shape": [1, 1, 2, 3],
+  "samples": [
+    {"id": "grid", "values": [0.05, 0.10, -0.05, 0.15, -0.10, 0.00]},
+    {"id": "signed", "values": [-0.20, -0.10, 0.00, 0.10, 0.20, 0.30]}
+  ]
+}

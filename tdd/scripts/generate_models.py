@@ -937,6 +937,162 @@ def gen_mul_001() -> Path:
     return path
 
 
+def gen_sub_001() -> Path:
+    """SUB_001: official Sub QDQ with constant second input — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "sub" / "SUB_001.onnx"
+    const_nodes, const_inits, _const_vis, const_dq = _make_qdq_constant(
+        prefix="sub.const",
+        values=np.array([1, -2, 2, -1, 3, -3, 1, 0], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    sub_node = helper.make_node("Sub", ["input_dq", const_dq], ["output"], name="sub")
+    _build_qdq_model(
+        graph_name="sub_001_qdq_const",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [sub_node],
+        runtime_initializers=const_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_div_001() -> Path:
+    """DIV_001: official Div QDQ with non-zero constant second input — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "div" / "DIV_001.onnx"
+    const_nodes, const_inits, _const_vis, const_dq = _make_qdq_constant(
+        prefix="div.const",
+        values=np.array([2, 1, -2, -1, 4, -4, 2, -2], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    div_node = helper.make_node("Div", ["input_dq", const_dq], ["output"], name="div")
+    _build_qdq_model(
+        graph_name="div_001_qdq_const",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [div_node],
+        runtime_initializers=const_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_sigmoid_001() -> Path:
+    """SIGMOID_001: official Sigmoid QDQ — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "sigmoid" / "SIGMOID_001.onnx"
+    sigmoid_node = helper.make_node("Sigmoid", ["input_dq"], ["output"], name="sigmoid")
+    _build_qdq_model(
+        graph_name="sigmoid_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=1.0 / 256.0,
+        output_zp=-128,
+        runtime_nodes=[sigmoid_node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_pad_001() -> Path:
+    """PAD_001: official Pad QDQ rank4 constant mode — [1,1,2,3] -> [1,1,4,5]."""
+    path = MODELS_ROOT / "core" / "pad" / "PAD_001.onnx"
+    pads_name = "pad.pads"
+    pads = np.array([0, 0, 1, 1, 0, 0, 1, 1], dtype=np.int64)
+    pad_node = helper.make_node(
+        "Pad",
+        ["input_dq", pads_name],
+        ["output"],
+        name="pad",
+        mode="constant",
+    )
+    _build_qdq_model(
+        graph_name="pad_001_qdq",
+        input_shape=[1, 1, 2, 3],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 1, 4, 5],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[pad_node],
+        runtime_initializers=[numpy_helper.from_array(pads, name=pads_name)],
+        save_path=path,
+    )
+    return path
+
+
+def gen_slice_001() -> Path:
+    """SLICE_001: official Slice QDQ static params — [1,1,3,4] -> [1,1,2,2]."""
+    path = MODELS_ROOT / "core" / "slice" / "SLICE_001.onnx"
+    params = {
+        "slice.starts": np.array([0, 0, 1, 1], dtype=np.int64),
+        "slice.ends": np.array([1, 1, 3, 3], dtype=np.int64),
+        "slice.axes": np.array([0, 1, 2, 3], dtype=np.int64),
+        "slice.steps": np.array([1, 1, 1, 1], dtype=np.int64),
+    }
+    slice_node = helper.make_node(
+        "Slice",
+        ["input_dq", "slice.starts", "slice.ends", "slice.axes", "slice.steps"],
+        ["output"],
+        name="slice",
+    )
+    _build_qdq_model(
+        graph_name="slice_001_qdq",
+        input_shape=[1, 1, 3, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 1, 2, 2],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[slice_node],
+        runtime_initializers=[
+            numpy_helper.from_array(value, name=name) for name, value in params.items()
+        ],
+        save_path=path,
+    )
+    return path
+
+
+def gen_gather_001() -> Path:
+    """GATHER_001: official Gather QDQ static indices — [1,4] axis=1 -> [1,2]."""
+    path = MODELS_ROOT / "core" / "gather" / "GATHER_001.onnx"
+    indices_name = "gather.indices"
+    gather_node = helper.make_node(
+        "Gather",
+        ["input_dq", indices_name],
+        ["output"],
+        name="gather",
+        axis=1,
+    )
+    _build_qdq_model(
+        graph_name="gather_001_qdq",
+        input_shape=[1, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 2],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[gather_node],
+        runtime_initializers=[
+            numpy_helper.from_array(np.array([2, 0], dtype=np.int64), name=indices_name)
+        ],
+        save_path=path,
+    )
+    return path
+
+
 def gen_transpose_001() -> Path:
     """TRANSPOSE_001: official Transpose QDQ — [1,2,2,3] -> [1,2,3,2]."""
     path = MODELS_ROOT / "core" / "transpose" / "TRANSPOSE_001.onnx"
@@ -1475,6 +1631,12 @@ _GENERATORS: dict[str, object] = {
     "CONCAT_002": gen_concat_002,
     "ADD_001": gen_add_001,
     "MUL_001": gen_mul_001,
+    "SUB_001": gen_sub_001,
+    "DIV_001": gen_div_001,
+    "SIGMOID_001": gen_sigmoid_001,
+    "PAD_001": gen_pad_001,
+    "SLICE_001": gen_slice_001,
+    "GATHER_001": gen_gather_001,
     "TRANSPOSE_001": gen_transpose_001,
     "TOPO_001": gen_topo_001,
     "TOPO_002": gen_topo_002,
