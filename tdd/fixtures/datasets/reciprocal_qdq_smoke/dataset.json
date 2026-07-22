@@ -1,0 +1,10 @@
+{
+  "dataset_id": "reciprocal_qdq_smoke",
+  "case_id": "RECIPROCAL_001",
+  "input_tensor": "input",
+  "input_shape": [1, 8],
+  "samples": [
+    {"id": "positive", "values": [0.50, 0.55, 0.60, 0.70, 0.80, 1.00, 1.25, 1.50]},
+    {"id": "mixed_finite", "values": [-1.50, -1.25, -1.00, -0.80, 0.80, 1.00, 1.25, 1.50]}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "dataset_id": "unsqueeze_qdq_smoke",
+  "case_id": "UNSQUEEZE_001",
+  "input_tensor": "input",
+  "input_shape": [1, 4],
+  "samples": [
+    {"id": "ordered", "values": [-0.15, -0.05, 0.10, 0.25]},
+    {"id": "mixed", "values": [0.20, -0.10, 0.00, 0.30]}
+  ]
+}

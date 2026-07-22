@@ -26,21 +26,26 @@ SUPPORTED_OPS = {
     "BatchNormalization",
     "Cast",
     "Constant",
+    "Clip",
     "Conv",
     "Flatten",
     "Gemm",
     "Gather",
     "GlobalAveragePool",
+    "LeakyRelu",
     "MatMul",
     "MaxPool",
     "Concat",
     "Div",
     "Mul",
+    "Neg",
     "Pad",
     "QLinearAdd",
     "QLinearConv",
     "QLinearGlobalAveragePool",
     "QLinearMatMul",
+    "Reciprocal",
+    "ReduceMean",
     "DequantizeLinear",
     "Dropout",
     "QuantizeLinear",
@@ -50,8 +55,10 @@ SUPPORTED_OPS = {
     "Slice",
     "Sigmoid",
     "Softmax",
+    "Sqrt",
     "Sub",
     "Squeeze",
+    "Tanh",
     "Transpose",
     "Unsqueeze",
 }
@@ -80,11 +87,14 @@ AUXILIARY_INITIALIZER_INPUTS = {
     "QLinearGlobalAveragePool": {1, 2, 3, 4},
     "QLinearMatMul": {1, 2, 4, 5, 6, 7},
     "QuantizeLinear": {1, 2},
+    "Clip": {1, 2},
     "Gather": {1},
     "Pad": {1, 2},
+    "ReduceMean": {1},
     "Reshape": {1},
     "Slice": {1, 2, 3, 4},
     "Squeeze": {1},
+    "Unsqueeze": {1},
 }
 
 
@@ -570,10 +580,23 @@ def normalize_attributes(
         return attributes
     if op_type == "Concat":
         return {"axis": int(attributes.get("axis", 0))}
+    if op_type == "Clip":
+        return {
+            "min": None if "min" not in attributes else float(attributes["min"]),
+            "max": None if "max" not in attributes else float(attributes["max"]),
+        }
     if op_type == "Gather":
         return {"axis": int(attributes.get("axis", 0))}
+    if op_type == "LeakyRelu":
+        return {"alpha": float(attributes.get("alpha", 0.01))}
     if op_type == "Pad":
         return {"mode": str(attributes.get("mode", "constant"))}
+    if op_type == "ReduceMean":
+        return {
+            "axes": _as_int_list(attributes.get("axes")),
+            "keepdims": int(attributes.get("keepdims", 1)),
+            "noop_with_empty_axes": int(attributes.get("noop_with_empty_axes", 0)),
+        }
     if op_type == "Unsqueeze":
         return {"axes": _as_int_list(attributes.get("axes"))}
     if op_type == "Squeeze":
@@ -745,6 +768,33 @@ def _extract_quantization(
             sigmoid_quant = _sigmoid_quant_info(node, tensor_quant, warnings)
             if sigmoid_quant is not None:
                 node_quant[node.name] = sigmoid_quant
+        elif node.op_type in {"Tanh", "LeakyRelu", "Clip", "Neg", "Sqrt", "Reciprocal"}:
+            unary_quant = _generated_unary_quant_info(
+                node,
+                tensor_quant,
+                initializer_by_name,
+                warnings,
+            )
+            if unary_quant is not None:
+                node_quant[node.name] = unary_quant
+        elif node.op_type == "ReduceMean":
+            reduce_quant = _reduce_mean_quant_info(
+                node,
+                tensor_quant,
+                initializer_by_name,
+                warnings,
+            )
+            if reduce_quant is not None:
+                node_quant[node.name] = reduce_quant
+        elif node.op_type == "Unsqueeze":
+            unsqueeze_quant = _unsqueeze_quant_info(
+                node,
+                tensor_quant,
+                initializer_by_name,
+                warnings,
+            )
+            if unsqueeze_quant is not None:
+                node_quant[node.name] = unsqueeze_quant
         elif node.op_type == "Pad":
             pad_quant = _pad_quant_info(node, tensor_quant, initializer_by_name, warnings)
             if pad_quant is not None:
@@ -825,19 +875,26 @@ def _int8_contract(
         "Gather",
         "Gemm",
         "GlobalAveragePool",
+        "LeakyRelu",
         "MatMul",
         "MaxPool",
         "Mul",
+        "Neg",
         "Pad",
         "QLinearAdd",
         "QLinearConv",
         "QLinearGlobalAveragePool",
         "QLinearMatMul",
+        "Reciprocal",
+        "ReduceMean",
         "Softmax",
         "Sigmoid",
         "Slice",
+        "Sqrt",
         "Sub",
+        "Tanh",
         "Transpose",
+        "Unsqueeze",
     }
     runtime_nodes = [
         node
@@ -845,6 +902,7 @@ def _int8_contract(
         if node.op_type in runtime_op_types
         and not _is_shape_helper_concat(node)
         and not _is_shape_helper_slice_or_gather(node)
+        and not _is_shape_helper_unsqueeze(node)
     ]
     unsupported_nodes = [node for node in runtime_nodes if node.status == "unsupported"]
     missing_quant_nodes = [
@@ -909,6 +967,16 @@ def _is_shape_helper_concat(node: NodeInfo) -> bool:
 
 def _is_shape_helper_slice_or_gather(node: NodeInfo) -> bool:
     if node.op_type not in {"Slice", "Gather"}:
+        return False
+    shapes = [
+        *[shape for shape in node.input_shapes.values()],
+        *[shape for shape in node.output_shapes.values()],
+    ]
+    return bool(shapes) and all(len(shape) <= 1 for shape in shapes)
+
+
+def _is_shape_helper_unsqueeze(node: NodeInfo) -> bool:
+    if node.op_type != "Unsqueeze":
         return False
     shapes = [
         *[shape for shape in node.input_shapes.values()],
@@ -1561,6 +1629,152 @@ def _sigmoid_quant_info(
             "activation_min": qmin,
             "activation_max": qmax,
             "block_size": block_size,
+        },
+    }
+
+
+def _generated_unary_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    output_shape = node.output_shapes.get(output_name, [])
+    block_size = _static_element_count(output_shape, node.name, node.op_type, warnings)
+    if block_size is None:
+        return None
+    qmin, qmax = _activation_range(output_quant)
+    cmsis_nn: dict[str, Any] = {
+        "api": f"generated_c_{node.op_type.lower()}_s8",
+        "input_scale": float(input_quant["scale"]),
+        "input_zero_point": int(input_quant["zero_point"]),
+        "output_scale": float(output_quant["scale"]),
+        "output_zero_point": int(output_quant["zero_point"]),
+        "activation_min": qmin,
+        "activation_max": qmax,
+        "block_size": block_size,
+    }
+    if node.op_type == "LeakyRelu":
+        cmsis_nn["alpha"] = float(node.normalized_attributes.get("alpha", 0.01))
+    if node.op_type == "Clip":
+        min_value = node.normalized_attributes.get("min")
+        max_value = node.normalized_attributes.get("max")
+        if min_value is None and len(node.inputs) > 1:
+            values = _initializer_float_list(initializer_by_name.get(node.inputs[1]))
+            if values:
+                min_value = values[0]
+        if max_value is None and len(node.inputs) > 2:
+            values = _initializer_float_list(initializer_by_name.get(node.inputs[2]))
+            if values:
+                max_value = values[0]
+        cmsis_nn["clip_min"] = None if min_value is None else float(min_value)
+        cmsis_nn["clip_max"] = None if max_value is None else float(max_value)
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": cmsis_nn,
+    }
+
+
+def _reduce_mean_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if not _is_static_shape(input_shape + output_shape):
+        warnings.append(f"node '{node.name}' ReduceMean first generated path requires static shapes.")
+        return None
+    axes = [int(item) for item in node.normalized_attributes.get("axes", [])]
+    if not axes and len(node.inputs) > 1:
+        axes = _initializer_int_list(initializer_by_name.get(node.inputs[1]))
+    rank = len(input_shape)
+    axes = [axis + rank if axis < 0 else axis for axis in axes]
+    keepdims = int(node.normalized_attributes.get("keepdims", node.attributes.get("keepdims", 1)))
+    if len(input_shape) != 2 or axes != [1] or keepdims != 1:
+        warnings.append(
+            f"node '{node.name}' ReduceMean first generated path supports rank=2 axes=[1] keepdims=1 only."
+        )
+        return None
+    qmin, qmax = _activation_range(output_quant)
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "generated_c_reducemean_s8",
+            "input_scale": float(input_quant["scale"]),
+            "input_zero_point": int(input_quant["zero_point"]),
+            "output_scale": float(output_quant["scale"]),
+            "output_zero_point": int(output_quant["zero_point"]),
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "input_shape": [int(dim) for dim in input_shape],
+            "output_shape": [int(dim) for dim in output_shape],
+            "axes": axes,
+            "keepdims": keepdims,
+            "block_size": _shape_element_count(output_shape),
+        },
+    }
+
+
+def _unsqueeze_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if _is_shape_helper_unsqueeze(node) or not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    if _quantization_differs(input_quant, output_quant):
+        warnings.append(f"node '{node.name}' Unsqueeze first generated path requires same input/output quantization.")
+        return None
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if not _is_static_shape(input_shape + output_shape):
+        warnings.append(f"node '{node.name}' Unsqueeze first generated path requires static shapes.")
+        return None
+    axes = [int(item) for item in node.normalized_attributes.get("axes", [])]
+    if not axes and len(node.inputs) > 1:
+        axes = _initializer_int_list(initializer_by_name.get(node.inputs[1]))
+    if _shape_element_count(input_shape) != _shape_element_count(output_shape):
+        warnings.append(f"node '{node.name}' Unsqueeze must preserve element count.")
+        return None
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": {
+            "api": "generated_c_unsqueeze_s8",
+            "input_shape": [int(dim) for dim in input_shape],
+            "output_shape": [int(dim) for dim in output_shape],
+            "axes": axes,
+            "block_size": _shape_element_count(output_shape),
         },
     }
 

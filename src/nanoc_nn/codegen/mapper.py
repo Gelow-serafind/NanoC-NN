@@ -6,50 +6,66 @@ RUNTIME_ACTIONS = {
     "Abs": ("direct_api", "generated_c_abs_s8", False),
     "Add": ("direct_api", "arm_elementwise_add_s8", True),
     "AveragePool": ("direct_api", "arm_avgpool_s8", True),
+    "Clip": ("direct_api", "generated_c_clip_s8", False),
     "Concat": ("direct_api", "arm_concatenation_s8_x/y/z/w", False),
     "Conv": ("wrapper_api", "arm_convolve_wrapper_s8", True),
     "Div": ("direct_api", "generated_c_div_s8", False),
     "Gather": ("direct_api", "generated_c_gather_s8", False),
     "Gemm": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
     "GlobalAveragePool": ("direct_api", "arm_avgpool_s8", True),
+    "LeakyRelu": ("direct_api", "generated_c_leakyrelu_s8", False),
     "MatMul": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
     "MaxPool": ("direct_api", "arm_max_pool_s8", True),
     "Mul": ("direct_api", "arm_elementwise_mul_s8", True),
+    "Neg": ("direct_api", "generated_c_neg_s8", False),
     "Pad": ("direct_api", "generated_c_pad_s8", False),
     "QLinearAdd": ("direct_api", "arm_elementwise_add_s8", True),
     "QLinearConv": ("wrapper_api", "arm_convolve_wrapper_s8", True),
     "QLinearGlobalAveragePool": ("direct_api", "arm_avgpool_s8", True),
     "QLinearMatMul": ("wrapper_api", "arm_fully_connected_wrapper_s8", True),
+    "Reciprocal": ("direct_api", "generated_c_reciprocal_s8", False),
+    "ReduceMean": ("direct_api", "generated_c_reducemean_s8", False),
     "Softmax": ("direct_api", "arm_softmax_s8", True),
     "Sigmoid": ("direct_api", "generated_c_sigmoid_s8", False),
     "Slice": ("direct_api", "generated_c_slice_s8", False),
+    "Sqrt": ("direct_api", "generated_c_sqrt_s8", False),
     "Sub": ("direct_api", "generated_c_sub_s8", False),
+    "Tanh": ("direct_api", "generated_c_tanh_s8", False),
     "Transpose": ("direct_api", "arm_transpose_s8", True),
+    "Unsqueeze": ("direct_api", "generated_c_unsqueeze_s8", False),
 }
 
 RENDERED_RUNTIME_OPS = {
     "Abs",
     "Add",
     "AveragePool",
+    "Clip",
     "Concat",
     "Conv",
     "Div",
     "Gather",
     "Gemm",
     "GlobalAveragePool",
+    "LeakyRelu",
     "MatMul",
     "MaxPool",
     "Mul",
+    "Neg",
     "Pad",
     "QLinearAdd",
     "QLinearConv",
     "QLinearGlobalAveragePool",
     "QLinearMatMul",
+    "Reciprocal",
+    "ReduceMean",
     "Softmax",
     "Sigmoid",
     "Slice",
+    "Sqrt",
     "Sub",
+    "Tanh",
     "Transpose",
+    "Unsqueeze",
 }
 
 FOLDED_ACTIONS = {
@@ -68,7 +84,6 @@ FOLDED_ACTIONS = {
 }
 
 FUSED_ACTIONS = {
-    "Clip": "cmsis_nn_activation min/max when adjacent runtime op is generated",
     "Relu": "cmsis_nn_activation min/max when adjacent runtime op is generated",
 }
 
@@ -112,7 +127,16 @@ def _map_node(graph: ModelGraph, node: NodeSpec) -> OpMapping:
             layout_note=layout_note,
         )
 
-    if node.op_type in FOLDED_ACTIONS and node.op_type not in {"Gather", "Slice"}:
+    if node.op_type == "Unsqueeze" and _is_shape_helper_unsqueeze(node):
+        return _mapping(
+            node,
+            status="folded",
+            action=FOLDED_ACTIONS[node.op_type],
+            reason="shape-only helper feeds tensor shape/index construction",
+            layout_note=layout_note,
+        )
+
+    if node.op_type in FOLDED_ACTIONS and node.op_type not in {"Gather", "Slice", "Unsqueeze"}:
         return _mapping(
             node,
             status="folded",
@@ -237,7 +261,9 @@ def _potential_action(node: NodeSpec) -> tuple[str, str, bool] | None:
         return ("wrapper_api", "arm_depthwise_conv_wrapper_s8", True)
     if node.op_type in {"Gather", "Slice"} and _is_shape_helper_slice_or_gather(node):
         return ("folded", FOLDED_ACTIONS[node.op_type], False)
-    if node.op_type in FOLDED_ACTIONS and node.op_type not in {"Gather", "Slice"}:
+    if node.op_type == "Unsqueeze" and _is_shape_helper_unsqueeze(node):
+        return ("folded", FOLDED_ACTIONS[node.op_type], False)
+    if node.op_type in FOLDED_ACTIONS and node.op_type not in {"Gather", "Slice", "Unsqueeze"}:
         return ("folded", FOLDED_ACTIONS[node.op_type], False)
     if node.op_type in FUSED_ACTIONS:
         return ("fused", FUSED_ACTIONS[node.op_type], False)
@@ -343,6 +369,16 @@ def _is_shape_helper_concat(node: NodeSpec) -> bool:
 
 def _is_shape_helper_slice_or_gather(node: NodeSpec) -> bool:
     if node.op_type not in {"Slice", "Gather"}:
+        return False
+    shapes = [
+        *[shape for shape in node.input_shapes.values()],
+        *[shape for shape in node.output_shapes.values()],
+    ]
+    return bool(shapes) and all(len(shape) <= 1 for shape in shapes)
+
+
+def _is_shape_helper_unsqueeze(node: NodeSpec) -> bool:
+    if node.op_type != "Unsqueeze":
         return False
     shapes = [
         *[shape for shape in node.input_shapes.values()],

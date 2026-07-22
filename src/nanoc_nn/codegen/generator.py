@@ -98,25 +98,33 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "Abs",
             "Add",
             "AveragePool",
+            "Clip",
             "Concat",
             "Conv",
             "Div",
             "Gather",
             "Gemm",
             "GlobalAveragePool",
+            "LeakyRelu",
             "MatMul",
             "MaxPool",
             "Mul",
+            "Neg",
             "Pad",
             "QLinearAdd",
             "QLinearConv",
             "QLinearGlobalAveragePool",
             "QLinearMatMul",
+            "Reciprocal",
+            "ReduceMean",
             "Sigmoid",
             "Slice",
             "Softmax",
+            "Sqrt",
             "Sub",
+            "Tanh",
             "Transpose",
+            "Unsqueeze",
         }
     ]
     generated_layers = _runtime_layers(graph, generated_runtime_mappings)
@@ -424,8 +432,20 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             lines.extend(_generated_binary_call(layer, current_output))
         elif layer["kind"] == "abs":
             lines.extend(_generated_abs_call(layer, current_output))
-        elif layer["kind"] == "sigmoid":
-            lines.extend(_generated_sigmoid_call(layer, current_output))
+        elif layer["kind"] in {
+            "sigmoid",
+            "tanh",
+            "leakyrelu",
+            "clip",
+            "neg",
+            "sqrt",
+            "reciprocal",
+        }:
+            lines.extend(_generated_unary_call(layer, current_output))
+        elif layer["kind"] == "reducemean":
+            lines.extend(_generated_reduce_mean_call(layer, current_output))
+        elif layer["kind"] == "unsqueeze":
+            lines.extend(_generated_unsqueeze_call(layer, current_output))
         elif layer["kind"] == "pad":
             lines.extend(_generated_pad_call(layer, current_output))
         elif layer["kind"] == "slice":
@@ -661,8 +681,20 @@ def _cmsis_tensor_runtime_run_body(
             lines.extend(_generated_binary_call(layer, output_expr))
         elif layer["kind"] == "abs":
             lines.extend(_generated_abs_call(layer, output_expr))
-        elif layer["kind"] == "sigmoid":
-            lines.extend(_generated_sigmoid_call(layer, output_expr))
+        elif layer["kind"] in {
+            "sigmoid",
+            "tanh",
+            "leakyrelu",
+            "clip",
+            "neg",
+            "sqrt",
+            "reciprocal",
+        }:
+            lines.extend(_generated_unary_call(layer, output_expr))
+        elif layer["kind"] == "reducemean":
+            lines.extend(_generated_reduce_mean_call(layer, output_expr))
+        elif layer["kind"] == "unsqueeze":
+            lines.extend(_generated_unsqueeze_call(layer, output_expr))
         elif layer["kind"] == "pad":
             lines.extend(_generated_pad_call(layer, output_expr))
         elif layer["kind"] == "slice":
@@ -879,7 +911,6 @@ def _tensor_symbol_map(
 def _tensor_aliases(graph: ModelGraph) -> dict[str, str]:
     aliases: dict[str, str] = {}
     alias_ops = {
-        "Clip",
         "DequantizeLinear",
         "Dropout",
         "Flatten",
@@ -1049,7 +1080,21 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         return int(layer.get("output_size", 0))
     if layer["kind"] in {"add", "mul", "sub", "div"}:
         return int(layer.get("block_size", 0))
-    if layer["kind"] in {"abs", "sigmoid", "pad", "slice", "gather"}:
+    if layer["kind"] in {
+        "abs",
+        "sigmoid",
+        "tanh",
+        "leakyrelu",
+        "clip",
+        "neg",
+        "sqrt",
+        "reciprocal",
+        "reducemean",
+        "unsqueeze",
+        "pad",
+        "slice",
+        "gather",
+    }:
         return int(layer.get("block_size", 0))
     if layer["kind"] == "transpose":
         return int(layer.get("block_size", 0))
@@ -1482,10 +1527,50 @@ def _generated_binary_call(layer: dict[str, Any], current_output: str) -> list[s
     ]
 
 
-def _generated_sigmoid_call(layer: dict[str, Any], current_output: str) -> list[str]:
+def _generated_unary_call(layer: dict[str, Any], current_output: str) -> list[str]:
     input_expr = layer.get("input_expr", "current_input")
+    kind = str(layer["kind"])
+    api = f"generated_c_{kind}_s8"
+    if kind == "sigmoid":
+        value_lines = ["            float nanoc_v = 1.0f / (1.0f + expf(-nanoc_x));"]
+    elif kind == "tanh":
+        value_lines = ["            float nanoc_v = tanhf(nanoc_x);"]
+    elif kind == "leakyrelu":
+        value_lines = [
+            (
+                "            float nanoc_v = nanoc_x >= 0.0f ? nanoc_x : "
+                f"nanoc_x * {_c_float_literal(float(layer.get('alpha', 0.01)))};"
+            )
+        ]
+    elif kind == "clip":
+        value_lines = ["            float nanoc_v = nanoc_x;"]
+        if "clip_min" in layer:
+            value_lines.append(
+                f"            if (nanoc_v < {_c_float_literal(float(layer['clip_min']))}) "
+                f"{{ nanoc_v = {_c_float_literal(float(layer['clip_min']))}; }}"
+            )
+        if "clip_max" in layer:
+            value_lines.append(
+                f"            if (nanoc_v > {_c_float_literal(float(layer['clip_max']))}) "
+                f"{{ nanoc_v = {_c_float_literal(float(layer['clip_max']))}; }}"
+            )
+    elif kind == "neg":
+        value_lines = ["            float nanoc_v = -nanoc_x;"]
+    elif kind == "sqrt":
+        value_lines = [
+            "            float nanoc_v = nanoc_x <= 0.0f ? 0.0f : sqrtf(nanoc_x);"
+        ]
+    elif kind == "reciprocal":
+        value_lines = [
+            "            float nanoc_v = 0.0f;",
+            "            if (nanoc_x > 0.0000001f || nanoc_x < -0.0000001f) {",
+            "                nanoc_v = 1.0f / nanoc_x;",
+            "            }",
+        ]
+    else:
+        return []
     return [
-        f"    /* node {layer['index']}: {layer['name']} -> generated_c_sigmoid_s8 */",
+        f"    /* node {layer['index']}: {layer['name']} -> {api} */",
         "    {",
         f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
         (
@@ -1493,7 +1578,7 @@ def _generated_sigmoid_call(layer: dict[str, Any], current_output: str) -> list[
             f"{_c_float_literal(float(layer['input_zero_point']))}) * "
             f"{_c_float_literal(float(layer['input_scale']))};"
         ),
-        "            float nanoc_v = 1.0f / (1.0f + expf(-nanoc_x));",
+        *value_lines,
         (
             f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
             f"{_c_float_literal(float(layer['output_zero_point']))};"
@@ -1502,6 +1587,52 @@ def _generated_sigmoid_call(layer: dict[str, Any], current_output: str) -> list[
         f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
         f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
         f"            {current_output}[nanoc_i] = (int8_t)nanoc_q;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _generated_reduce_mean_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    input_shape = [int(item) for item in layer["input_shape"]]
+    rows = input_shape[0]
+    cols = input_shape[1]
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> generated_c_reducemean_s8 */",
+        "    {",
+        f"        for (size_t nanoc_row = 0u; nanoc_row < {rows}u; ++nanoc_row) {{",
+        "            float nanoc_sum = 0.0f;",
+        f"            for (size_t nanoc_col = 0u; nanoc_col < {cols}u; ++nanoc_col) {{",
+        (
+            f"                float nanoc_x = ((float){input_expr}[nanoc_row * {cols}u + nanoc_col] - "
+            f"{_c_float_literal(float(layer['input_zero_point']))}) * "
+            f"{_c_float_literal(float(layer['input_scale']))};"
+        ),
+        "                nanoc_sum += nanoc_x;",
+        "            }",
+        f"            float nanoc_v = nanoc_sum / {_c_float_literal(float(cols))};",
+        (
+            f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
+            f"{_c_float_literal(float(layer['output_zero_point']))};"
+        ),
+        "            int32_t nanoc_q = (int32_t)(nanoc_qf >= 0.0f ? nanoc_qf + 0.5f : nanoc_qf - 0.5f);",
+        f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
+        f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
+        f"            {current_output}[nanoc_row] = (int8_t)nanoc_q;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _generated_unsqueeze_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> generated_c_unsqueeze_s8 */",
+        "    {",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        f"            {current_output}[nanoc_i] = {input_expr}[nanoc_i];",
         "        }",
         "    }",
         "",
@@ -1832,14 +1963,22 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Gather",
             "MatMul",
             "Mul",
+            "Clip",
+            "LeakyRelu",
+            "Neg",
             "Pad",
             "QLinearAdd",
             "QLinearConv",
             "QLinearMatMul",
+            "Reciprocal",
+            "ReduceMean",
             "Sigmoid",
             "Slice",
+            "Sqrt",
             "Sub",
             "Div",
+            "Tanh",
+            "Unsqueeze",
         }:
             continue
         if node.op_type in {"Conv", "QLinearConv"}:
@@ -1852,7 +1991,22 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             action = "arm_elementwise_add_s8"
         elif node.op_type == "Mul":
             action = "arm_elementwise_mul_s8"
-        elif node.op_type in {"Sub", "Div", "Sigmoid", "Pad", "Slice", "Gather"}:
+        elif node.op_type in {
+            "Sub",
+            "Div",
+            "Sigmoid",
+            "Tanh",
+            "LeakyRelu",
+            "Clip",
+            "Neg",
+            "Sqrt",
+            "Reciprocal",
+            "ReduceMean",
+            "Unsqueeze",
+            "Pad",
+            "Slice",
+            "Gather",
+        }:
             action = f"generated_c_{node.op_type.lower()}_s8"
         else:
             action = "arm_fully_connected_s8"
@@ -1903,8 +2057,20 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             layer = _mul_layer(graph, mapping)
         elif mapping.onnx_op in {"Sub", "Div"}:
             layer = _generated_binary_layer(graph, mapping)
-        elif mapping.onnx_op == "Sigmoid":
-            layer = _sigmoid_layer(graph, mapping)
+        elif mapping.onnx_op in {
+            "Sigmoid",
+            "Tanh",
+            "LeakyRelu",
+            "Clip",
+            "Neg",
+            "Sqrt",
+            "Reciprocal",
+        }:
+            layer = _generated_unary_layer(graph, mapping)
+        elif mapping.onnx_op == "ReduceMean":
+            layer = _reduce_mean_layer(graph, mapping)
+        elif mapping.onnx_op == "Unsqueeze":
+            layer = _unsqueeze_layer(graph, mapping)
         elif mapping.onnx_op == "Pad":
             layer = _pad_layer(graph, mapping)
         elif mapping.onnx_op == "Slice":
@@ -2321,7 +2487,7 @@ def _generated_binary_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, 
     return layer
 
 
-def _sigmoid_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+def _generated_unary_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
     quant = _node_quant(graph, mapping.node_name)
     node = _node_by_name(graph, mapping.node_name)
     if node is None or quant is None:
@@ -2340,8 +2506,8 @@ def _sigmoid_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | No
     )
     if any(field not in cmsis_nn for field in required):
         return None
-    return {
-        "kind": "sigmoid",
+    layer = {
+        "kind": str(mapping.onnx_op).lower(),
         "index": mapping.index,
         "name": mapping.node_name,
         "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
@@ -2353,6 +2519,87 @@ def _sigmoid_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | No
         "output_zero_point": int(cmsis_nn["output_zero_point"]),
         "activation_min": int(cmsis_nn["activation_min"]),
         "activation_max": int(cmsis_nn["activation_max"]),
+        "block_size": int(cmsis_nn["block_size"]),
+    }
+    if mapping.onnx_op == "LeakyRelu":
+        layer["alpha"] = float(cmsis_nn.get("alpha", 0.01))
+    if mapping.onnx_op == "Clip":
+        if cmsis_nn.get("clip_min") is not None:
+            layer["clip_min"] = float(cmsis_nn["clip_min"])
+        if cmsis_nn.get("clip_max") is not None:
+            layer["clip_max"] = float(cmsis_nn["clip_max"])
+    return layer
+
+
+def _reduce_mean_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    required = (
+        "input_scale",
+        "input_zero_point",
+        "output_scale",
+        "output_zero_point",
+        "activation_min",
+        "activation_max",
+        "input_shape",
+        "output_shape",
+        "axes",
+        "keepdims",
+        "block_size",
+    )
+    if any(field not in cmsis_nn for field in required):
+        return None
+    input_shape = [int(item) for item in cmsis_nn["input_shape"]]
+    output_shape = [int(item) for item in cmsis_nn["output_shape"]]
+    if len(input_shape) != 2 or len(output_shape) != 2:
+        return None
+    return {
+        "kind": "reducemean",
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "input_tensors": [node.inputs[0]] if node.inputs else [],
+        "output_tensors": list(node.outputs),
+        "input_scale": float(cmsis_nn["input_scale"]),
+        "input_zero_point": int(cmsis_nn["input_zero_point"]),
+        "output_scale": float(cmsis_nn["output_scale"]),
+        "output_zero_point": int(cmsis_nn["output_zero_point"]),
+        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_max": int(cmsis_nn["activation_max"]),
+        "input_shape": input_shape,
+        "output_shape": output_shape,
+        "axes": [int(item) for item in cmsis_nn["axes"]],
+        "keepdims": int(cmsis_nn["keepdims"]),
+        "block_size": int(cmsis_nn["block_size"]),
+    }
+
+
+def _unsqueeze_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    required = ("input_shape", "output_shape", "axes", "block_size")
+    if any(field not in cmsis_nn for field in required):
+        return None
+    return {
+        "kind": "unsqueeze",
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "input_tensors": [node.inputs[0]] if node.inputs else [],
+        "output_tensors": list(node.outputs),
+        "input_shape": [int(item) for item in cmsis_nn["input_shape"]],
+        "output_shape": [int(item) for item in cmsis_nn["output_shape"]],
+        "axes": [int(item) for item in cmsis_nn["axes"]],
         "block_size": int(cmsis_nn["block_size"]),
     }
 

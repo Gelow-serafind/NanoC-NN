@@ -1,0 +1,50 @@
+# SQRT_001: 官方 Sqrt QDQ/int8 非负输入数值精度
+
+## 验证目标
+
+验证 ONNX 官方 `Sqrt` 在非负静态 QDQ/int8 数据路径上可生成可执行 C。
+
+## 来源
+
+内部探索：人工构造最小官方 ONNX schema 用例。
+
+## ONNX Schema 归属
+
+- `ai.onnx/Sqrt`
+- opset: 11+
+- support id: `ONNX_SQRT_QDQ_INT8`
+
+## 网络结构
+
+`input -> QuantizeLinear -> DequantizeLinear -> Sqrt -> QuantizeLinear -> DequantizeLinear -> output`
+
+## 输入
+
+- shape: `[1, 8]`
+- dtype: float32 API 输入，内部 QDQ/int8
+- value domain: 非负
+
+## 算子参数
+
+无属性。
+
+## 量化设计
+
+- input/output scale: `0.05`
+- input/output zero_point: `0`
+
+## 预期结果
+
+**codegen status**: `ok`
+
+生成 `generated_c_sqrt_s8` C99 路径。
+
+## 数值验收
+
+- dataset: `sqrt_qdq_smoke`
+- max_abs_error: `0.05`
+- saturation ratio: `<= 0.25`
+
+## 边界/风险
+
+当前只声明非负域；负输入的 ONNX 行为会产生 NaN，不属于本能力白名单。

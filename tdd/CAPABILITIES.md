@@ -1,10 +1,10 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-07-22T08:19:32.895115
-> Git commit: `09f84c4`
+> 最后更新: 2026-07-22T09:52:13.208825
+> Git commit: `7134c9e`
 
-**能力集大小: 49 / 49 (100%)**
+**能力集大小: 57 / 57 (100%)**
 
 ## 已验证能力 (PASS)
 
@@ -17,6 +17,7 @@
 | extension | QLinearGlobalAveragePool | static rank=4 quantized global average pool | cmsis-nn | cmsis_avgpool_s8 | AVGPOOL_001 | core/avgpool | QLinearGlobalAveragePool int8 全局池化代码生成 | 2026-07-22 |
 | official | GlobalAveragePool | rank=4 static NCHW, QDQ/int8 tensor, full spatial H/W average | cmsis-nn | cmsis_global_avgpool_s8 | AVGPOOL_002 | core/avgpool | 官方 GlobalAveragePool QDQ/int8 全局池化数值精度 | 2026-07-22 |
 | official | AveragePool | rank=4 static NCHW, QDQ/int8 tensor, CMSIS-compatible average pool window | cmsis-nn | cmsis_avgpool_s8 | AVGPOOL_003 | core/avgpool | 官方 AveragePool QDQ/int8 2x2 stride=2 数值精度 | 2026-07-22 |
+| official | Clip | static QDQ/int8 tensor with constant min/max inputs or legacy attributes | cmsis-nn | generated_c_clip_s8 | CLIP_001 | core/clip | 官方 Clip QDQ/int8 常量 min/max 数值精度 | 2026-07-22 |
 | official | Concat | rank=4 NCHW, axis=1 channel concat, same-quantization QDQ/int8 tensors | cmsis-nn | cmsis_concatenation_s8_z | CONCAT_001 | core/concat | rank=4 channel 维 int8 Concat 数值精度 | 2026-07-22 |
 | official | Concat | rank=4 NCHW, axis=1 channel concat, same-quantization QDQ/int8 tensors | cmsis-nn | cmsis_concatenation_s8_z | CONCAT_002 | core/concat | SqueezeNet 风格不同量化分支 Concat 数值精度 | 2026-07-22 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_001 | core/conv | 1x1 pointwise 单通道 | 2026-07-22 |
@@ -30,22 +31,29 @@
 | official | Gemm | static 2-D fully connected form, optional bias, QDQ/int8 parameters | cmsis-nn | cmsis_fully_connected_s8 | GEMM_002 | core/gemm | 非对称输入 zp!=0 含 bias | 2026-07-22 |
 | official | Gemm | static 2-D fully connected form, optional bias, QDQ/int8 parameters | cmsis-nn | cmsis_fully_connected_s8 | GEMM_003 | core/gemm | 非 4 对齐维度 13->7 | 2026-07-22 |
 | official | Gemm | static 2-D fully connected form, optional bias, QDQ/int8 parameters | cmsis-nn | cmsis_fully_connected_s8 | GEMM_004 | core/gemm | 中等规模 64->32 | 2026-07-22 |
+| official | LeakyRelu | static QDQ/int8 tensor, scalar alpha attribute | cmsis-nn | generated_c_leakyrelu_s8 | LEAKYRELU_001 | core/leakyrelu | 官方 LeakyRelu QDQ/int8 alpha=0.1 数值精度 | 2026-07-22 |
 | official | MatMul | static fully connected compatible form, QDQ/int8 parameters | cmsis-nn | cmsis_fully_connected_s8 | MATMUL_001 | core/matmul | 官方 MatMul QDQ/int8 FC-compatible 形态 | 2026-07-22 |
 | official | MaxPool | rank=4 static NCHW, QDQ/int8 tensor, CMSIS-compatible pool window | cmsis-nn | cmsis_maxpool_s8 | MAXPOOL_001 | core/maxpool | 标准 2x2 stride=2 MaxPool int8 代码生成 | 2026-07-22 |
 | official | MaxPool | rank=4 static NCHW, QDQ/int8 tensor, CMSIS-compatible pool window | cmsis-nn | cmsis_maxpool_s8 | MAXPOOL_002 | core/maxpool | SqueezeNet 风格 DQ/MaxPool/Q int8 边界代码生成 | 2026-07-22 |
 | official | Mul | same-shape QDQ/int8 tensors, second input may be constant | cmsis-nn | cmsis_elementwise_mul_s8 | MUL_001 | core/mul | 官方 Mul QDQ/int8 同形状常量分支数值精度 | 2026-07-22 |
+| official | Neg | static QDQ/int8 tensor | cmsis-nn | generated_c_neg_s8 | NEGOP_001 | core/neg | 官方 Neg QDQ/int8 静态张量数值精度 | 2026-07-22 |
 | official | Pad | static rank=4 QDQ/int8 tensor, constant mode, constant pads initializer | cmsis-nn | generated_c_pad_s8 | PAD_001 | core/pad | 官方 Pad QDQ/int8 rank4 constant mode 数值顺序 | 2026-07-22 |
 | official | QLinearConv | uint8 activation, static rank=4, CMSIS-compatible convolution | cmsis-nn | cmsis_qlinearconv_s8 | QLINEAR_NUM_001 | core/qlinear | QLinearConv uint8 输入数值精度 (CMSIS-NN vs ONNX) | 2026-07-22 |
 | official | QLinearConv | static rank=4 convolution with per-channel weight scale | cmsis-nn | cmsis_qlinearconv_per_channel_s8 | QLINEAR_NUM_002 | core/qlinear | 多通道 QLinearConv + bias + per-channel scale | 2026-07-22 |
 | official | QLinearConv | static rank=4 convolution with per-channel weight scale | cmsis-nn | cmsis_qlinearconv_per_channel_s8 | QLINEAR_NUM_003 | core/qlinear | 高通道 QLinearConv 5×5 per-channel (仿 MNIST Conv1) | 2026-07-22 |
+| official | Reciprocal | static QDQ/int8 tensor, non-zero finite value domain | cmsis-nn | generated_c_reciprocal_s8 | RECIPROCAL_001 | core/reciprocal | 官方 Reciprocal QDQ/int8 非零输入数值精度 | 2026-07-22 |
+| official | ReduceMean | rank=2 static QDQ/int8 tensor, axes=1, keepdims=1 | cmsis-nn | generated_c_reducemean_s8 | REDUCEMEAN_001 | core/reducemean | 官方 ReduceMean QDQ/int8 rank2 axes=1 keepdims=1 数值精度 | 2026-07-22 |
 | official | Reshape | static QDQ/int8 tensor, constant shape, same element count | cmsis-nn | generation_time_shape_alias_or_layout_copy | RESHAPE_001 | core/reshape | 官方 Reshape QDQ/int8 静态形状数值顺序 | 2026-07-22 |
 | official | Sigmoid | static QDQ/int8 tensor | cmsis-nn | generated_c_sigmoid_s8 | SIGMOID_001 | core/sigmoid | 官方 Sigmoid QDQ/int8 静态张量数值精度 | 2026-07-22 |
 | official | Slice | static QDQ/int8 tensor, constant starts/ends/axes/steps | cmsis-nn | generated_c_slice_s8 | SLICE_001 | core/slice | 官方 Slice QDQ/int8 静态区间数值顺序 | 2026-07-22 |
 | official | Softmax | static classification vector, int8 output path | cmsis-nn | cmsis_softmax_s8 | SOFTMAX_001 | core/softmax | 10 分类 Softmax int8 代码生成 | 2026-07-22 |
 | official | Softmax | static classification vector, int8 output path | cmsis-nn | cmsis_softmax_s8 | SOFTMAX_002 | core/softmax | SqueezeNet 末端 float output Softmax int8 C 输出 | 2026-07-22 |
+| official | Sqrt | static QDQ/int8 tensor, non-negative value domain | cmsis-nn | generated_c_sqrt_s8 | SQRT_001 | core/sqrt | 官方 Sqrt QDQ/int8 非负输入数值精度 | 2026-07-22 |
 | official | Squeeze | static QDQ/int8 tensor, explicit axes removing dimensions of size 1 | cmsis-nn | generation_time_shape_alias_or_layout_copy | SQUEEZE_001 | core/squeeze | 官方 Squeeze QDQ/int8 静态去 1 维数值顺序 | 2026-07-22 |
 | official | Sub | same-shape QDQ/int8 tensors, second input may be constant | cmsis-nn | generated_c_sub_s8 | SUB_001 | core/sub | 官方 Sub QDQ/int8 同形状常量分支数值精度 | 2026-07-22 |
+| official | Tanh | static QDQ/int8 tensor | cmsis-nn | generated_c_tanh_s8 | TANH_001 | core/tanh | 官方 Tanh QDQ/int8 静态张量数值精度 | 2026-07-22 |
 | official | Transpose | static QDQ/int8 tensor, rank=4 explicit perm | cmsis-nn | cmsis_transpose_s8 | TRANSPOSE_001 | core/transpose | 官方 Transpose QDQ/int8 rank4 显式 perm 数值顺序 | 2026-07-22 |
+| official | Unsqueeze | static data-path QDQ/int8 tensor, constant axes, element count unchanged | cmsis-nn | generated_c_unsqueeze_s8 | UNSQUEEZE_001 | core/unsqueeze | 官方 Unsqueeze QDQ/int8 数据路径静态升维数值顺序 | 2026-07-22 |
 | mixed | multiple | internal float32 graph without QDQ quantization section | reject | reject_without_quantization | NEG_001 | negative | float32 无 Q/DQ 模型正确拒绝 | 2026-07-22 |
 | mixed | multiple | SqueezeNet int8 with QLinearConv, MaxPool, DQ/Concat/Q, QLinearGlobalAveragePool and terminal Softmax | cmsis-nn | cmsis_nn_squeezenet_int8 | NET_001 | networks | 真实 SqueezeNet 1.0 int8 图像分类网络导入评估 | 2026-07-22 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | NET_002 | networks | 真实 MobileNetV2 int8/QLinear 图像分类网络导入评估 | 2026-07-22 |

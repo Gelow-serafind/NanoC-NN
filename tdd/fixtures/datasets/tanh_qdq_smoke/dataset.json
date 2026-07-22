@@ -1,0 +1,10 @@
+{
+  "dataset_id": "tanh_qdq_smoke",
+  "case_id": "TANH_001",
+  "input_tensor": "input",
+  "input_shape": [1, 8],
+  "samples": [
+    {"id": "range", "values": [-1.20, -0.60, -0.30, -0.10, 0.00, 0.10, 0.60, 1.20]},
+    {"id": "near_linear", "values": [-0.35, -0.20, -0.05, 0.00, 0.05, 0.20, 0.35, 0.50]}
+  ]
+}

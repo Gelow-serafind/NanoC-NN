@@ -1006,6 +1006,189 @@ def gen_sigmoid_001() -> Path:
     return path
 
 
+def gen_tanh_001() -> Path:
+    """TANH_001: official Tanh QDQ — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "tanh" / "TANH_001.onnx"
+    tanh_node = helper.make_node("Tanh", ["input_dq"], ["output"], name="tanh")
+    _build_qdq_model(
+        graph_name="tanh_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=1.0 / 128.0,
+        output_zp=0,
+        runtime_nodes=[tanh_node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_leakyrelu_001() -> Path:
+    """LEAKYRELU_001: official LeakyRelu QDQ alpha=0.1 — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "leakyrelu" / "LEAKYRELU_001.onnx"
+    node = helper.make_node(
+        "LeakyRelu",
+        ["input_dq"],
+        ["output"],
+        name="leakyrelu",
+        alpha=0.1,
+    )
+    _build_qdq_model(
+        graph_name="leakyrelu_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_clip_001() -> Path:
+    """CLIP_001: official Clip QDQ with constant min/max — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "clip" / "CLIP_001.onnx"
+    min_name = "clip.min"
+    max_name = "clip.max"
+    node = helper.make_node(
+        "Clip",
+        ["input_dq", min_name, max_name],
+        ["output"],
+        name="clip",
+    )
+    _build_qdq_model(
+        graph_name="clip_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[
+            numpy_helper.from_array(np.array(-0.10, dtype=np.float32), name=min_name),
+            numpy_helper.from_array(np.array(0.20, dtype=np.float32), name=max_name),
+        ],
+        save_path=path,
+    )
+    return path
+
+
+def gen_negop_001() -> Path:
+    """NEGOP_001: official Neg QDQ — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "neg" / "NEGOP_001.onnx"
+    node = helper.make_node("Neg", ["input_dq"], ["output"], name="neg")
+    _build_qdq_model(
+        graph_name="negop_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_sqrt_001() -> Path:
+    """SQRT_001: official Sqrt QDQ with non-negative input domain — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "sqrt" / "SQRT_001.onnx"
+    node = helper.make_node("Sqrt", ["input_dq"], ["output"], name="sqrt")
+    _build_qdq_model(
+        graph_name="sqrt_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_reciprocal_001() -> Path:
+    """RECIPROCAL_001: official Reciprocal QDQ with finite non-zero input — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "reciprocal" / "RECIPROCAL_001.onnx"
+    node = helper.make_node("Reciprocal", ["input_dq"], ["output"], name="reciprocal")
+    _build_qdq_model(
+        graph_name="reciprocal_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.02,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_reducemean_001() -> Path:
+    """REDUCEMEAN_001: official ReduceMean QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    path = MODELS_ROOT / "core" / "reducemean" / "REDUCEMEAN_001.onnx"
+    node = helper.make_node(
+        "ReduceMean",
+        ["input_dq"],
+        ["output"],
+        name="reducemean",
+        axes=[1],
+        keepdims=1,
+    )
+    _build_qdq_model(
+        graph_name="reducemean_001_qdq",
+        input_shape=[2, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[2, 1],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_unsqueeze_001() -> Path:
+    """UNSQUEEZE_001: official Unsqueeze QDQ data path — [1,4] -> [1,1,4]."""
+    path = MODELS_ROOT / "core" / "unsqueeze" / "UNSQUEEZE_001.onnx"
+    axes_name = "unsqueeze.axes"
+    node = helper.make_node(
+        "Unsqueeze",
+        ["input_dq", axes_name],
+        ["output"],
+        name="unsqueeze",
+    )
+    _build_qdq_model(
+        graph_name="unsqueeze_001_qdq",
+        input_shape=[1, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 1, 4],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[
+            numpy_helper.from_array(np.array([1], dtype=np.int64), name=axes_name)
+        ],
+        save_path=path,
+    )
+    return path
+
+
 def gen_pad_001() -> Path:
     """PAD_001: official Pad QDQ rank4 constant mode — [1,1,2,3] -> [1,1,4,5]."""
     path = MODELS_ROOT / "core" / "pad" / "PAD_001.onnx"
@@ -1634,6 +1817,14 @@ _GENERATORS: dict[str, object] = {
     "SUB_001": gen_sub_001,
     "DIV_001": gen_div_001,
     "SIGMOID_001": gen_sigmoid_001,
+    "TANH_001": gen_tanh_001,
+    "LEAKYRELU_001": gen_leakyrelu_001,
+    "CLIP_001": gen_clip_001,
+    "NEGOP_001": gen_negop_001,
+    "SQRT_001": gen_sqrt_001,
+    "RECIPROCAL_001": gen_reciprocal_001,
+    "REDUCEMEAN_001": gen_reducemean_001,
+    "UNSQUEEZE_001": gen_unsqueeze_001,
     "PAD_001": gen_pad_001,
     "SLICE_001": gen_slice_001,
     "GATHER_001": gen_gather_001,
