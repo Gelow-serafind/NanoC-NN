@@ -1189,6 +1189,275 @@ def gen_unsqueeze_001() -> Path:
     return path
 
 
+def gen_exp_001() -> Path:
+    """EXP_001: official Exp QDQ with bounded input — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "exp" / "EXP_001.onnx"
+    node = helper.make_node("Exp", ["input_dq"], ["output"], name="exp")
+    _build_qdq_model(
+        graph_name="exp_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_log_001() -> Path:
+    """LOG_001: official Log QDQ with positive input domain — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "log" / "LOG_001.onnx"
+    node = helper.make_node("Log", ["input_dq"], ["output"], name="log")
+    _build_qdq_model(
+        graph_name="log_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_floor_001() -> Path:
+    """FLOOR_001: official Floor QDQ — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "floor" / "FLOOR_001.onnx"
+    node = helper.make_node("Floor", ["input_dq"], ["output"], name="floor")
+    _build_qdq_model(
+        graph_name="floor_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_ceil_001() -> Path:
+    """CEIL_001: official Ceil QDQ — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "ceil" / "CEIL_001.onnx"
+    node = helper.make_node("Ceil", ["input_dq"], ["output"], name="ceil")
+    _build_qdq_model(
+        graph_name="ceil_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_round_001() -> Path:
+    """ROUND_001: official Round QDQ — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "round" / "ROUND_001.onnx"
+    node = helper.make_node("Round", ["input_dq"], ["output"], name="round")
+    _build_qdq_model(
+        graph_name="round_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_sign_001() -> Path:
+    """SIGN_001: official Sign QDQ — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "sign" / "SIGN_001.onnx"
+    node = helper.make_node("Sign", ["input_dq"], ["output"], name="sign")
+    _build_qdq_model(
+        graph_name="sign_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_min_001() -> Path:
+    """MIN_001: official Min QDQ with constant second input — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "min" / "MIN_001.onnx"
+    const_nodes, const_inits, _const_vis, const_dq = _make_qdq_constant(
+        prefix="min.const",
+        values=np.array([0, -4, 4, 0, 6, -2, 8, 4], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    node = helper.make_node("Min", ["input_dq", const_dq], ["output"], name="min")
+    _build_qdq_model(
+        graph_name="min_001_qdq_const",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [node],
+        runtime_initializers=const_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_max_001() -> Path:
+    """MAX_001: official Max QDQ with constant second input — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "max" / "MAX_001.onnx"
+    const_nodes, const_inits, _const_vis, const_dq = _make_qdq_constant(
+        prefix="max.const",
+        values=np.array([0, -4, 4, 0, 6, -2, 8, 4], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    node = helper.make_node("Max", ["input_dq", const_dq], ["output"], name="max")
+    _build_qdq_model(
+        graph_name="max_001_qdq_const",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [node],
+        runtime_initializers=const_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_pow_001() -> Path:
+    """POW_001: official Pow QDQ with constant exponent — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "pow" / "POW_001.onnx"
+    const_nodes, const_inits, _const_vis, const_dq = _make_qdq_constant(
+        prefix="pow.const",
+        values=np.array([10, 10, 10, 10, 10, 10, 10, 10], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    node = helper.make_node("Pow", ["input_dq", const_dq], ["output"], name="pow")
+    _build_qdq_model(
+        graph_name="pow_001_qdq_const",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [node],
+        runtime_initializers=const_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_reducesum_001() -> Path:
+    """REDUCESUM_001: official ReduceSum QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    path = MODELS_ROOT / "core" / "reducesum" / "REDUCESUM_001.onnx"
+    axes_name = "reducesum.axes"
+    node = helper.make_node(
+        "ReduceSum",
+        ["input_dq", axes_name],
+        ["output"],
+        name="reducesum",
+        keepdims=1,
+    )
+    _build_qdq_model(
+        graph_name="reducesum_001_qdq",
+        input_shape=[2, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[2, 1],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[
+            numpy_helper.from_array(np.array([1], dtype=np.int64), name=axes_name)
+        ],
+        save_path=path,
+    )
+    return path
+
+
+def gen_reducemax_001() -> Path:
+    """REDUCEMAX_001: official ReduceMax QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    path = MODELS_ROOT / "core" / "reducemax" / "REDUCEMAX_001.onnx"
+    node = helper.make_node(
+        "ReduceMax",
+        ["input_dq"],
+        ["output"],
+        name="reducemax",
+        axes=[1],
+        keepdims=1,
+    )
+    _build_qdq_model(
+        graph_name="reducemax_001_qdq",
+        input_shape=[2, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[2, 1],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_reducemin_001() -> Path:
+    """REDUCEMIN_001: official ReduceMin QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    path = MODELS_ROOT / "core" / "reducemin" / "REDUCEMIN_001.onnx"
+    node = helper.make_node(
+        "ReduceMin",
+        ["input_dq"],
+        ["output"],
+        name="reducemin",
+        axes=[1],
+        keepdims=1,
+    )
+    _build_qdq_model(
+        graph_name="reducemin_001_qdq",
+        input_shape=[2, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[2, 1],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
 def gen_pad_001() -> Path:
     """PAD_001: official Pad QDQ rank4 constant mode — [1,1,2,3] -> [1,1,4,5]."""
     path = MODELS_ROOT / "core" / "pad" / "PAD_001.onnx"
@@ -1825,6 +2094,18 @@ _GENERATORS: dict[str, object] = {
     "RECIPROCAL_001": gen_reciprocal_001,
     "REDUCEMEAN_001": gen_reducemean_001,
     "UNSQUEEZE_001": gen_unsqueeze_001,
+    "EXP_001": gen_exp_001,
+    "LOG_001": gen_log_001,
+    "FLOOR_001": gen_floor_001,
+    "CEIL_001": gen_ceil_001,
+    "ROUND_001": gen_round_001,
+    "SIGN_001": gen_sign_001,
+    "MIN_001": gen_min_001,
+    "MAX_001": gen_max_001,
+    "POW_001": gen_pow_001,
+    "REDUCESUM_001": gen_reducesum_001,
+    "REDUCEMAX_001": gen_reducemax_001,
+    "REDUCEMIN_001": gen_reducemin_001,
     "PAD_001": gen_pad_001,
     "SLICE_001": gen_slice_001,
     "GATHER_001": gen_gather_001,

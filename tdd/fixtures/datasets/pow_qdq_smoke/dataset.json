@@ -1,0 +1,10 @@
+{
+  "dataset_id": "pow_qdq_smoke",
+  "case_id": "POW_001",
+  "input_tensor": "input",
+  "input_shape": [1, 8],
+  "samples": [
+    {"id": "positive", "values": [0.20, 0.30, 0.40, 0.50, 0.60, 0.75, 0.90, 1.00]},
+    {"id": "small", "values": [0.10, 0.20, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75]}
+  ]
+}

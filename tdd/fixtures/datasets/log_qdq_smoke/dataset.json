@@ -1,0 +1,10 @@
+{
+  "dataset_id": "log_qdq_smoke",
+  "case_id": "LOG_001",
+  "input_tensor": "input",
+  "input_shape": [1, 8],
+  "samples": [
+    {"id": "positive", "values": [0.25, 0.30, 0.40, 0.50, 0.75, 1.00, 1.25, 1.50]},
+    {"id": "around_one", "values": [0.55, 0.65, 0.80, 0.90, 1.00, 1.10, 1.25, 1.40]}
+  ]
+}

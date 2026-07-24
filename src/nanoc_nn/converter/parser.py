@@ -28,24 +28,34 @@ SUPPORTED_OPS = {
     "Constant",
     "Clip",
     "Conv",
+    "Ceil",
+    "Exp",
     "Flatten",
+    "Floor",
     "Gemm",
     "Gather",
     "GlobalAveragePool",
     "LeakyRelu",
+    "Log",
     "MatMul",
+    "Max",
     "MaxPool",
+    "Min",
     "Concat",
     "Div",
     "Mul",
     "Neg",
     "Pad",
+    "Pow",
     "QLinearAdd",
     "QLinearConv",
     "QLinearGlobalAveragePool",
     "QLinearMatMul",
     "Reciprocal",
+    "ReduceMax",
     "ReduceMean",
+    "ReduceMin",
+    "ReduceSum",
     "DequantizeLinear",
     "Dropout",
     "QuantizeLinear",
@@ -58,6 +68,8 @@ SUPPORTED_OPS = {
     "Sqrt",
     "Sub",
     "Squeeze",
+    "Round",
+    "Sign",
     "Tanh",
     "Transpose",
     "Unsqueeze",
@@ -72,7 +84,10 @@ PARAMETER_INITIALIZER_INPUTS = {
     "DequantizeLinear": {0},
     "Gemm": {1, 2},
     "MatMul": {1},
+    "Max": {1},
+    "Min": {1},
     "Mul": {1},
+    "Pow": {1},
     "QLinearAdd": {3},
     "QLinearConv": {3, 8},
     "QLinearMatMul": {3},
@@ -90,7 +105,10 @@ AUXILIARY_INITIALIZER_INPUTS = {
     "Clip": {1, 2},
     "Gather": {1},
     "Pad": {1, 2},
+    "ReduceMax": {1},
     "ReduceMean": {1},
+    "ReduceMin": {1},
+    "ReduceSum": {1},
     "Reshape": {1},
     "Slice": {1, 2, 3, 4},
     "Squeeze": {1},
@@ -591,7 +609,7 @@ def normalize_attributes(
         return {"alpha": float(attributes.get("alpha", 0.01))}
     if op_type == "Pad":
         return {"mode": str(attributes.get("mode", "constant"))}
-    if op_type == "ReduceMean":
+    if op_type in {"ReduceMean", "ReduceSum", "ReduceMax", "ReduceMin"}:
         return {
             "axes": _as_int_list(attributes.get("axes")),
             "keepdims": int(attributes.get("keepdims", 1)),
@@ -768,7 +786,20 @@ def _extract_quantization(
             sigmoid_quant = _sigmoid_quant_info(node, tensor_quant, warnings)
             if sigmoid_quant is not None:
                 node_quant[node.name] = sigmoid_quant
-        elif node.op_type in {"Tanh", "LeakyRelu", "Clip", "Neg", "Sqrt", "Reciprocal"}:
+        elif node.op_type in {
+            "Tanh",
+            "LeakyRelu",
+            "Clip",
+            "Neg",
+            "Sqrt",
+            "Reciprocal",
+            "Exp",
+            "Log",
+            "Floor",
+            "Ceil",
+            "Round",
+            "Sign",
+        }:
             unary_quant = _generated_unary_quant_info(
                 node,
                 tensor_quant,
@@ -777,7 +808,7 @@ def _extract_quantization(
             )
             if unary_quant is not None:
                 node_quant[node.name] = unary_quant
-        elif node.op_type == "ReduceMean":
+        elif node.op_type in {"ReduceMean", "ReduceSum", "ReduceMax", "ReduceMin"}:
             reduce_quant = _reduce_mean_quant_info(
                 node,
                 tensor_quant,
@@ -786,6 +817,16 @@ def _extract_quantization(
             )
             if reduce_quant is not None:
                 node_quant[node.name] = reduce_quant
+        elif node.op_type in {"Min", "Max", "Pow"}:
+            generated_elementwise_quant = _generated_elementwise_quant_info(
+                node,
+                tensor_quant,
+                dq_aliases,
+                quantized_weights,
+                warnings,
+            )
+            if generated_elementwise_quant is not None:
+                node_quant[node.name] = generated_elementwise_quant
         elif node.op_type == "Unsqueeze":
             unsqueeze_quant = _unsqueeze_quant_info(
                 node,
@@ -872,26 +913,37 @@ def _int8_contract(
         "Concat",
         "Conv",
         "Div",
+        "Exp",
+        "Floor",
         "Gather",
         "Gemm",
         "GlobalAveragePool",
         "LeakyRelu",
+        "Log",
         "MatMul",
+        "Max",
         "MaxPool",
+        "Min",
         "Mul",
         "Neg",
         "Pad",
+        "Pow",
         "QLinearAdd",
         "QLinearConv",
         "QLinearGlobalAveragePool",
         "QLinearMatMul",
         "Reciprocal",
+        "ReduceMax",
         "ReduceMean",
+        "ReduceMin",
+        "ReduceSum",
         "Softmax",
         "Sigmoid",
         "Slice",
         "Sqrt",
         "Sub",
+        "Round",
+        "Sign",
         "Tanh",
         "Transpose",
         "Unsqueeze",
@@ -1712,7 +1764,7 @@ def _reduce_mean_quant_info(
     keepdims = int(node.normalized_attributes.get("keepdims", node.attributes.get("keepdims", 1)))
     if len(input_shape) != 2 or axes != [1] or keepdims != 1:
         warnings.append(
-            f"node '{node.name}' ReduceMean first generated path supports rank=2 axes=[1] keepdims=1 only."
+            f"node '{node.name}' {node.op_type} first generated path supports rank=2 axes=[1] keepdims=1 only."
         )
         return None
     qmin, qmax = _activation_range(output_quant)
@@ -1721,7 +1773,7 @@ def _reduce_mean_quant_info(
         "inputs": {input_name: input_quant},
         "outputs": {output_name: output_quant},
         "cmsis_nn": {
-            "api": "generated_c_reducemean_s8",
+            "api": f"generated_c_{node.op_type.lower()}_s8",
             "input_scale": float(input_quant["scale"]),
             "input_zero_point": int(input_quant["zero_point"]),
             "output_scale": float(output_quant["scale"]),

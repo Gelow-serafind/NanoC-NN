@@ -362,6 +362,12 @@ REQUIRED_NODE_QUANT_FIELDS["QLinearMatMul"] = REQUIRED_NODE_QUANT_FIELDS["MatMul
 REQUIRED_NODE_QUANT_FIELDS["QLinearGlobalAveragePool"] = REQUIRED_NODE_QUANT_FIELDS[
     "GlobalAveragePool"
 ]
+for _unary_op in ("Exp", "Log", "Floor", "Ceil", "Round", "Sign"):
+    REQUIRED_NODE_QUANT_FIELDS[_unary_op] = REQUIRED_NODE_QUANT_FIELDS["Tanh"]
+for _binary_op in ("Min", "Max", "Pow"):
+    REQUIRED_NODE_QUANT_FIELDS[_binary_op] = REQUIRED_NODE_QUANT_FIELDS["Div"]
+for _reduce_op in ("ReduceSum", "ReduceMax", "ReduceMin"):
+    REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
 REQUIRED_NODE_QUANT_FIELDS["QLinearAdd"] = {
     "cmsis_nn": {
         "api",
