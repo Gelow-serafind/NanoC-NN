@@ -1458,6 +1458,148 @@ def gen_reducemin_001() -> Path:
     return path
 
 
+def gen_where_001() -> Path:
+    """WHERE_001: official Where with static bool mask — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "where" / "WHERE_001.onnx"
+    cond_name = "where.cond"
+    cond = np.array([True, False, True, False, False, True, True, False], dtype=np.bool_).reshape(1, 8)
+    const_nodes, const_inits, _const_vis, const_dq = _make_qdq_constant(
+        prefix="where.else",
+        values=np.array([-6, -4, -2, 0, 2, 4, 6, 8], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    node = helper.make_node("Where", [cond_name, "input_dq", const_dq], ["output"], name="where")
+    _build_qdq_model(
+        graph_name="where_001_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [node],
+        runtime_initializers=[
+            numpy_helper.from_array(cond, name=cond_name),
+            *const_inits,
+        ],
+        save_path=path,
+    )
+    return path
+
+
+def _gen_compare_where_case(
+    *,
+    case_id: str,
+    op_type: str,
+    category: str,
+    const_values: np.ndarray,
+) -> Path:
+    path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
+    const_nodes, const_inits, _const_vis, const_dq = _make_qdq_constant(
+        prefix=f"{category}.rhs",
+        values=const_values.astype(np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    zero_nodes, zero_inits, _zero_vis, zero_dq = _make_qdq_constant(
+        prefix=f"{category}.zero",
+        values=np.zeros((1, 8), dtype=np.int8),
+        scale=0.05,
+        zero_point=0,
+    )
+    compare_node = helper.make_node(op_type, ["input_dq", const_dq], [f"{category}.cond"], name=category)
+    where_node = helper.make_node(
+        "Where",
+        [f"{category}.cond", "input_dq", zero_dq],
+        ["output"],
+        name=f"{category}.where",
+    )
+    _build_qdq_model(
+        graph_name=f"{case_id.lower()}_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + zero_nodes + [compare_node, where_node],
+        runtime_initializers=const_inits + zero_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_equal_001() -> Path:
+    """EQUAL_001: Equal bool feeds Where — [1,8] -> [1,8]."""
+    return _gen_compare_where_case(
+        case_id="EQUAL_001",
+        op_type="Equal",
+        category="equal",
+        const_values=np.array([0, -2, 2, 0, 3, -1, 4, 2], dtype=np.int8),
+    )
+
+
+def gen_greater_001() -> Path:
+    """GREATER_001: Greater bool feeds Where — [1,8] -> [1,8]."""
+    return _gen_compare_where_case(
+        case_id="GREATER_001",
+        op_type="Greater",
+        category="greater",
+        const_values=np.array([-2, -2, 0, 1, 2, 2, 4, 5], dtype=np.int8),
+    )
+
+
+def gen_less_001() -> Path:
+    """LESS_001: Less bool feeds Where — [1,8] -> [1,8]."""
+    return _gen_compare_where_case(
+        case_id="LESS_001",
+        op_type="Less",
+        category="less",
+        const_values=np.array([2, 1, 3, 1, 5, 0, 8, 6], dtype=np.int8),
+    )
+
+
+def _gen_reduce_axis1_case(case_id: str, op_type: str, category: str, output_scale: float) -> Path:
+    path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
+    node = helper.make_node(
+        op_type,
+        ["input_dq"],
+        ["output"],
+        name=category,
+        axes=[1],
+        keepdims=1,
+    )
+    _build_qdq_model(
+        graph_name=f"{case_id.lower()}_qdq",
+        input_shape=[2, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[2, 1],
+        output_scale=output_scale,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_reduceprod_001() -> Path:
+    """REDUCEPROD_001: official ReduceProd QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    return _gen_reduce_axis1_case("REDUCEPROD_001", "ReduceProd", "reduceprod", 0.01)
+
+
+def gen_reducel1_001() -> Path:
+    """REDUCEL1_001: official ReduceL1 QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    return _gen_reduce_axis1_case("REDUCEL1_001", "ReduceL1", "reducel1", 0.05)
+
+
+def gen_reducel2_001() -> Path:
+    """REDUCEL2_001: official ReduceL2 QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    return _gen_reduce_axis1_case("REDUCEL2_001", "ReduceL2", "reducel2", 0.05)
+
+
 def gen_pad_001() -> Path:
     """PAD_001: official Pad QDQ rank4 constant mode — [1,1,2,3] -> [1,1,4,5]."""
     path = MODELS_ROOT / "core" / "pad" / "PAD_001.onnx"
@@ -2106,6 +2248,13 @@ _GENERATORS: dict[str, object] = {
     "REDUCESUM_001": gen_reducesum_001,
     "REDUCEMAX_001": gen_reducemax_001,
     "REDUCEMIN_001": gen_reducemin_001,
+    "WHERE_001": gen_where_001,
+    "EQUAL_001": gen_equal_001,
+    "GREATER_001": gen_greater_001,
+    "LESS_001": gen_less_001,
+    "REDUCEPROD_001": gen_reduceprod_001,
+    "REDUCEL1_001": gen_reducel1_001,
+    "REDUCEL2_001": gen_reducel2_001,
     "PAD_001": gen_pad_001,
     "SLICE_001": gen_slice_001,
     "GATHER_001": gen_gather_001,

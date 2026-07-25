@@ -1,0 +1,10 @@
+{
+  "dataset_id": "greater_where_qdq_smoke",
+  "case_id": "GREATER_001",
+  "input_tensor": "input",
+  "input_shape": [1, 8],
+  "samples": [
+    {"id": "mixed", "values": [-0.05, -0.10, 0.05, 0.10, 0.15, 0.20, 0.30, 0.35]},
+    {"id": "threshold_edges", "values": [-0.15, -0.10, 0.00, 0.05, 0.10, 0.15, 0.20, 0.25]}
+  ]
+}

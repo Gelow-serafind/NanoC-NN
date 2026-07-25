@@ -1,0 +1,10 @@
+{
+  "dataset_id": "reduceprod_qdq_smoke",
+  "case_id": "REDUCEPROD_001",
+  "input_tensor": "input",
+  "input_shape": [2, 4],
+  "samples": [
+    {"id": "positive_small", "values": [0.20, 0.25, 0.30, 0.35, 0.15, 0.20, 0.25, 0.30]},
+    {"id": "mixed_sign", "values": [-0.20, 0.25, -0.30, 0.35, 0.15, -0.20, 0.25, -0.30]}
+  ]
+}
