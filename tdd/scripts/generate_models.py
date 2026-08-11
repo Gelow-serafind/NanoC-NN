@@ -1909,6 +1909,141 @@ def gen_reducesumsquare_001() -> Path:
     return _gen_reduce_axis1_case("REDUCESUMSQUARE_001", "ReduceSumSquare", "reducesumsquare", 0.05)
 
 
+def _gen_spatial_pool_case(
+    *,
+    case_id: str,
+    op_type: str,
+    category: str,
+    attrs: dict[str, object] | None = None,
+) -> Path:
+    """构造 rank=4 全局/窗口池化 QDQ 用例 — [1,2,2,2] 或 [1,1,2,2]。"""
+    if case_id == "LPPOOL_001":
+        in_shape, out_shape = [1, 1, 2, 2], [1, 1, 1, 1]
+    else:
+        in_shape, out_shape = [1, 2, 2, 2], [1, 2, 1, 1]
+    path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
+    node = helper.make_node(op_type, ["input_dq"], ["output"], name=category, **(attrs or {}))
+    _build_qdq_model(
+        graph_name=f"{case_id.lower()}_qdq",
+        input_shape=in_shape,
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=out_shape,
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_globalmaxpool_001() -> Path:
+    """GLOBALMAXPOOL_001: official GlobalMaxPool QDQ — [1,2,2,2] -> [1,2,1,1]."""
+    return _gen_spatial_pool_case(case_id="GLOBALMAXPOOL_001", op_type="GlobalMaxPool", category="globalmaxpool")
+
+
+def gen_globallppool_001() -> Path:
+    """GLOBALLPPOOL_001: official GlobalLpPool QDQ — [1,2,2,2] -> [1,2,1,1]."""
+    return _gen_spatial_pool_case(
+        case_id="GLOBALLPPOOL_001", op_type="GlobalLpPool", category="globallppool", attrs={"p": 2}
+    )
+
+
+def gen_lppool_001() -> Path:
+    """LPPOOL_001: official LpPool QDQ kernel=2 stride=1 — [1,1,2,2] -> [1,1,1,1]."""
+    return _gen_spatial_pool_case(
+        case_id="LPPOOL_001",
+        op_type="LpPool",
+        category="lppool",
+        attrs={"p": 2, "kernel_shape": [2, 2], "strides": [1, 1]},
+    )
+
+
+def gen_lpnormalization_001() -> Path:
+    """LPNORMALIZATION_001: official LpNormalization QDQ axis=1 p=2 — [2,4] -> [2,4]."""
+    path = MODELS_ROOT / "core" / "lpnormalization" / "LPNORMALIZATION_001.onnx"
+    node = helper.make_node("LpNormalization", ["input_dq"], ["output"], name="lpnormalization", axis=1, p=2)
+    _build_qdq_model(
+        graph_name="lpnormalization_001_qdq",
+        input_shape=[2, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[2, 4],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_cumsum_001() -> Path:
+    """CUMSUM_001: official CumSum QDQ axis=1 — [2,4] -> [2,4]."""
+    path = MODELS_ROOT / "core" / "cumsum" / "CUMSUM_001.onnx"
+    axes_name = "cumsum.axis"
+    node = helper.make_node("CumSum", ["input_dq", axes_name], ["output"], name="cumsum")
+    _build_qdq_model(
+        graph_name="cumsum_001_qdq",
+        input_shape=[2, 4],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[2, 4],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[numpy_helper.from_array(np.array([1], dtype=np.int64), name=axes_name)],
+        save_path=path,
+    )
+    return path
+
+
+def _gen_variadic_const_case(*, case_id: str, op_type: str, category: str, const_values: np.ndarray) -> Path:
+    """构造双输入逐元素 QDQ 用例（第二输入为量化常量）— [1,8] -> [1,8]。"""
+    path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
+    const_nodes, const_inits, _vis, const_dq = _make_qdq_constant(
+        prefix=f"{category}.rhs",
+        values=const_values.astype(np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    node = helper.make_node(op_type, ["input_dq", const_dq], ["output"], name=category)
+    _build_qdq_model(
+        graph_name=f"{case_id.lower()}_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=const_nodes + [node],
+        runtime_initializers=const_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_mean_001() -> Path:
+    """MEAN_001: official Mean QDQ const rhs — [1,8] -> [1,8]."""
+    return _gen_variadic_const_case(
+        case_id="MEAN_001",
+        op_type="Mean",
+        category="mean",
+        const_values=np.array([2, -2, 4, -4, 6, -6, 8, -8], dtype=np.int8),
+    )
+
+
+def gen_sum_001() -> Path:
+    """SUM_001: official Sum QDQ const rhs — [1,8] -> [1,8]."""
+    return _gen_variadic_const_case(
+        case_id="SUM_001",
+        op_type="Sum",
+        category="sum",
+        const_values=np.array([2, -2, 4, -4, 6, -6, 8, -8], dtype=np.int8),
+    )
+
+
 def gen_pad_001() -> Path:
     """PAD_001: official Pad QDQ rank4 constant mode — [1,1,2,3] -> [1,1,4,5]."""
     path = MODELS_ROOT / "core" / "pad" / "PAD_001.onnx"
@@ -2583,6 +2718,13 @@ _GENERATORS: dict[str, object] = {
     "REDUCELOGSUM_001": gen_reducelogsum_001,
     "REDUCELOGSUMEXP_001": gen_reducelogsumexp_001,
     "REDUCESUMSQUARE_001": gen_reducesumsquare_001,
+    "GLOBALMAXPOOL_001": gen_globalmaxpool_001,
+    "GLOBALLPPOOL_001": gen_globallppool_001,
+    "LPPOOL_001": gen_lppool_001,
+    "LPNORMALIZATION_001": gen_lpnormalization_001,
+    "CUMSUM_001": gen_cumsum_001,
+    "MEAN_001": gen_mean_001,
+    "SUM_001": gen_sum_001,
     "PAD_001": gen_pad_001,
     "SLICE_001": gen_slice_001,
     "GATHER_001": gen_gather_001,

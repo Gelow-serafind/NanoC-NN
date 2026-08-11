@@ -1,0 +1,10 @@
+{
+ "dataset_id": "lppool_qdq_smoke",
+ "case_id": "LPPOOL_001",
+ "input_tensor": "input",
+ "input_shape": [1, 1, 2, 2],
+ "samples": [
+  {"id": "mixed", "values": [0.1, -0.2, 0.3, 0.4]},
+  {"id": "negative", "values": [0.3, 0.1, -0.2, -0.4]}
+ ]
+}

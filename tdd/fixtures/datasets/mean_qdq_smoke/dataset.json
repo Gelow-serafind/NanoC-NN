@@ -1,0 +1,10 @@
+{
+ "dataset_id": "mean_qdq_smoke",
+ "case_id": "MEAN_001",
+ "input_tensor": "input",
+ "input_shape": [1, 8],
+ "samples": [
+  {"id": "mixed", "values": [0.0, 0.2, 0.0, 0.2, 0.1, 0.1, 0.0, 0.0]},
+  {"id": "symmetric", "values": [0.2, -0.2, 0.2, -0.2, 0.2, -0.2, 0.2, -0.2]}
+ ]
+}
