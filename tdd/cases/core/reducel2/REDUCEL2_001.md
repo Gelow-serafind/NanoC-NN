@@ -1,22 +1,61 @@
 # REDUCEL2_001: 官方 ReduceL2 QDQ/int8 行归约
 
-## 来源
-
-- ONNX 官方 schema: `ReduceL2`
-- 内部探索：reduce family 扩展
-
-## 目标
+## 验证目标
 
 验证 rank=2 QDQ/int8 tensor 在 `axes=[1]`、`keepdims=1` 下执行 L2 归约，并与 ONNX Runtime 数值一致。
 
-## 支持范围
+## 来源
 
-- 输入形状 `[2,4]`
-- `axes=[1]`
-- `keepdims=1`
-- 输出 QDQ/int8
+内部探索：沿已支持的 reduce family 扩展 L2 范数归约能力。
 
-## 预期
+## ONNX Schema 归属
 
-**codegen status**: `ok`
+| 字段 | 值 |
+|------|----|
+| domain | `ai.onnx` |
+| op_type | `ReduceL2` |
+| opset_range | `11+` |
+| schema_form | `rank=2 static QDQ/int8 tensor, axes=1, keepdims=1` |
+| lowering | `generated_c_reducel2_s8` |
+| backend | `cmsis-nn` |
 
+## 网络结构
+
+```text
+Input -> QuantizeLinear -> DequantizeLinear -> ReduceL2 -> QuantizeLinear -> DequantizeLinear -> Output
+```
+
+## 输入
+
+- **张量形状**: `[2, 4]`
+- **数据类型**: int8 QDQ 数据路径
+
+## 算子参数
+
+| 算子 | 参数 |
+|------|------|
+| ReduceL2 | `axes=[1]`, `keepdims=1` |
+
+## 量化设计
+
+| 张量 | scale | zero_point | 说明 |
+|------|-------|------------|------|
+| input | `0.05` | `0` | 输入量化 |
+| output | `0.05` | `0` | 输出 L2 范数量化 |
+
+## 预期结果
+
+- **codegen status**: `ok`
+- **若 ok**: 编译通过、运行不崩溃
+- **关键验证点**: 生成 C 应执行平方和开方，而不是普通 sum
+
+## 数值验收
+
+- **是否需要**: `yes`
+- **数据集**: `tdd/fixtures/datasets/reducel2_qdq_smoke/dataset.json`
+- **参考路径**: 原始 ONNX Runtime
+- **通过阈值**: top1 一致率 `1.0`，最大绝对误差 `0.06`，饱和率不超过 `0.25`
+
+## 边界/风险
+
+当前只覆盖 rank=2 行归约，不覆盖多轴、负轴、`keepdims=0` 或空 axes。

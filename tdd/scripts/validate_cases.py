@@ -42,7 +42,7 @@ REQUIRED_SECTIONS = (
 
 VALID_EXPECTED = {"ok", "blocked", "unsupported", "oversize"}
 VALID_SOURCES = {"内部探索", "用户反馈", "缺陷复现"}
-CASE_FILE_RE = re.compile(r"^[A-Z]+(?:_[A-Z]+)*_[0-9]{3}$")
+CASE_FILE_RE = re.compile(r"^[A-Z0-9]+(?:_[A-Z0-9]+)*_[0-9]{3}$")
 
 
 def main() -> int:
