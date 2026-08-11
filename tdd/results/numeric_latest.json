@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-08-12T00:04:54.167649",
-  "git_commit": "d72e00e",
+  "timestamp": "2026-08-12T01:17:21.114724",
+  "git_commit": "f3c3aea",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py --generate",
-  "total": 73,
-  "passed": 73,
+  "total": 80,
+  "passed": 80,
   "failed": 0,
   "results": [
     {
@@ -121,7 +121,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.99
+      "duration_sec": 3.05
     },
     {
       "case_id": "MATMUL_001",
@@ -209,7 +209,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.9
+      "duration_sec": 2.85
     },
     {
       "case_id": "FLATTEN_001",
@@ -341,7 +341,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.91
+      "duration_sec": 2.87
     },
     {
       "case_id": "RESHAPE_001",
@@ -449,7 +449,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.87
     },
     {
       "case_id": "SQUEEZE_001",
@@ -557,7 +557,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.91
+      "duration_sec": 2.86
     },
     {
       "case_id": "AVGPOOL_002",
@@ -653,7 +653,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.8
     },
     {
       "case_id": "AVGPOOL_003",
@@ -769,7 +769,7 @@
           "max_abs_error": 0.05000000447034836
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.81
     },
     {
       "case_id": "SOFTMAX_002",
@@ -865,7 +865,7 @@
           "max_abs_error": 0.001285940408706665
         }
       ],
-      "duration_sec": 2.99
+      "duration_sec": 2.84
     },
     {
       "case_id": "CONCAT_001",
@@ -981,7 +981,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.84
     },
     {
       "case_id": "CONCAT_002",
@@ -1097,7 +1097,7 @@
           "max_abs_error": 0.20000001788139343
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.82
     },
     {
       "case_id": "ADD_001",
@@ -1213,7 +1213,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.86
     },
     {
       "case_id": "MUL_001",
@@ -1329,7 +1329,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.86
     },
     {
       "case_id": "SUB_001",
@@ -1445,7 +1445,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.82
     },
     {
       "case_id": "DIV_001",
@@ -1561,7 +1561,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.81
     },
     {
       "case_id": "SIGMOID_001",
@@ -1793,7 +1793,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.86
     },
     {
       "case_id": "LEAKYRELU_001",
@@ -1909,7 +1909,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.83
     },
     {
       "case_id": "CLIP_001",
@@ -2025,7 +2025,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.8
     },
     {
       "case_id": "NEGOP_001",
@@ -2141,7 +2141,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.85
     },
     {
       "case_id": "SQRT_001",
@@ -2257,7 +2257,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.81
     },
     {
       "case_id": "RECIPROCAL_001",
@@ -2373,7 +2373,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.91
+      "duration_sec": 2.81
     },
     {
       "case_id": "REDUCEMEAN_001",
@@ -2453,7 +2453,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.94
     },
     {
       "case_id": "UNSQUEEZE_001",
@@ -2549,7 +2549,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.85
     },
     {
       "case_id": "EXP_001",
@@ -2665,7 +2665,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.81
     },
     {
       "case_id": "LOG_001",
@@ -2781,7 +2781,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.89
     },
     {
       "case_id": "FLOOR_001",
@@ -2897,7 +2897,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.91
+      "duration_sec": 2.86
     },
     {
       "case_id": "CEIL_001",
@@ -3013,7 +3013,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.77
+      "duration_sec": 2.87
     },
     {
       "case_id": "ROUND_001",
@@ -3129,7 +3129,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.95
+      "duration_sec": 2.86
     },
     {
       "case_id": "SIGN_001",
@@ -3245,7 +3245,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.83
     },
     {
       "case_id": "MIN_001",
@@ -3361,7 +3361,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.76
+      "duration_sec": 2.83
     },
     {
       "case_id": "MAX_001",
@@ -3477,7 +3477,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.79
     },
     {
       "case_id": "POW_001",
@@ -3593,7 +3593,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.94
     },
     {
       "case_id": "REDUCESUM_001",
@@ -3673,7 +3673,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.74
+      "duration_sec": 2.83
     },
     {
       "case_id": "REDUCEMAX_001",
@@ -3833,7 +3833,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.77
+      "duration_sec": 2.93
     },
     {
       "case_id": "WHERE_001",
@@ -3949,7 +3949,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.77
+      "duration_sec": 2.84
     },
     {
       "case_id": "EQUAL_001",
@@ -4065,7 +4065,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.81
     },
     {
       "case_id": "GREATER_001",
@@ -4181,7 +4181,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.84
     },
     {
       "case_id": "LESS_001",
@@ -4297,7 +4297,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.93
     },
     {
       "case_id": "GREATEROREQUAL_001",
@@ -4413,7 +4413,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.83
     },
     {
       "case_id": "LESSOREQUAL_001",
@@ -4529,7 +4529,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.84
     },
     {
       "case_id": "AND_001",
@@ -4645,7 +4645,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.84
     },
     {
       "case_id": "OR_001",
@@ -4761,7 +4761,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.85
     },
     {
       "case_id": "NOT_001",
@@ -4877,7 +4877,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.84
     },
     {
       "case_id": "XOR_001",
@@ -4993,7 +4993,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.8
     },
     {
       "case_id": "ERF_001",
@@ -5109,7 +5109,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.77
+      "duration_sec": 2.8
     },
     {
       "case_id": "SOFTPLUS_001",
@@ -5225,7 +5225,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.76
+      "duration_sec": 2.86
     },
     {
       "case_id": "SOFTSIGN_001",
@@ -5341,7 +5341,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.84
     },
     {
       "case_id": "HARDSWISH_001",
@@ -5457,7 +5457,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.81
     },
     {
       "case_id": "ELU_001",
@@ -5573,7 +5573,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.83
     },
     {
       "case_id": "SELU_001",
@@ -5689,7 +5689,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.9
+      "duration_sec": 2.84
     },
     {
       "case_id": "HARDSIGMOID_001",
@@ -5805,7 +5805,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.78
+      "duration_sec": 2.82
     },
     {
       "case_id": "THRESHOLDEDRELU_001",
@@ -5921,7 +5921,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.78
+      "duration_sec": 2.82
     },
     {
       "case_id": "CELU_001",
@@ -6037,7 +6037,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.84
     },
     {
       "case_id": "PRELU_001",
@@ -6153,7 +6153,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.88
+      "duration_sec": 2.83
     },
     {
       "case_id": "REDUCELOGSUM_001",
@@ -6233,7 +6233,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.58
+      "duration_sec": 2.82
     },
     {
       "case_id": "REDUCELOGSUMEXP_001",
@@ -6313,7 +6313,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.52
+      "duration_sec": 2.82
     },
     {
       "case_id": "REDUCESUMSQUARE_001",
@@ -6393,7 +6393,703 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.54
+      "duration_sec": 2.84
+    },
+    {
+      "case_id": "GLOBALMAXPOOL_001",
+      "dataset_id": "globalmaxpool_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/globalmaxpool/GLOBALMAXPOOL_001.onnx",
+      "output_dir": "tdd/work/numeric/GLOBALMAXPOOL_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "mixed",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            1
+          ],
+          "c_top5": [
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            6,
+            5
+          ],
+          "c_float": [
+            0.30000001192092896,
+            0.25
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "larger",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            1
+          ],
+          "c_top5": [
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            8,
+            7
+          ],
+          "c_float": [
+            0.4000000059604645,
+            0.3499999940395355
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.59
+    },
+    {
+      "case_id": "GLOBALLPPOOL_001",
+      "dataset_id": "globallppool_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/globallppool/GLOBALLPPOOL_001.onnx",
+      "output_dir": "tdd/work/numeric/GLOBALLPPOOL_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "mixed",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            1
+          ],
+          "c_top5": [
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            7,
+            6
+          ],
+          "c_float": [
+            0.3499999940395355,
+            0.30000001192092896
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "larger",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            1
+          ],
+          "c_top5": [
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            11,
+            9
+          ],
+          "c_float": [
+            0.550000011920929,
+            0.45000001788139343
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.62
+    },
+    {
+      "case_id": "LPPOOL_001",
+      "dataset_id": "lppool_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/lppool/LPPOOL_001.onnx",
+      "output_dir": "tdd/work/numeric/LPPOOL_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "mixed",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0
+          ],
+          "c_top5": [
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            11
+          ],
+          "c_float": [
+            0.550000011920929
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "negative",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0
+          ],
+          "c_top5": [
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            11
+          ],
+          "c_float": [
+            0.550000011920929
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.59
+    },
+    {
+      "case_id": "LPNORMALIZATION_001",
+      "dataset_id": "lpnormalization_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/lpnormalization/LPNORMALIZATION_001.onnx",
+      "output_dir": "tdd/work/numeric/LPNORMALIZATION_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "two_rows",
+          "label": null,
+          "onnx_top1": 2,
+          "c_top1": 2,
+          "onnx_top5": [
+            6,
+            2,
+            0,
+            4,
+            3
+          ],
+          "c_top5": [
+            6,
+            2,
+            0,
+            4,
+            3
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            5,
+            -11,
+            16,
+            0,
+            3,
+            -6,
+            16,
+            -10
+          ],
+          "c_float": [
+            0.25,
+            -0.550000011920929,
+            0.800000011920929,
+            0.0,
+            0.15000000596046448,
+            -0.30000001192092896,
+            0.800000011920929,
+            -0.5
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "larger",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            4,
+            6,
+            3,
+            1
+          ],
+          "c_top5": [
+            0,
+            4,
+            6,
+            3,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            15,
+            4,
+            -11,
+            7,
+            10,
+            -15,
+            8,
+            -3
+          ],
+          "c_float": [
+            0.75,
+            0.20000000298023224,
+            -0.550000011920929,
+            0.3499999940395355,
+            0.5,
+            -0.75,
+            0.4000000059604645,
+            -0.15000000596046448
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.69
+    },
+    {
+      "case_id": "CUMSUM_001",
+      "dataset_id": "cumsum_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/cumsum/CUMSUM_001.onnx",
+      "output_dir": "tdd/work/numeric/CUMSUM_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "two_rows",
+          "label": null,
+          "onnx_top1": 2,
+          "c_top1": 2,
+          "onnx_top5": [
+            6,
+            3,
+            2,
+            0,
+            7
+          ],
+          "c_top5": [
+            6,
+            3,
+            2,
+            0,
+            7
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            2,
+            -2,
+            4,
+            4,
+            1,
+            -1,
+            4,
+            1
+          ],
+          "c_float": [
+            0.10000000149011612,
+            -0.10000000149011612,
+            0.20000000298023224,
+            0.20000000298023224,
+            0.05000000074505806,
+            -0.05000000074505806,
+            0.20000000298023224,
+            0.05000000074505806
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "larger",
+          "label": null,
+          "onnx_top1": 3,
+          "c_top1": 3,
+          "onnx_top5": [
+            3,
+            1,
+            0,
+            4,
+            2
+          ],
+          "c_top5": [
+            3,
+            1,
+            0,
+            4,
+            2
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            6,
+            8,
+            4,
+            12,
+            4,
+            -2,
+            1,
+            0
+          ],
+          "c_float": [
+            0.30000001192092896,
+            0.4000000059604645,
+            0.20000000298023224,
+            0.6000000238418579,
+            0.20000000298023224,
+            -0.10000000149011612,
+            0.05000000074505806,
+            0.0
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.61
+    },
+    {
+      "case_id": "MEAN_001",
+      "dataset_id": "mean_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/mean/MEAN_001.onnx",
+      "output_dir": "tdd/work/numeric/MEAN_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "mixed",
+          "label": null,
+          "onnx_top1": 4,
+          "c_top1": 4,
+          "onnx_top5": [
+            6,
+            4,
+            2,
+            1,
+            0
+          ],
+          "c_top5": [
+            6,
+            4,
+            2,
+            1,
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            1,
+            1,
+            2,
+            0,
+            4,
+            -2,
+            4,
+            -4
+          ],
+          "c_float": [
+            0.05000000074505806,
+            0.05000000074505806,
+            0.10000000149011612,
+            0.0,
+            0.20000000298023224,
+            -0.10000000149011612,
+            0.20000000298023224,
+            -0.20000000298023224
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "symmetric",
+          "label": null,
+          "onnx_top1": 6,
+          "c_top1": 6,
+          "onnx_top5": [
+            6,
+            4,
+            2,
+            0,
+            1
+          ],
+          "c_top5": [
+            6,
+            4,
+            2,
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            3,
+            -3,
+            4,
+            -4,
+            5,
+            -5,
+            6,
+            -6
+          ],
+          "c_float": [
+            0.15000000596046448,
+            -0.15000000596046448,
+            0.20000000298023224,
+            -0.20000000298023224,
+            0.25,
+            -0.25,
+            0.30000001192092896,
+            -0.30000001192092896
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.61
+    },
+    {
+      "case_id": "SUM_001",
+      "dataset_id": "sum_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/sum/SUM_001.onnx",
+      "output_dir": "tdd/work/numeric/SUM_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "positive",
+          "label": null,
+          "onnx_top1": 6,
+          "c_top1": 6,
+          "onnx_top5": [
+            6,
+            4,
+            2,
+            7,
+            5
+          ],
+          "c_top5": [
+            6,
+            4,
+            2,
+            7,
+            5
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            4,
+            2,
+            10,
+            4,
+            16,
+            6,
+            22,
+            8
+          ],
+          "c_float": [
+            0.20000000298023224,
+            0.10000000149011612,
+            0.5,
+            0.20000000298023224,
+            0.800000011920929,
+            0.30000001192092896,
+            1.100000023841858,
+            0.4000000059604645
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "mixed",
+          "label": null,
+          "onnx_top1": 6,
+          "c_top1": 6,
+          "onnx_top5": [
+            6,
+            4,
+            2,
+            7,
+            5
+          ],
+          "c_top5": [
+            6,
+            4,
+            2,
+            7,
+            5
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            0,
+            -2,
+            6,
+            0,
+            12,
+            2,
+            18,
+            4
+          ],
+          "c_float": [
+            0.0,
+            -0.10000000149011612,
+            0.30000001192092896,
+            0.0,
+            0.6000000238418579,
+            0.10000000149011612,
+            0.9000000357627869,
+            0.20000000298023224
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.64
     },
     {
       "case_id": "REDUCEPROD_001",
@@ -6473,7 +7169,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.78
+      "duration_sec": 2.82
     },
     {
       "case_id": "REDUCEL1_001",
@@ -6553,7 +7249,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.84
     },
     {
       "case_id": "REDUCEL2_001",
@@ -6633,7 +7329,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.81
     },
     {
       "case_id": "PAD_001",
@@ -6797,7 +7493,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.86
     },
     {
       "case_id": "SLICE_001",
@@ -6893,7 +7589,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.83
     },
     {
       "case_id": "GATHER_001",
@@ -6973,7 +7669,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.96
+      "duration_sec": 2.81
     },
     {
       "case_id": "TRANSPOSE_001",
@@ -7105,7 +7801,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.78
+      "duration_sec": 3.0
     },
     {
       "case_id": "TOPO_003",
@@ -7621,7 +8317,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.87
     },
     {
       "case_id": "NET_001",
@@ -15763,7 +16459,7 @@
           "max_abs_error": 0.0569949634373188
         }
       ],
-      "duration_sec": 5.8
+      "duration_sec": 5.93
     },
     {
       "case_id": "NET_005",
@@ -15882,7 +16578,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.9
+      "duration_sec": 2.82
     },
     {
       "case_id": "TS_001",
@@ -16028,7 +16724,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.65
+      "duration_sec": 0.68
     },
     {
       "case_id": "TS_002",
@@ -16626,7 +17322,7 @@
           "max_abs_error": 2.9802322387695312e-08
         }
       ],
-      "duration_sec": 0.69
+      "duration_sec": 0.71
     },
     {
       "case_id": "TS_005",
@@ -16817,7 +17513,7 @@
           "max_abs_error": 5.960464477539063e-08
         }
       ],
-      "duration_sec": 0.71
+      "duration_sec": 0.7
     }
   ]
 }
