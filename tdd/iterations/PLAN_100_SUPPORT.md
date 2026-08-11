@@ -24,7 +24,8 @@
 | 波次 | 主题 | 算子 | 批次 | 状态 |
 |------|------|------|------|------|
 | W1a | 无属性逐元素激活 | `Erf` `Softplus` `Softsign` `HardSwish` | 批 1 | ✅ done（029） |
-| W1b | 属性/二元逐元素激活 | `Elu` `Selu` `HardSigmoid` `ThresholdedRelu` `Celu` `Mish` `PRelu` | 批 2 | pending |
+| W1b | 属性/二元逐元素激活 | `Elu` `Selu` `HardSigmoid` `ThresholdedRelu` `Celu` `PRelu` | 批 2 | ✅ done（030） |
+| W1b* | 需 opset 扩展 | `Mish`（opset 18+，工程当前 cap 17） | 推迟 | ⏸️ deferred |
 | W1c | shape/常量折叠 | `Shape` `Size` `Constant` `ConstantOfShape` `Identity` `Cast` `Split` `Expand` `Tile` `Range` | 批 3-4 | pending |
 | W1d | 归约/池化扩展 | `GlobalMaxPool` `GlobalLpPool` `LpPool` `LpNormalization` `ReduceLogSum` `ReduceLogSumExp` `ReduceSumSquare` `CumSum` `Mean` `Sum` | 批 5-6 | pending |
 | W0 | ABI 基础（index 输出） | `ArgMax` `ArgMin`（需扩展非 int8 外部 ABI + numeric runner） | 批 7 | pending |
@@ -39,9 +40,11 @@
 
 ### 当前指针
 
-- **当前批次**：W1b（批 2）：`Elu` `Selu` `HardSigmoid` `ThresholdedRelu` `Celu` `Mish` `PRelu`
-- **下一批次**：W1c
-- **已完成**：批 1（W1a，4 算子，迭代 029）
+- **当前批次**：W1c（批 3）：`Shape` `Size` `Constant` `ConstantOfShape` `Identity` `Cast` `Split` `Expand` `Tile` `Range`
+- **下一批次**：W1d
+- **已完成**：批 1（W1a，4 算子，029）、批 2（W1b，6 算子，030）
+- **已推迟**：`Mish`（opset 18+，工程 cap 17，纳入后续 opset 扩展迭代）
+- **跨路径修复**：round-half-even 量化取整一致性（nearbyintf，030）
 
 ## 3. 每批迭代配方（025–028 已验证的 TDD 闭环）
 
@@ -80,3 +83,4 @@
 | 批次 | 算子 | target | numeric | 回归 | 提交 | 日期 |
 |------|------|--------|---------|------|------|------|
 | 批 1 (W1a) | Erf/Softplus/Softsign/HardSwish | 86/86 | 64/64 | PASS | 029 | 2026-08-11 |
+| 批 2 (W1b) | Elu/Selu/HardSigmoid/ThresholdedRelu/Celu/PRelu | 92/92 | 70/70 | PASS | 030 | 2026-08-11 |

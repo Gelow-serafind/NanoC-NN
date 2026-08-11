@@ -165,6 +165,111 @@ def gen_hardswish_001() -> Path:
     )
 
 
+def _gen_unary_attr_case(
+    *,
+    case_id: str,
+    op_type: str,
+    category: str,
+    node_name: str,
+    attrs: dict[str, float],
+) -> Path:
+    """构造带属性的官方 unary 算子 QDQ/int8 用例 — [1,8] -> [1,8]。"""
+    path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
+    node = helper.make_node(
+        op_type, ["input_dq"], ["output"], name=node_name, **{k: float(v) for k, v in attrs.items()}
+    )
+    _build_qdq_model(
+        graph_name=f"{case_id.lower()}_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_elu_001() -> Path:
+    """ELU_001: official Elu alpha=0.5 QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_attr_case(
+        case_id="ELU_001", op_type="Elu", category="elu", node_name="elu", attrs={"alpha": 0.5}
+    )
+
+
+def gen_selu_001() -> Path:
+    """SELU_001: official Selu QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_attr_case(
+        case_id="SELU_001",
+        op_type="Selu",
+        category="selu",
+        node_name="selu",
+        attrs={"alpha": 1.67326, "gamma": 1.0507},
+    )
+
+
+def gen_hardsigmoid_001() -> Path:
+    """HARDSIGMOID_001: official HardSigmoid QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_attr_case(
+        case_id="HARDSIGMOID_001",
+        op_type="HardSigmoid",
+        category="hardsigmoid",
+        node_name="hardsigmoid",
+        attrs={"alpha": 0.2, "beta": 0.5},
+    )
+
+
+def gen_thresholdedrelu_001() -> Path:
+    """THRESHOLDEDRELU_001: official ThresholdedRelu QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_attr_case(
+        case_id="THRESHOLDEDRELU_001",
+        op_type="ThresholdedRelu",
+        category="thresholdedrelu",
+        node_name="thresholdedrelu",
+        attrs={"alpha": 1.0},
+    )
+
+
+def gen_celu_001() -> Path:
+    """CELU_001: official Celu QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_attr_case(
+        case_id="CELU_001", op_type="Celu", category="celu", node_name="celu", attrs={"alpha": 1.0}
+    )
+
+
+def gen_prelu_001() -> Path:
+    """PRELU_001: official PRelu with constant slope — [1,8] -> [1,8]."""
+    path = MODELS_ROOT / "core" / "prelu" / "PRELU_001.onnx"
+    slope_nodes, slope_inits, _slope_vis, slope_dq = _make_qdq_constant(
+        prefix="prelu.slope",
+        values=np.array([10, 5, 20, 0, 15, 10, 5, 20], dtype=np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    prelu_node = helper.make_node(
+        "PRelu",
+        ["input_dq", slope_dq],
+        ["output"],
+        name="prelu",
+    )
+    _build_qdq_model(
+        graph_name="prelu_001_qdq_const",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=slope_nodes + [prelu_node],
+        runtime_initializers=slope_inits,
+        save_path=path,
+    )
+    return path
+
+
 def gen_gemm_001() -> Path:
     """GEMM_001: 最小对称 FC 无 bias — [1,2] → [1,3]"""
     path = MODELS_ROOT / "core" / "gemm" / "GEMM_001.onnx"
@@ -2451,6 +2556,12 @@ _GENERATORS: dict[str, object] = {
     "SOFTPLUS_001": gen_softplus_001,
     "SOFTSIGN_001": gen_softsign_001,
     "HARDSWISH_001": gen_hardswish_001,
+    "ELU_001": gen_elu_001,
+    "SELU_001": gen_selu_001,
+    "HARDSIGMOID_001": gen_hardsigmoid_001,
+    "THRESHOLDEDRELU_001": gen_thresholdedrelu_001,
+    "CELU_001": gen_celu_001,
+    "PRELU_001": gen_prelu_001,
     "REDUCEPROD_001": gen_reduceprod_001,
     "REDUCEL1_001": gen_reducel1_001,
     "REDUCEL2_001": gen_reducel2_001,

@@ -1,0 +1,37 @@
+{
+ "dataset_id": "thresholdedrelu_qdq_smoke",
+ "case_id": "THRESHOLDEDRELU_001",
+ "input_tensor": "input",
+ "input_shape": [
+  1,
+  8
+ ],
+ "samples": [
+  {
+   "id": "below_above",
+   "values": [
+    0.0,
+    0.5,
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    -0.5,
+    -1.0
+   ]
+  },
+  {
+   "id": "near_threshold",
+   "values": [
+    0.05,
+    1.05,
+    1.5,
+    2.5,
+    4.0,
+    -1.5,
+    -2.0,
+    0.95
+   ]
+  }
+ ]
+}
