@@ -154,6 +154,12 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "Softplus",
             "Softsign",
             "HardSwish",
+            "Elu",
+            "Selu",
+            "HardSigmoid",
+            "ThresholdedRelu",
+            "Celu",
+            "PRelu",
         }
     ]
     generated_layers = _runtime_layers(graph, generated_runtime_mappings)
@@ -469,7 +475,7 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             lines.extend(_generated_bool_logic_call(layer, current_output))
         elif layer["kind"] == "where":
             lines.extend(_generated_where_call(layer, current_output))
-        elif layer["kind"] in {"sub", "div", "min", "max", "pow"}:
+        elif layer["kind"] in {"sub", "div", "min", "max", "pow", "prelu"}:
             lines.extend(_generated_binary_call(layer, current_output))
         elif layer["kind"] == "abs":
             lines.extend(_generated_abs_call(layer, current_output))
@@ -491,6 +497,11 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             "softplus",
             "softsign",
             "hardswish",
+            "elu",
+            "selu",
+            "hardsigmoid",
+            "thresholdedrelu",
+            "celu",
         }:
             lines.extend(_generated_unary_call(layer, current_output))
         elif layer["kind"] in {
@@ -728,6 +739,7 @@ def _cmsis_tensor_runtime_run_body(
             "min",
             "max",
             "pow",
+            "prelu",
             "equal",
             "greater",
             "less",
@@ -759,7 +771,7 @@ def _cmsis_tensor_runtime_run_body(
             lines.extend(_cmsis_add_call(layer, output_expr))
         elif layer["kind"] == "mul":
             lines.extend(_cmsis_mul_call(layer, output_expr))
-        elif layer["kind"] in {"sub", "div", "min", "max", "pow"}:
+        elif layer["kind"] in {"sub", "div", "min", "max", "pow", "prelu"}:
             lines.extend(_generated_binary_call(layer, output_expr))
         elif layer["kind"] in {
             "equal",
@@ -793,6 +805,11 @@ def _cmsis_tensor_runtime_run_body(
             "softplus",
             "softsign",
             "hardswish",
+            "elu",
+            "selu",
+            "hardsigmoid",
+            "thresholdedrelu",
+            "celu",
         }:
             lines.extend(_generated_unary_call(layer, output_expr))
         elif layer["kind"] in {
@@ -1198,6 +1215,7 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         "min",
         "max",
         "pow",
+        "prelu",
         "equal",
         "greater",
         "less",
@@ -1229,6 +1247,11 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         "softplus",
         "softsign",
         "hardswish",
+        "elu",
+        "selu",
+        "hardsigmoid",
+        "thresholdedrelu",
+        "celu",
         "reducemean",
         "reducesum",
         "reducemax",
@@ -1653,6 +1676,8 @@ def _generated_binary_call(layer: dict[str, Any], current_output: str) -> list[s
             "                nanoc_v = powf(nanoc_a, nanoc_b);",
             "            }",
         ]
+    elif op == "prelu":
+        guard_lines = ["            float nanoc_v = nanoc_a > 0.0f ? nanoc_a : nanoc_a * nanoc_b;"]
     else:
         return []
     return [
@@ -1674,7 +1699,7 @@ def _generated_binary_call(layer: dict[str, Any], current_output: str) -> list[s
             f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
             f"{_c_float_literal(float(layer['output_zero_point']))};"
         ),
-        "            int32_t nanoc_q = (int32_t)(nanoc_qf >= 0.0f ? nanoc_qf + 0.5f : nanoc_qf - 0.5f);",
+        "            int32_t nanoc_q = (int32_t)nearbyintf(nanoc_qf);",
         f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
         f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
         f"            {current_output}[nanoc_i] = (int8_t)nanoc_q;",
@@ -1779,7 +1804,7 @@ def _generated_where_call(layer: dict[str, Any], current_output: str) -> list[st
             f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
             f"{_c_float_literal(float(layer['output_zero_point']))};"
         ),
-        "            int32_t nanoc_q = (int32_t)(nanoc_qf >= 0.0f ? nanoc_qf + 0.5f : nanoc_qf - 0.5f);",
+        "            int32_t nanoc_q = (int32_t)nearbyintf(nanoc_qf);",
         f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
         f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
         f"            {current_output}[nanoc_i] = (int8_t)nanoc_q;",
@@ -1860,6 +1885,44 @@ def _generated_unary_call(layer: dict[str, Any], current_output: str) -> list[st
         value_lines = [
             "            float nanoc_v = nanoc_x * fminf(fmaxf(nanoc_x + 3.0f, 0.0f), 6.0f) / 6.0f;"
         ]
+    elif kind == "elu":
+        value_lines = [
+            (
+                "            float nanoc_v = nanoc_x > 0.0f ? nanoc_x : "
+                f"{_c_float_literal(float(layer.get('alpha', 1.0)))} * (expf(nanoc_x) - 1.0f);"
+            )
+        ]
+    elif kind == "selu":
+        value_lines = [
+            (
+                f"            float nanoc_v = {_c_float_literal(float(layer.get('gamma', 1.0507)))} * "
+                f"(nanoc_x > 0.0f ? nanoc_x : "
+                f"{_c_float_literal(float(layer.get('alpha', 1.67326)))} * (expf(nanoc_x) - 1.0f));"
+            )
+        ]
+    elif kind == "hardsigmoid":
+        value_lines = [
+            (
+                f"            float nanoc_v = fminf(fmaxf("
+                f"{_c_float_literal(float(layer.get('alpha', 0.2)))} * nanoc_x + "
+                f"{_c_float_literal(float(layer.get('beta', 0.5)))}, 0.0f), 1.0f);"
+            )
+        ]
+    elif kind == "thresholdedrelu":
+        value_lines = [
+            (
+                f"            float nanoc_v = nanoc_x > {_c_float_literal(float(layer.get('alpha', 1.0)))} "
+                f"? nanoc_x : 0.0f;"
+            )
+        ]
+    elif kind == "celu":
+        value_lines = [
+            (
+                f"            float nanoc_v = fmaxf(0.0f, nanoc_x) + fminf(0.0f, "
+                f"{_c_float_literal(float(layer.get('alpha', 1.0)))} * "
+                f"(expf(nanoc_x / {_c_float_literal(float(layer.get('alpha', 1.0)))}) - 1.0f));"
+            )
+        ]
     else:
         return []
     return [
@@ -1876,7 +1939,7 @@ def _generated_unary_call(layer: dict[str, Any], current_output: str) -> list[st
             f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
             f"{_c_float_literal(float(layer['output_zero_point']))};"
         ),
-        "            int32_t nanoc_q = (int32_t)(nanoc_qf >= 0.0f ? nanoc_qf + 0.5f : nanoc_qf - 0.5f);",
+        "            int32_t nanoc_q = (int32_t)nearbyintf(nanoc_qf);",
         f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
         f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
         f"            {current_output}[nanoc_i] = (int8_t)nanoc_q;",
@@ -1939,7 +2002,7 @@ def _generated_reduce_call(layer: dict[str, Any], current_output: str) -> list[s
             f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
             f"{_c_float_literal(float(layer['output_zero_point']))};"
         ),
-        "            int32_t nanoc_q = (int32_t)(nanoc_qf >= 0.0f ? nanoc_qf + 0.5f : nanoc_qf - 0.5f);",
+        "            int32_t nanoc_q = (int32_t)nearbyintf(nanoc_qf);",
         f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
         f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
         f"            {current_output}[nanoc_row] = (int8_t)nanoc_q;",
@@ -2253,6 +2316,7 @@ def _quantized_weight_declarations(graph: ModelGraph) -> list[str]:
             "min",
             "max",
             "pow",
+            "prelu",
             "equal",
             "greater",
             "less",
@@ -2312,6 +2376,7 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Conv",
             "Concat",
             "Equal",
+            "Elu",
             "Erf",
             "Exp",
             "Floor",
@@ -2319,6 +2384,7 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Gather",
             "Greater",
             "GreaterOrEqual",
+            "HardSigmoid",
             "HardSwish",
             "Less",
             "LessOrEqual",
@@ -2328,11 +2394,13 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Min",
             "Mul",
             "Clip",
+            "Celu",
             "LeakyRelu",
             "Neg",
             "Not",
             "Or",
             "Xor",
+            "PRelu",
             "Pad",
             "Pow",
             "QLinearAdd",
@@ -2347,6 +2415,7 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "ReduceProd",
             "ReduceSum",
             "Round",
+            "Selu",
             "Sign",
             "Sigmoid",
             "Slice",
@@ -2356,6 +2425,7 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Sub",
             "Div",
             "Tanh",
+            "ThresholdedRelu",
             "Unsqueeze",
             "Where",
         }:
@@ -2392,6 +2462,12 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Softplus",
             "Softsign",
             "HardSwish",
+            "Elu",
+            "Selu",
+            "HardSigmoid",
+            "ThresholdedRelu",
+            "Celu",
+            "PRelu",
             "Min",
             "Max",
             "Pow",
@@ -2456,7 +2532,7 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             layer = _add_layer(graph, mapping)
         elif mapping.onnx_op == "Mul":
             layer = _mul_layer(graph, mapping)
-        elif mapping.onnx_op in {"Sub", "Div", "Min", "Max", "Pow"}:
+        elif mapping.onnx_op in {"Sub", "Div", "Min", "Max", "Pow", "PRelu"}:
             layer = _generated_binary_layer(graph, mapping)
         elif mapping.onnx_op in {"Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual"}:
             layer = _generated_compare_layer(graph, mapping)
@@ -2482,6 +2558,11 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             "Softplus",
             "Softsign",
             "HardSwish",
+            "Elu",
+            "Selu",
+            "HardSigmoid",
+            "ThresholdedRelu",
+            "Celu",
         }:
             layer = _generated_unary_layer(graph, mapping)
         elif mapping.onnx_op in {
@@ -3073,6 +3154,14 @@ def _generated_unary_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, A
     }
     if mapping.onnx_op == "LeakyRelu":
         layer["alpha"] = float(cmsis_nn.get("alpha", 0.01))
+    if mapping.onnx_op in {"Elu", "ThresholdedRelu", "Celu"}:
+        layer["alpha"] = float(cmsis_nn.get("alpha", 1.0))
+    if mapping.onnx_op == "Selu":
+        layer["alpha"] = float(cmsis_nn.get("alpha", 1.67326))
+        layer["gamma"] = float(cmsis_nn.get("gamma", 1.0507))
+    if mapping.onnx_op == "HardSigmoid":
+        layer["alpha"] = float(cmsis_nn.get("alpha", 0.2))
+        layer["beta"] = float(cmsis_nn.get("beta", 0.5))
     if mapping.onnx_op == "Clip":
         if cmsis_nn.get("clip_min") is not None:
             layer["clip_min"] = float(cmsis_nn["clip_min"])

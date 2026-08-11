@@ -32,6 +32,8 @@ SUPPORTED_OPS = {
     "Ceil",
     "Equal",
     "Erf",
+    "Celu",
+    "Elu",
     "Exp",
     "Flatten",
     "Floor",
@@ -40,6 +42,7 @@ SUPPORTED_OPS = {
     "GlobalAveragePool",
     "Greater",
     "GreaterOrEqual",
+    "HardSigmoid",
     "HardSwish",
     "LeakyRelu",
     "Less",
@@ -56,6 +59,7 @@ SUPPORTED_OPS = {
     "Not",
     "Or",
     "Xor",
+    "PRelu",
     "Pad",
     "Pow",
     "QLinearAdd",
@@ -83,10 +87,12 @@ SUPPORTED_OPS = {
     "Sub",
     "Squeeze",
     "Round",
+    "Selu",
     "Sign",
     "Softplus",
     "Softsign",
     "Tanh",
+    "ThresholdedRelu",
     "Transpose",
     "Unsqueeze",
     "Where",
@@ -827,6 +833,11 @@ def _extract_quantization(
             "Softplus",
             "Softsign",
             "HardSwish",
+            "Elu",
+            "Selu",
+            "HardSigmoid",
+            "ThresholdedRelu",
+            "Celu",
         }:
             unary_quant = _generated_unary_quant_info(
                 node,
@@ -853,7 +864,7 @@ def _extract_quantization(
             )
             if reduce_quant is not None:
                 node_quant[node.name] = reduce_quant
-        elif node.op_type in {"Min", "Max", "Pow"}:
+        elif node.op_type in {"Min", "Max", "Pow", "PRelu"}:
             generated_elementwise_quant = _generated_elementwise_quant_info(
                 node,
                 tensor_quant,
@@ -981,6 +992,8 @@ def _int8_contract(
         "Concat",
         "Conv",
         "Div",
+        "Celu",
+        "Elu",
         "Equal",
         "Erf",
         "Exp",
@@ -990,6 +1003,7 @@ def _int8_contract(
         "GlobalAveragePool",
         "Greater",
         "GreaterOrEqual",
+        "HardSigmoid",
         "HardSwish",
         "LeakyRelu",
         "Less",
@@ -1004,6 +1018,7 @@ def _int8_contract(
         "Not",
         "Or",
         "Xor",
+        "PRelu",
         "Pad",
         "Pow",
         "QLinearAdd",
@@ -1024,10 +1039,12 @@ def _int8_contract(
         "Sqrt",
         "Sub",
         "Round",
+        "Selu",
         "Sign",
         "Softplus",
         "Softsign",
         "Tanh",
+        "ThresholdedRelu",
         "Transpose",
         "Unsqueeze",
         "Where",
@@ -1977,6 +1994,14 @@ def _generated_unary_quant_info(
     }
     if node.op_type == "LeakyRelu":
         cmsis_nn["alpha"] = float(node.normalized_attributes.get("alpha", 0.01))
+    if node.op_type in {"Elu", "ThresholdedRelu", "Celu"}:
+        cmsis_nn["alpha"] = float(node.normalized_attributes.get("alpha", 1.0))
+    if node.op_type == "Selu":
+        cmsis_nn["alpha"] = float(node.normalized_attributes.get("alpha", 1.67326))
+        cmsis_nn["gamma"] = float(node.normalized_attributes.get("gamma", 1.0507))
+    if node.op_type == "HardSigmoid":
+        cmsis_nn["alpha"] = float(node.normalized_attributes.get("alpha", 0.2))
+        cmsis_nn["beta"] = float(node.normalized_attributes.get("beta", 0.5))
     if node.op_type == "Clip":
         min_value = node.normalized_attributes.get("min")
         max_value = node.normalized_attributes.get("max")
