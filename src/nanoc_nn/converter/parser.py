@@ -46,6 +46,7 @@ SUPPORTED_OPS = {
     "GreaterOrEqual",
     "HardSigmoid",
     "HardSwish",
+    "Identity",
     "LeakyRelu",
     "Less",
     "LessOrEqual",

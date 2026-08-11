@@ -1065,6 +1065,8 @@ def _tensor_aliases(graph: ModelGraph) -> dict[str, str]:
         "DequantizeLinear",
         "Dropout",
         "Flatten",
+        "Identity",
+        "Cast",
         "QuantizeLinear",
         "Relu",
         "Reshape",

@@ -165,6 +165,7 @@ FOLDED_ACTIONS = {
     "Dropout": "generation-time inference no-op",
     "Flatten": "generation-time shape fold",
     "Gather": "generation-time shape/index helper",
+    "Identity": "generation-time identity alias",
     "QuantizeLinear": "generation-time quantization boundary",
     "Reshape": "generation-time shape fold",
     "Squeeze": "generation-time shape fold",
