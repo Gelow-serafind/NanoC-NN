@@ -23,6 +23,7 @@ SUPPORTED_OPS = {
     "Abs",
     "Add",
     "AveragePool",
+    "And",
     "BatchNormalization",
     "Cast",
     "Constant",
@@ -37,8 +38,10 @@ SUPPORTED_OPS = {
     "Gather",
     "GlobalAveragePool",
     "Greater",
+    "GreaterOrEqual",
     "LeakyRelu",
     "Less",
+    "LessOrEqual",
     "Log",
     "MatMul",
     "Max",
@@ -48,6 +51,9 @@ SUPPORTED_OPS = {
     "Div",
     "Mul",
     "Neg",
+    "Not",
+    "Or",
+    "Xor",
     "Pad",
     "Pow",
     "QLinearAdd",
@@ -849,7 +855,7 @@ def _extract_quantization(
             )
             if generated_elementwise_quant is not None:
                 node_quant[node.name] = generated_elementwise_quant
-        elif node.op_type in {"Equal", "Greater", "Less"}:
+        elif node.op_type in {"Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual"}:
             compare_quant = _compare_quant_info(
                 node,
                 tensor_quant,
@@ -859,6 +865,15 @@ def _extract_quantization(
             )
             if compare_quant is not None:
                 node_quant[node.name] = compare_quant
+        elif node.op_type in {"And", "Or", "Not", "Xor"}:
+            bool_logic_quant = _bool_logic_quant_info(
+                node,
+                node_quant,
+                initializer_by_name,
+                warnings,
+            )
+            if bool_logic_quant is not None:
+                node_quant[node.name] = bool_logic_quant
         elif node.op_type == "Where":
             where_quant = _where_quant_info(
                 node,
@@ -953,6 +968,7 @@ def _int8_contract(
     runtime_op_types = {
         "Abs",
         "Add",
+        "And",
         "AveragePool",
         "Concat",
         "Conv",
@@ -964,8 +980,10 @@ def _int8_contract(
         "Gemm",
         "GlobalAveragePool",
         "Greater",
+        "GreaterOrEqual",
         "LeakyRelu",
         "Less",
+        "LessOrEqual",
         "Log",
         "MatMul",
         "Max",
@@ -973,6 +991,9 @@ def _int8_contract(
         "Min",
         "Mul",
         "Neg",
+        "Not",
+        "Or",
+        "Xor",
         "Pad",
         "Pow",
         "QLinearAdd",
@@ -1748,6 +1769,62 @@ def _compare_quant_info(
             "constant_input": second_quantized if weight_info is not None else "",
         },
     }
+
+
+def _bool_logic_quant_info(
+    node: NodeInfo,
+    node_quant: dict[str, dict[str, Any]],
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.outputs:
+        return None
+    inputs = [str(name) for name in node.inputs if name]
+    if not inputs:
+        return None
+    output_name = node.outputs[0]
+    output_shape = next(iter(node.output_shapes.values()), [])
+    for input_name in inputs:
+        input_shape = node.input_shapes.get(input_name, [])
+        if input_shape != output_shape:
+            warnings.append(
+                f"node '{node.name}' {node.op_type} first generated bool path requires same-shape inputs."
+            )
+            return None
+        if not _find_bool_producer(input_name, node_quant):
+            warnings.append(
+                f"node '{node.name}' {node.op_type} input '{input_name}' must be a supported bool producer."
+            )
+            return None
+    block_size = _static_element_count(output_shape, node.name, node.op_type, warnings)
+    if block_size is None:
+        return None
+    return {
+        "op_type": node.op_type,
+        "inputs": {
+            input_name: {"elem_type": "BOOL", "shape": node.input_shapes.get(input_name, [])}
+            for input_name in inputs
+        },
+        "outputs": {output_name: {"elem_type": "BOOL", "shape": output_shape}},
+        "cmsis_nn": {
+            "api": f"generated_c_{node.op_type.lower()}_bool",
+            "block_size": block_size,
+        },
+    }
+
+
+def _find_bool_producer(
+    input_name: str,
+    node_quant: dict[str, dict[str, Any]],
+) -> str:
+    for candidate_name, candidate_quant in node_quant.items():
+        outputs = candidate_quant.get("outputs", {})
+        if not isinstance(outputs, dict) or input_name not in outputs:
+            continue
+        output_meta = outputs[input_name]
+        if isinstance(output_meta, dict) and output_meta.get("elem_type") == "BOOL":
+            return candidate_name
+    return ""
 
 
 def _where_quant_info(

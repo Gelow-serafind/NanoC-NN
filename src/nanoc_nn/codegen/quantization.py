@@ -370,7 +370,7 @@ for _reduce_op in ("ReduceSum", "ReduceMax", "ReduceMin"):
     REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
 for _reduce_op in ("ReduceProd", "ReduceL1", "ReduceL2"):
     REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
-for _compare_op in ("Equal", "Greater", "Less"):
+for _compare_op in ("Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual"):
     REQUIRED_NODE_QUANT_FIELDS[_compare_op] = {
         "cmsis_nn": {
             "api",
@@ -378,6 +378,15 @@ for _compare_op in ("Equal", "Greater", "Less"):
             "input_1_zero_point",
             "input_2_scale",
             "input_2_zero_point",
+            "block_size",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    }
+for _logic_op in ("And", "Or", "Not", "Xor"):
+    REQUIRED_NODE_QUANT_FIELDS[_logic_op] = {
+        "cmsis_nn": {
+            "api",
             "block_size",
         },
         "inputs": "non_empty_dict",
