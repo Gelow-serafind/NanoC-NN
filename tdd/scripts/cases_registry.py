@@ -1479,6 +1479,20 @@ CASE_REGISTRY: list[CaseDef] = [
         "negative",
         schema_refs=("ONNX_FLOAT_NO_QDQ_BLOCKED",),
     ),
+    CaseDef(
+        "NEG_002",
+        "ArgMax 非 int8 index 输出边界拒绝",
+        "unsupported",
+        "negative",
+        schema_refs=("ONNX_ARGMAX_NON_INT8_UNSUPPORTED",),
+    ),
+    CaseDef(
+        "NEG_003",
+        "ArgMin 非 int8 index 输出边界拒绝",
+        "unsupported",
+        "negative",
+        schema_refs=("ONNX_ARGMIN_NON_INT8_UNSUPPORTED",),
+    ),
 ]
 
 CASE_MAP: dict[str, CaseDef] = {c.case_id: c for c in CASE_REGISTRY}

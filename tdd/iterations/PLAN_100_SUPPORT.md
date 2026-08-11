@@ -29,7 +29,7 @@
 | W1d-a | 归约扩展（先做） | `ReduceLogSum` `ReduceLogSumExp` `ReduceSumSquare` | 批 3 | ✅ done（031） |
 | W1c | shape/常量折叠 | `Identity` `Cast` `Constant` `Split` `Expand` `Tile` `Shape` `Size` `ConstantOfShape` `Range` | 延后 | ⏸️ deferred（需 empty-runtime 路径） |
 | W1d-b | 池化/Lp/变体 | `GlobalMaxPool` `GlobalLpPool` `LpPool` `LpNormalization` `CumSum` `Mean` `Sum` | 批 4 | ✅ done（032） |
-| W0 | ABI 基础（index 输出） | `ArgMax` `ArgMin`（需扩展非 int8 外部 ABI + numeric runner） | 批 7 | pending |
+| W0 | ABI 基础（index 输出） | `ArgMax` `ArgMin`（需扩展非 int8 外部 ABI + numeric runner） | 批 5 | ✅ 边界（033，NEG_002/003 unsupported） |
 | W2 | bool/索引补完 | bool-initializer 逻辑输入、逻辑级联；`NonZero` `Compress` `OneHot` `TopK` `GatherElements` `GatherND` `ScatterND` | 批 8-9 | pending |
 | W3 | 归一化 | `BatchNormalization` `InstanceNormalization` `LayerNormalization` `LRN` `GroupNormalization` | 批 10 | pending |
 | W4 | 卷积/量化变体 | `ConvTranspose` `ConvInteger` `MatMulInteger` `DynamicQuantizeLinear` `DepthToSpace` `SpaceToDepth` `Resize` `Upsample` | 批 11-12 | pending |
@@ -41,9 +41,9 @@
 
 ### 当前指针
 
-- **当前批次**：W0（批 5）：`ArgMax` `ArgMin`
-- **下一批次**：W2
-- **已完成**：批 1（W1a，029）、批 2（W1b，030）、批 3（W1d-a，031）、批 4（W1d-b，032）
+- **当前批次**：W2（批 6）：`NonZero` `Compress` `OneHot` `TopK` `GatherElements` `GatherND` `ScatterND`
+- **下一批次**：W3
+- **已完成**：批 1-4（W1a/W1b/W1d-a/W1d-b）、批 5（W0 边界）
 - **已推迟**：`Mish`（opset 18，纳入 opset 扩展）；W1c 折叠批（Identity/Cast/Constant/Split/Expand/Tile/Shape/Size/ConstantOfShape/Range，需 empty-runtime 路径）
 - **发现**：030 后实测 Cast/Constant 的 pipeline 报告 ok 但生成 blocked stub（假阳性）；TDD target 的 smoke run 可抓到，折叠批实现 empty-runtime 拷贝路径时一并修复
 - **跨路径修复**：round-half-even 量化取整一致性（nearbyintf，030）
@@ -88,3 +88,4 @@
 | 批 2 (W1b) | Elu/Selu/HardSigmoid/ThresholdedRelu/Celu/PRelu | 92/92 | 70/70 | PASS | 030 | 2026-08-11 |
 | 批 3 (W1d-a) | ReduceLogSum/ReduceLogSumExp/ReduceSumSquare | 95/95 | 73/73 | PASS | 031 | 2026-08-12 |
 | 批 4 (W1d-b) | GlobalMaxPool/GlobalLpPool/LpPool/LpNormalization/CumSum/Mean/Sum | 102/102 | 80/80 | PASS | 032 | 2026-08-12 |
+| 批 5 (W0) | ArgMax/ArgMin（边界） | 104/104 | 80/80 | PASS | 033 | 2026-08-12 |

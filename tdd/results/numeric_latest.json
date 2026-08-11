@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-08-12T01:17:21.114724",
-  "git_commit": "f3c3aea",
+  "timestamp": "2026-08-12T01:26:35.308894",
+  "git_commit": "7f2da2a",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py --generate",
   "total": 80,
@@ -121,7 +121,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 3.05
+      "duration_sec": 3.32
     },
     {
       "case_id": "MATMUL_001",
@@ -209,7 +209,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 3.05
     },
     {
       "case_id": "FLATTEN_001",
@@ -341,7 +341,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 3.26
     },
     {
       "case_id": "RESHAPE_001",
@@ -449,7 +449,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 3.11
     },
     {
       "case_id": "SQUEEZE_001",
@@ -557,7 +557,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.89
     },
     {
       "case_id": "AVGPOOL_002",
@@ -653,7 +653,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.86
     },
     {
       "case_id": "AVGPOOL_003",
@@ -769,7 +769,7 @@
           "max_abs_error": 0.05000000447034836
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.83
     },
     {
       "case_id": "SOFTMAX_002",
@@ -865,7 +865,7 @@
           "max_abs_error": 0.001285940408706665
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.85
     },
     {
       "case_id": "CONCAT_001",
@@ -981,7 +981,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.89
     },
     {
       "case_id": "CONCAT_002",
@@ -1097,7 +1097,7 @@
           "max_abs_error": 0.20000001788139343
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.94
     },
     {
       "case_id": "ADD_001",
@@ -1213,7 +1213,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.88
     },
     {
       "case_id": "MUL_001",
@@ -1329,7 +1329,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.97
     },
     {
       "case_id": "SUB_001",
@@ -1445,7 +1445,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.88
     },
     {
       "case_id": "DIV_001",
@@ -1561,7 +1561,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.91
     },
     {
       "case_id": "SIGMOID_001",
@@ -1677,7 +1677,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.95
     },
     {
       "case_id": "TANH_001",
@@ -1793,7 +1793,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.88
     },
     {
       "case_id": "LEAKYRELU_001",
@@ -1909,7 +1909,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.84
     },
     {
       "case_id": "CLIP_001",
@@ -2025,7 +2025,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.82
     },
     {
       "case_id": "NEGOP_001",
@@ -2141,7 +2141,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.91
     },
     {
       "case_id": "SQRT_001",
@@ -2257,7 +2257,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.8
     },
     {
       "case_id": "RECIPROCAL_001",
@@ -2373,7 +2373,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.92
     },
     {
       "case_id": "REDUCEMEAN_001",
@@ -2453,7 +2453,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.94
+      "duration_sec": 2.98
     },
     {
       "case_id": "UNSQUEEZE_001",
@@ -2549,7 +2549,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 3.06
     },
     {
       "case_id": "EXP_001",
@@ -2665,7 +2665,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 3.07
     },
     {
       "case_id": "LOG_001",
@@ -2781,7 +2781,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.89
+      "duration_sec": 2.98
     },
     {
       "case_id": "FLOOR_001",
@@ -3013,7 +3013,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.92
     },
     {
       "case_id": "ROUND_001",
@@ -3129,7 +3129,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 3.1
     },
     {
       "case_id": "SIGN_001",
@@ -3245,7 +3245,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 3.11
     },
     {
       "case_id": "MIN_001",
@@ -3361,7 +3361,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.98
     },
     {
       "case_id": "MAX_001",
@@ -3477,7 +3477,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.79
+      "duration_sec": 2.85
     },
     {
       "case_id": "POW_001",
@@ -3593,7 +3593,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.94
+      "duration_sec": 2.91
     },
     {
       "case_id": "REDUCESUM_001",
@@ -3673,7 +3673,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.86
     },
     {
       "case_id": "REDUCEMAX_001",
@@ -3753,7 +3753,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.88
     },
     {
       "case_id": "REDUCEMIN_001",
@@ -3833,7 +3833,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.93
+      "duration_sec": 2.86
     },
     {
       "case_id": "WHERE_001",
@@ -3949,7 +3949,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.94
     },
     {
       "case_id": "EQUAL_001",
@@ -4065,7 +4065,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.87
     },
     {
       "case_id": "GREATER_001",
@@ -4181,7 +4181,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.89
     },
     {
       "case_id": "LESS_001",
@@ -4297,7 +4297,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.93
+      "duration_sec": 2.91
     },
     {
       "case_id": "GREATEROREQUAL_001",
@@ -4413,7 +4413,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.8
     },
     {
       "case_id": "LESSOREQUAL_001",
@@ -4529,7 +4529,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.85
     },
     {
       "case_id": "AND_001",
@@ -4645,7 +4645,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.85
     },
     {
       "case_id": "OR_001",
@@ -4761,7 +4761,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.88
     },
     {
       "case_id": "NOT_001",
@@ -4877,7 +4877,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.93
     },
     {
       "case_id": "XOR_001",
@@ -4993,7 +4993,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.88
     },
     {
       "case_id": "ERF_001",
@@ -5109,7 +5109,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.85
     },
     {
       "case_id": "SOFTPLUS_001",
@@ -5225,7 +5225,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 3.02
     },
     {
       "case_id": "SOFTSIGN_001",
@@ -5341,7 +5341,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.88
     },
     {
       "case_id": "HARDSWISH_001",
@@ -5457,7 +5457,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.83
     },
     {
       "case_id": "ELU_001",
@@ -5573,7 +5573,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.84
     },
     {
       "case_id": "SELU_001",
@@ -5689,7 +5689,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.91
     },
     {
       "case_id": "HARDSIGMOID_001",
@@ -5805,7 +5805,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.87
     },
     {
       "case_id": "THRESHOLDEDRELU_001",
@@ -5921,7 +5921,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.86
     },
     {
       "case_id": "CELU_001",
@@ -6037,7 +6037,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.81
     },
     {
       "case_id": "PRELU_001",
@@ -6153,7 +6153,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.87
     },
     {
       "case_id": "REDUCELOGSUM_001",
@@ -6233,7 +6233,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.85
     },
     {
       "case_id": "REDUCELOGSUMEXP_001",
@@ -6313,7 +6313,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.86
     },
     {
       "case_id": "REDUCESUMSQUARE_001",
@@ -6393,7 +6393,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.85
     },
     {
       "case_id": "GLOBALMAXPOOL_001",
@@ -6473,7 +6473,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.59
+      "duration_sec": 2.82
     },
     {
       "case_id": "GLOBALLPPOOL_001",
@@ -6553,7 +6553,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.62
+      "duration_sec": 2.91
     },
     {
       "case_id": "LPPOOL_001",
@@ -6625,7 +6625,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.59
+      "duration_sec": 2.89
     },
     {
       "case_id": "LPNORMALIZATION_001",
@@ -6741,7 +6741,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.69
+      "duration_sec": 2.81
     },
     {
       "case_id": "CUMSUM_001",
@@ -6857,7 +6857,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.61
+      "duration_sec": 2.88
     },
     {
       "case_id": "MEAN_001",
@@ -6973,7 +6973,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.61
+      "duration_sec": 3.11
     },
     {
       "case_id": "SUM_001",
@@ -7089,7 +7089,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.64
+      "duration_sec": 2.89
     },
     {
       "case_id": "REDUCEPROD_001",
@@ -7169,7 +7169,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.87
     },
     {
       "case_id": "REDUCEL1_001",
@@ -7249,7 +7249,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.96
     },
     {
       "case_id": "REDUCEL2_001",
@@ -7329,7 +7329,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.88
     },
     {
       "case_id": "PAD_001",
@@ -7493,7 +7493,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.88
     },
     {
       "case_id": "SLICE_001",
@@ -7589,7 +7589,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.89
     },
     {
       "case_id": "GATHER_001",
@@ -7669,7 +7669,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.91
     },
     {
       "case_id": "TRANSPOSE_001",
@@ -7801,7 +7801,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 3.0
+      "duration_sec": 2.9
     },
     {
       "case_id": "TOPO_003",
@@ -8317,7 +8317,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.95
     },
     {
       "case_id": "NET_001",
@@ -16459,7 +16459,7 @@
           "max_abs_error": 0.0569949634373188
         }
       ],
-      "duration_sec": 5.93
+      "duration_sec": 6.04
     },
     {
       "case_id": "NET_005",
@@ -16578,7 +16578,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.86
     },
     {
       "case_id": "TS_001",
@@ -16724,7 +16724,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.68
+      "duration_sec": 0.69
     },
     {
       "case_id": "TS_002",
@@ -16950,7 +16950,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.94
+      "duration_sec": 0.98
     },
     {
       "case_id": "TS_003",
@@ -17176,7 +17176,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.95
+      "duration_sec": 0.98
     },
     {
       "case_id": "TS_004",
@@ -17322,7 +17322,7 @@
           "max_abs_error": 2.9802322387695312e-08
         }
       ],
-      "duration_sec": 0.71
+      "duration_sec": 0.75
     },
     {
       "case_id": "TS_005",
@@ -17513,7 +17513,7 @@
           "max_abs_error": 5.960464477539063e-08
         }
       ],
-      "duration_sec": 0.7
+      "duration_sec": 0.73
     }
   ]
 }

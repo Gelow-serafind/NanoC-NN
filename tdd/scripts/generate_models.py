@@ -2486,6 +2486,40 @@ def gen_neg_001() -> Path:
     return path
 
 
+def _gen_arg_neg_case(*, case_id: str, op_type: str, node_name: str, graph_name: str) -> Path:
+    """ArgMax/ArgMin 非 int8 输出边界模型 — [1,4] int8 -> int64[1] index。"""
+    path = MODELS_ROOT / "negative" / f"{case_id}.onnx"
+    in_shape = [1, 4]
+    inp_vi = helper.make_tensor_value_info("input", TensorProto.FLOAT, in_shape)
+    out_vi = helper.make_tensor_value_info("output", TensorProto.INT64, [1])
+    nodes, inits, vis = make_qdq_wrapper(
+        "input_qdq", "input", in_shape, 0.05, 0, is_input=True
+    )
+    arg_node = helper.make_node(
+        op_type, ["input_dq"], ["output"], name=node_name, axis=1, keepdims=1
+    )
+    build_and_save(
+        nodes=nodes + [arg_node],
+        inputs=[inp_vi],
+        outputs=[out_vi],
+        initializers=inits,
+        value_infos=vis,
+        save_path=path,
+        graph_name=graph_name,
+    )
+    return path
+
+
+def gen_neg_002() -> Path:
+    """NEG_002: ArgMax int64 输出边界 — unsupported。"""
+    return _gen_arg_neg_case(case_id="NEG_002", op_type="ArgMax", node_name="argmax", graph_name="neg_002_argmax")
+
+
+def gen_neg_003() -> Path:
+    """NEG_003: ArgMin int64 输出边界 — unsupported。"""
+    return _gen_arg_neg_case(case_id="NEG_003", op_type="ArgMin", node_name="argmin", graph_name="neg_003_argmin")
+
+
 # ---------------------------------------------------------------------------
 # QLINEAR 用例生成
 # ---------------------------------------------------------------------------
@@ -2747,6 +2781,8 @@ _GENERATORS: dict[str, object] = {
     "QLINEAR_NUM_002": gen_qlinear_num_002,
     "QLINEAR_NUM_003": gen_qlinear_num_003,
     "NEG_001": gen_neg_001,
+    "NEG_002": gen_neg_002,
+    "NEG_003": gen_neg_003,
 }
 
 

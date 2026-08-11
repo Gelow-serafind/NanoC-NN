@@ -8,10 +8,11 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 截至 2026-08-12：
 
-- target 结构回归：`102/102 PASS`
+- target 结构回归：`104/104 PASS`
 - 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `84/84 PASS`
-- 数值回归：`80/80 PASS`，本轮新增 `GlobalMaxPool`、`GlobalLpPool`、`LpPool`、`LpNormalization`、`CumSum`、`Mean`、`Sum` 七个官方 ONNX 算子的最小数值验收；新增七项均为 `top1=2/2`、饱和率 `0.00`、最大绝对误差 `0.0`
-- 已启动图谱 100% 收敛计划（`tdd/iterations/PLAN_100_SUPPORT.md`），已完成 W1a/W1b/W1d-a/W1d-b 四批
+- 数值回归：`80/80 PASS`
+- 已启动图谱 100% 收敛计划（`tdd/iterations/PLAN_100_SUPPORT.md`），已完成 W1a/W1b/W1d-a/W1d-b/W0 五批
+- W0：`ArgMax`/`ArgMin` 记录为非 int8 ABI 拒绝边界（NEG_002/NEG_003）
 - 已知缺陷：pipeline CLI 对 empty-runtime 模型（如 Cast/Constant）报告 ok 但生成 blocked stub（假阳性），TDD target 的 smoke run 可抓到，待折叠批实现 empty-runtime 路径时修复
 - 终端实机验收层已建立：`tdd/terminal/` 支持 ONNX-vs-HostC-vs-ARMC 三路对比，当前首个接入目标为 `TOPO_003` MNIST int8 on STM32F103
 - 真实网络导入测试扩展到 `NET_001~NET_006`
@@ -63,15 +64,15 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 102 |
-| target 通过 | 102 |
+| 测试用例总数 | 104 |
+| target 通过 | 104 |
 | target 失败 | 0 |
 | 稳定结构回归 | 84/84 PASS |
 | 数值回归 | 80/80 PASS |
 | 终端实机验收 | 可选门禁，接入 STM32 时执行 |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
-| 最新迭代记录 | `tdd/iterations/032_graph_spatial_variadic_batch.md` |
+| 最新迭代记录 | `tdd/iterations/033_graph_argmax_boundary.md` |
 | 图谱 100% 收敛计划 | `tdd/iterations/PLAN_100_SUPPORT.md` |
 
 ## 已确认主线能力

@@ -1,10 +1,10 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-08-12T01:21:06.234099
-> Git commit: `f3c3aea`
+> 最后更新: 2026-08-12T01:24:24.351939
+> Git commit: `7f2da2a`
 
-**能力集大小: 102 / 102 (100%)**
+**能力集大小: 104 / 104 (100%)**
 
 ## 已验证能力 (PASS)
 
@@ -109,6 +109,8 @@
 | official | Xor | two bool intermediate tensors (compare outputs), bool output consumed by Where | cmsis-nn | generated_c_xor_bool | XOR_001 | core/xor | 官方 Xor bool 逻辑中间张量驱动 Where 数值精度 | 2026-08-12 |
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | XOR_001 | core/xor | 官方 Xor bool 逻辑中间张量驱动 Where 数值精度 | 2026-08-12 |
 | mixed | multiple | internal float32 graph without QDQ quantization section | reject | reject_without_quantization | NEG_001 | negative | float32 无 Q/DQ 模型正确拒绝 | 2026-08-12 |
+| official | ArgMax | output int64 index tensor outside int8 model ABI | reject | unsupported_non_int8_abi | NEG_002 | negative | ArgMax 非 int8 index 输出边界拒绝 | 2026-08-12 |
+| official | ArgMin | output int64 index tensor outside int8 model ABI | reject | unsupported_non_int8_abi | NEG_003 | negative | ArgMin 非 int8 index 输出边界拒绝 | 2026-08-12 |
 | mixed | multiple | SqueezeNet int8 with QLinearConv, MaxPool, DQ/Concat/Q, QLinearGlobalAveragePool and terminal Softmax | cmsis-nn | cmsis_nn_squeezenet_int8 | NET_001 | networks | 真实 SqueezeNet 1.0 int8 图像分类网络导入评估 | 2026-08-12 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | NET_002 | networks | 真实 MobileNetV2 int8/QLinear 图像分类网络导入评估 | 2026-08-12 |
 | official | Conv | rank=4, group=input_channels, depthwise multiplier, QDQ/int8 parameters | cmsis-nn | cmsis_depthwise_conv2d_s8 | NET_002 | networks | 真实 MobileNetV2 int8/QLinear 图像分类网络导入评估 | 2026-08-12 |

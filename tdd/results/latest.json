@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-08-12T01:21:06.234099",
-  "mode": "target",
-  "git_commit": "f3c3aea",
+  "timestamp": "2026-08-12T01:25:53.003387",
+  "mode": "baseline",
+  "git_commit": "7f2da2a",
   "platform": "Darwin 25.2.0 (arm64)",
-  "command": "tdd/scripts/run_tests.py --mode target --generate",
-  "total": 102,
-  "passed": 102,
+  "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_tests.py --mode baseline --generate",
+  "total": 84,
+  "passed": 84,
   "failed": 0,
   "results": [
     {
@@ -24,7 +24,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.69
+      "duration_sec": 0.54
     },
     {
       "case_id": "ADD_001",
@@ -44,7 +44,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.46
     },
     {
       "case_id": "AND_001",
@@ -62,7 +62,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.44
     },
     {
       "case_id": "AVGPOOL_001",
@@ -82,7 +82,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.46
+      "duration_sec": 0.45
     },
     {
       "case_id": "AVGPOOL_002",
@@ -122,7 +122,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.48
+      "duration_sec": 0.43
     },
     {
       "case_id": "CEIL_001",
@@ -140,7 +140,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.49
+      "duration_sec": 0.46
     },
     {
       "case_id": "CELU_001",
@@ -176,7 +176,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.48
     },
     {
       "case_id": "CONCAT_001",
@@ -196,7 +196,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.49
+      "duration_sec": 0.46
     },
     {
       "case_id": "CONCAT_002",
@@ -216,87 +216,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
-    },
-    {
-      "case_id": "CONV_001",
-      "category": "core/conv",
-      "onnx_path": "tdd/work/models/core/conv/CONV_001.onnx",
-      "output_dir": "tdd/work/structural/CONV_001",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.67
-    },
-    {
-      "case_id": "CONV_002",
-      "category": "core/conv",
-      "onnx_path": "tdd/work/models/core/conv/CONV_002.onnx",
-      "output_dir": "tdd/work/structural/CONV_002",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.64
-    },
-    {
-      "case_id": "CONV_003",
-      "category": "core/conv",
-      "onnx_path": "tdd/work/models/core/conv/CONV_003.onnx",
-      "output_dir": "tdd/work/structural/CONV_003",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.63
-    },
-    {
-      "case_id": "CONV_004",
-      "category": "core/conv",
-      "onnx_path": "tdd/work/models/core/conv/CONV_004.onnx",
-      "output_dir": "tdd/work/structural/CONV_004",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.46
+      "duration_sec": 0.49
     },
     {
       "case_id": "CUMSUM_001",
@@ -314,7 +234,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.51
     },
     {
       "case_id": "DIV_001",
@@ -332,7 +252,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.49
+      "duration_sec": 0.45
     },
     {
       "case_id": "ELU_001",
@@ -350,7 +270,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.49
     },
     {
       "case_id": "EQUAL_001",
@@ -386,7 +306,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.41
+      "duration_sec": 0.43
     },
     {
       "case_id": "EXP_001",
@@ -422,7 +342,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 0,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.41
     },
     {
       "case_id": "FLOOR_001",
@@ -440,7 +360,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.43
+      "duration_sec": 0.47
     },
     {
       "case_id": "GATHER_001",
@@ -458,87 +378,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.5
-    },
-    {
-      "case_id": "GEMM_001",
-      "category": "core/gemm",
-      "onnx_path": "tdd/work/models/core/gemm/GEMM_001.onnx",
-      "output_dir": "tdd/work/structural/GEMM_001",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_fully_connected_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.64
-    },
-    {
-      "case_id": "GEMM_002",
-      "category": "core/gemm",
-      "onnx_path": "tdd/work/models/core/gemm/GEMM_002.onnx",
-      "output_dir": "tdd/work/structural/GEMM_002",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_fully_connected_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.7
-    },
-    {
-      "case_id": "GEMM_003",
-      "category": "core/gemm",
-      "onnx_path": "tdd/work/models/core/gemm/GEMM_003.onnx",
-      "output_dir": "tdd/work/structural/GEMM_003",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_fully_connected_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.67
-    },
-    {
-      "case_id": "GEMM_004",
-      "category": "core/gemm",
-      "onnx_path": "tdd/work/models/core/gemm/GEMM_004.onnx",
-      "output_dir": "tdd/work/structural/GEMM_004",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_fully_connected_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.64
+      "duration_sec": 0.44
     },
     {
       "case_id": "GLOBALLPPOOL_001",
@@ -556,7 +396,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.52
+      "duration_sec": 0.46
     },
     {
       "case_id": "GLOBALMAXPOOL_001",
@@ -574,7 +414,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.53
+      "duration_sec": 0.45
     },
     {
       "case_id": "GREATER_001",
@@ -610,7 +450,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.42
+      "duration_sec": 0.49
     },
     {
       "case_id": "HARDSIGMOID_001",
@@ -628,7 +468,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.42
+      "duration_sec": 0.43
     },
     {
       "case_id": "HARDSWISH_001",
@@ -646,7 +486,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.43
     },
     {
       "case_id": "LEAKYRELU_001",
@@ -664,7 +504,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.42
+      "duration_sec": 0.44
     },
     {
       "case_id": "LESS_001",
@@ -682,7 +522,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.46
+      "duration_sec": 0.48
     },
     {
       "case_id": "LESSOREQUAL_001",
@@ -718,7 +558,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.45
     },
     {
       "case_id": "LPNORMALIZATION_001",
@@ -736,7 +576,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.46
     },
     {
       "case_id": "LPPOOL_001",
@@ -754,7 +594,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.65
+      "duration_sec": 0.47
     },
     {
       "case_id": "MATMUL_001",
@@ -774,7 +614,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.48
     },
     {
       "case_id": "MAX_001",
@@ -792,7 +632,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.46
+      "duration_sec": 0.43
     },
     {
       "case_id": "MAXPOOL_001",
@@ -812,7 +652,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.48
     },
     {
       "case_id": "MAXPOOL_002",
@@ -832,7 +672,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.42
     },
     {
       "case_id": "MEAN_001",
@@ -868,7 +708,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.45
     },
     {
       "case_id": "MUL_001",
@@ -888,7 +728,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.46
+      "duration_sec": 0.44
     },
     {
       "case_id": "NEGOP_001",
@@ -906,7 +746,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.52
+      "duration_sec": 0.45
     },
     {
       "case_id": "NOT_001",
@@ -924,7 +764,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.43
+      "duration_sec": 0.41
     },
     {
       "case_id": "OR_001",
@@ -942,7 +782,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.5
+      "duration_sec": 0.44
     },
     {
       "case_id": "PAD_001",
@@ -978,7 +818,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.49
     },
     {
       "case_id": "PRELU_001",
@@ -996,67 +836,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
-    },
-    {
-      "case_id": "QLINEAR_NUM_001",
-      "category": "core/qlinear",
-      "onnx_path": "tdd/work/models/core/qlinear/QLINEAR_NUM_001.onnx",
-      "output_dir": "tdd/work/structural/QLINEAR_NUM_001",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.66
-    },
-    {
-      "case_id": "QLINEAR_NUM_002",
-      "category": "core/qlinear",
-      "onnx_path": "tdd/work/models/core/qlinear/QLINEAR_NUM_002.onnx",
-      "output_dir": "tdd/work/structural/QLINEAR_NUM_002",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.62
-    },
-    {
-      "case_id": "QLINEAR_NUM_003",
-      "category": "core/qlinear",
-      "onnx_path": "tdd/work/models/core/qlinear/QLINEAR_NUM_003.onnx",
-      "output_dir": "tdd/work/structural/QLINEAR_NUM_003",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.64
+      "duration_sec": 0.43
     },
     {
       "case_id": "RECIPROCAL_001",
@@ -1074,7 +854,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.49
+      "duration_sec": 0.5
     },
     {
       "case_id": "REDUCEL1_001",
@@ -1092,7 +872,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.48
     },
     {
       "case_id": "REDUCEL2_001",
@@ -1128,7 +908,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.43
+      "duration_sec": 0.48
     },
     {
       "case_id": "REDUCELOGSUMEXP_001",
@@ -1146,7 +926,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.53
     },
     {
       "case_id": "REDUCEMAX_001",
@@ -1164,7 +944,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.44
     },
     {
       "case_id": "REDUCEMEAN_001",
@@ -1182,7 +962,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.49
+      "duration_sec": 0.43
     },
     {
       "case_id": "REDUCEMIN_001",
@@ -1200,7 +980,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.43
+      "duration_sec": 0.39
     },
     {
       "case_id": "REDUCEPROD_001",
@@ -1218,7 +998,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.5
+      "duration_sec": 0.46
     },
     {
       "case_id": "REDUCESUM_001",
@@ -1236,7 +1016,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.44
     },
     {
       "case_id": "REDUCESUMSQUARE_001",
@@ -1272,7 +1052,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 0,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.43
     },
     {
       "case_id": "ROUND_001",
@@ -1290,7 +1070,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.46
+      "duration_sec": 0.45
     },
     {
       "case_id": "SELU_001",
@@ -1308,7 +1088,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.46
+      "duration_sec": 0.45
     },
     {
       "case_id": "SIGMOID_001",
@@ -1326,7 +1106,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.42
+      "duration_sec": 0.45
     },
     {
       "case_id": "SIGN_001",
@@ -1344,7 +1124,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.46
+      "duration_sec": 0.49
     },
     {
       "case_id": "SLICE_001",
@@ -1362,7 +1142,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.49
     },
     {
       "case_id": "SOFTMAX_001",
@@ -1382,7 +1162,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.43
+      "duration_sec": 0.49
     },
     {
       "case_id": "SOFTMAX_002",
@@ -1402,7 +1182,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.47
+      "duration_sec": 0.43
     },
     {
       "case_id": "SOFTPLUS_001",
@@ -1420,7 +1200,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.46
     },
     {
       "case_id": "SOFTSIGN_001",
@@ -1438,7 +1218,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.48
+      "duration_sec": 0.44
     },
     {
       "case_id": "SQRT_001",
@@ -1456,7 +1236,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.41
+      "duration_sec": 0.47
     },
     {
       "case_id": "SQUEEZE_001",
@@ -1474,7 +1254,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 0,
       "error_msg": "",
-      "duration_sec": 0.45
+      "duration_sec": 0.49
     },
     {
       "case_id": "SUB_001",
@@ -1492,7 +1272,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.47
     },
     {
       "case_id": "SUM_001",
@@ -1528,7 +1308,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.46
     },
     {
       "case_id": "THRESHOLDEDRELU_001",
@@ -1546,7 +1326,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.42
+      "duration_sec": 0.44
     },
     {
       "case_id": "TRANSPOSE_001",
@@ -1584,7 +1364,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.44
+      "duration_sec": 0.45
     },
     {
       "case_id": "WHERE_001",
@@ -1602,7 +1382,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.49
+      "duration_sec": 0.41
     },
     {
       "case_id": "XOR_001",
@@ -1621,24 +1401,6 @@
       "runtime_exit_code": 2,
       "error_msg": "",
       "duration_sec": 0.47
-    },
-    {
-      "case_id": "NEG_001",
-      "category": "negative",
-      "onnx_path": "tdd/work/models/negative/NEG_001.onnx",
-      "output_dir": "tdd/work/structural/NEG_001",
-      "expected": "blocked",
-      "actual": "blocked",
-      "passed": true,
-      "exit_code": 2,
-      "required_apis": [],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "",
-      "duration_sec": 0.26
     },
     {
       "case_id": "NET_001",
@@ -1662,72 +1424,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 3.03
-    },
-    {
-      "case_id": "NET_002",
-      "category": "networks",
-      "onnx_path": "tdd/work/models/networks/NET_002.onnx",
-      "output_dir": "tdd/work/structural/NET_002",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8",
-        "arm_depthwise_conv_wrapper_s8",
-        "arm_elementwise_add_s8",
-        "arm_avgpool_s8",
-        "arm_fully_connected_per_channel_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 7.4
-    },
-    {
-      "case_id": "NET_003",
-      "category": "networks",
-      "onnx_path": "tdd/work/models/networks/NET_003.onnx",
-      "output_dir": "tdd/work/structural/NET_003",
-      "expected": "unsupported",
-      "actual": "unsupported",
-      "passed": true,
-      "exit_code": 2,
-      "required_apis": [],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "",
-      "duration_sec": 5.68
-    },
-    {
-      "case_id": "NET_004",
-      "category": "networks",
-      "onnx_path": "tdd/work/models/networks/NET_004.onnx",
-      "output_dir": "tdd/work/structural/NET_004",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8",
-        "arm_depthwise_conv_wrapper_s8",
-        "arm_max_pool_s8",
-        "arm_fully_connected_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.66
+      "duration_sec": 3.1
     },
     {
       "case_id": "NET_005",
@@ -1748,25 +1445,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.66
-    },
-    {
-      "case_id": "NET_006",
-      "category": "networks",
-      "onnx_path": "tdd/work/models/networks/NET_006.onnx",
-      "output_dir": "tdd/work/structural/NET_006",
-      "expected": "unsupported",
-      "actual": "unsupported",
-      "passed": true,
-      "exit_code": 2,
-      "required_apis": [],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": false,
-      "runtime_ok": false,
-      "runtime_exit_code": null,
-      "error_msg": "",
-      "duration_sec": 14.53
+      "duration_sec": 0.63
     },
     {
       "case_id": "TS_001",
@@ -1784,7 +1463,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.68
+      "duration_sec": 0.45
     },
     {
       "case_id": "TS_002",
@@ -1802,7 +1481,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.78
+      "duration_sec": 0.53
     },
     {
       "case_id": "TS_003",
@@ -1820,7 +1499,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.76
+      "duration_sec": 0.52
     },
     {
       "case_id": "TS_004",
@@ -1838,7 +1517,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.73
+      "duration_sec": 0.54
     },
     {
       "case_id": "TS_005",
@@ -1856,50 +1535,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.7
-    },
-    {
-      "case_id": "TOPO_001",
-      "category": "topology",
-      "onnx_path": "tdd/work/models/topology/TOPO_001.onnx",
-      "output_dir": "tdd/work/structural/TOPO_001",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8",
-        "arm_max_pool_s8",
-        "arm_fully_connected_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.74
-    },
-    {
-      "case_id": "TOPO_002",
-      "category": "topology",
-      "onnx_path": "tdd/work/models/topology/TOPO_002.onnx",
-      "output_dir": "tdd/work/structural/TOPO_002",
-      "expected": "ok",
-      "actual": "ok",
-      "passed": true,
-      "exit_code": 0,
-      "required_apis": [
-        "arm_convolve_wrapper_s8",
-        "arm_fully_connected_s8"
-      ],
-      "missing_apis": [],
-      "api_check_ok": true,
-      "compile_ok": true,
-      "runtime_ok": true,
-      "runtime_exit_code": 2,
-      "error_msg": "",
-      "duration_sec": 0.67
+      "duration_sec": 0.6
     },
     {
       "case_id": "TOPO_003",
@@ -1922,7 +1558,7 @@
       "runtime_ok": true,
       "runtime_exit_code": 2,
       "error_msg": "",
-      "duration_sec": 0.69
+      "duration_sec": 0.54
     }
   ]
 }
