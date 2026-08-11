@@ -1,10 +1,10 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-08-11T23:41:39.996546
-> Git commit: `68a838e`
+> 最后更新: 2026-08-11T23:56:40.790923
+> Git commit: `92c93df`
 
-**能力集大小: 86 / 86 (100%)**
+**能力集大小: 92 / 92 (100%)**
 
 ## 已验证能力 (PASS)
 
@@ -20,6 +20,7 @@
 | official | GlobalAveragePool | rank=4 static NCHW, QDQ/int8 tensor, full spatial H/W average | cmsis-nn | cmsis_global_avgpool_s8 | AVGPOOL_002 | core/avgpool | 官方 GlobalAveragePool QDQ/int8 全局池化数值精度 | 2026-08-11 |
 | official | AveragePool | rank=4 static NCHW, QDQ/int8 tensor, CMSIS-compatible average pool window | cmsis-nn | cmsis_avgpool_s8 | AVGPOOL_003 | core/avgpool | 官方 AveragePool QDQ/int8 2x2 stride=2 数值精度 | 2026-08-11 |
 | official | Ceil | static QDQ/int8 tensor | cmsis-nn | generated_c_ceil_s8 | CEIL_001 | core/ceil | 官方 Ceil QDQ/int8 静态张量数值精度 | 2026-08-11 |
+| official | Celu | static QDQ/int8 tensor, alpha attribute | cmsis-nn | generated_c_celu_s8 | CELU_001 | core/celu | 官方 Celu QDQ/int8 alpha 属性数值精度 | 2026-08-11 |
 | official | Clip | static QDQ/int8 tensor with constant min/max inputs or legacy attributes | cmsis-nn | generated_c_clip_s8 | CLIP_001 | core/clip | 官方 Clip QDQ/int8 常量 min/max 数值精度 | 2026-08-11 |
 | official | Concat | rank=4 NCHW, axis=1 channel concat, same-quantization QDQ/int8 tensors | cmsis-nn | cmsis_concatenation_s8_z | CONCAT_001 | core/concat | rank=4 channel 维 int8 Concat 数值精度 | 2026-08-11 |
 | official | Concat | rank=4 NCHW, axis=1 channel concat, same-quantization QDQ/int8 tensors | cmsis-nn | cmsis_concatenation_s8_z | CONCAT_002 | core/concat | SqueezeNet 风格不同量化分支 Concat 数值精度 | 2026-08-11 |
@@ -28,6 +29,7 @@
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_003 | core/conv | stride=2 下采样 | 2026-08-11 |
 | official | Conv | rank=4 NCHW, group=1, static shape, QDQ/int8 parameters | cmsis-nn | cmsis_conv2d_s8 | CONV_004 | core/conv | 非对称输入 zp!=0 | 2026-08-11 |
 | official | Div | same-shape QDQ/int8 tensors, non-zero second input may be constant | cmsis-nn | generated_c_div_s8 | DIV_001 | core/div | 官方 Div QDQ/int8 同形状非零常量分支数值精度 | 2026-08-11 |
+| official | Elu | static QDQ/int8 tensor, alpha attribute | cmsis-nn | generated_c_elu_s8 | ELU_001 | core/elu | 官方 Elu QDQ/int8 alpha 属性数值精度 | 2026-08-11 |
 | official | Equal | same-shape QDQ/int8 tensors, bool output consumed by Where | cmsis-nn | generated_c_equal_bool | EQUAL_001 | core/equal | 官方 Equal QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | EQUAL_001 | core/equal | 官方 Equal QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
 | official | Erf | static QDQ/int8 tensor | cmsis-nn | generated_c_erf_s8 | ERF_001 | core/erf | 官方 Erf QDQ/int8 静态张量数值精度 | 2026-08-11 |
@@ -43,6 +45,7 @@
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | GREATER_001 | core/greater | 官方 Greater QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
 | official | GreaterOrEqual | same-shape QDQ/int8 tensors, bool output consumed by Where | cmsis-nn | generated_c_greaterorequal_bool | GREATEROREQUAL_001 | core/greaterorequal | 官方 GreaterOrEqual QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | GREATEROREQUAL_001 | core/greaterorequal | 官方 GreaterOrEqual QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
+| official | HardSigmoid | static QDQ/int8 tensor, alpha/beta attributes | cmsis-nn | generated_c_hardsigmoid_s8 | HARDSIGMOID_001 | core/hardsigmoid | 官方 HardSigmoid QDQ/int8 alpha/beta 属性数值精度 | 2026-08-11 |
 | official | HardSwish | static QDQ/int8 tensor | cmsis-nn | generated_c_hardswish_s8 | HARDSWISH_001 | core/hardswish | 官方 HardSwish QDQ/int8 静态张量数值精度 | 2026-08-11 |
 | official | LeakyRelu | static QDQ/int8 tensor, scalar alpha attribute | cmsis-nn | generated_c_leakyrelu_s8 | LEAKYRELU_001 | core/leakyrelu | 官方 LeakyRelu QDQ/int8 alpha=0.1 数值精度 | 2026-08-11 |
 | official | Less | same-shape QDQ/int8 tensors, bool output consumed by Where | cmsis-nn | generated_c_less_bool | LESS_001 | core/less | 官方 Less QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
@@ -63,6 +66,7 @@
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | OR_001 | core/or | 官方 Or bool 逻辑中间张量驱动 Where 数值精度 | 2026-08-11 |
 | official | Pad | static rank=4 QDQ/int8 tensor, constant mode, constant pads initializer | cmsis-nn | generated_c_pad_s8 | PAD_001 | core/pad | 官方 Pad QDQ/int8 rank4 constant mode 数值顺序 | 2026-08-11 |
 | official | Pow | same-shape QDQ/int8 tensors, finite value domain | cmsis-nn | generated_c_pow_s8 | POW_001 | core/pow | 官方 Pow QDQ/int8 同形状有限输入域数值精度 | 2026-08-11 |
+| official | PRelu | same-shape QDQ/int8 tensor, constant quantized slope input | cmsis-nn | generated_c_prelu_s8 | PRELU_001 | core/prelu | 官方 PRelu QDQ/int8 常量 slope 数值精度 | 2026-08-11 |
 | official | QLinearConv | uint8 activation, static rank=4, CMSIS-compatible convolution | cmsis-nn | cmsis_qlinearconv_s8 | QLINEAR_NUM_001 | core/qlinear | QLinearConv uint8 输入数值精度 (CMSIS-NN vs ONNX) | 2026-08-11 |
 | official | QLinearConv | static rank=4 convolution with per-channel weight scale | cmsis-nn | cmsis_qlinearconv_per_channel_s8 | QLINEAR_NUM_002 | core/qlinear | 多通道 QLinearConv + bias + per-channel scale | 2026-08-11 |
 | official | QLinearConv | static rank=4 convolution with per-channel weight scale | cmsis-nn | cmsis_qlinearconv_per_channel_s8 | QLINEAR_NUM_003 | core/qlinear | 高通道 QLinearConv 5×5 per-channel (仿 MNIST Conv1) | 2026-08-11 |
@@ -76,6 +80,7 @@
 | official | ReduceSum | rank=2 static QDQ/int8 tensor, axes=1, keepdims=1 | cmsis-nn | generated_c_reducesum_s8 | REDUCESUM_001 | core/reducesum | 官方 ReduceSum QDQ/int8 rank2 axes=1 keepdims=1 数值精度 | 2026-08-11 |
 | official | Reshape | static QDQ/int8 tensor, constant shape, same element count | cmsis-nn | generation_time_shape_alias_or_layout_copy | RESHAPE_001 | core/reshape | 官方 Reshape QDQ/int8 静态形状数值顺序 | 2026-08-11 |
 | official | Round | static QDQ/int8 tensor | cmsis-nn | generated_c_round_s8 | ROUND_001 | core/round | 官方 Round QDQ/int8 静态张量数值精度 | 2026-08-11 |
+| official | Selu | static QDQ/int8 tensor, alpha/gamma attributes | cmsis-nn | generated_c_selu_s8 | SELU_001 | core/selu | 官方 Selu QDQ/int8 alpha/gamma 属性数值精度 | 2026-08-11 |
 | official | Sigmoid | static QDQ/int8 tensor | cmsis-nn | generated_c_sigmoid_s8 | SIGMOID_001 | core/sigmoid | 官方 Sigmoid QDQ/int8 静态张量数值精度 | 2026-08-11 |
 | official | Sign | static QDQ/int8 tensor | cmsis-nn | generated_c_sign_s8 | SIGN_001 | core/sign | 官方 Sign QDQ/int8 静态张量数值精度 | 2026-08-11 |
 | official | Slice | static QDQ/int8 tensor, constant starts/ends/axes/steps | cmsis-nn | generated_c_slice_s8 | SLICE_001 | core/slice | 官方 Slice QDQ/int8 静态区间数值顺序 | 2026-08-11 |
@@ -87,6 +92,7 @@
 | official | Squeeze | static QDQ/int8 tensor, explicit axes removing dimensions of size 1 | cmsis-nn | generation_time_shape_alias_or_layout_copy | SQUEEZE_001 | core/squeeze | 官方 Squeeze QDQ/int8 静态去 1 维数值顺序 | 2026-08-11 |
 | official | Sub | same-shape QDQ/int8 tensors, second input may be constant | cmsis-nn | generated_c_sub_s8 | SUB_001 | core/sub | 官方 Sub QDQ/int8 同形状常量分支数值精度 | 2026-08-11 |
 | official | Tanh | static QDQ/int8 tensor | cmsis-nn | generated_c_tanh_s8 | TANH_001 | core/tanh | 官方 Tanh QDQ/int8 静态张量数值精度 | 2026-08-11 |
+| official | ThresholdedRelu | static QDQ/int8 tensor, alpha attribute | cmsis-nn | generated_c_thresholdedrelu_s8 | THRESHOLDEDRELU_001 | core/thresholdedrelu | 官方 ThresholdedRelu QDQ/int8 alpha 属性数值精度 | 2026-08-11 |
 | official | Transpose | static QDQ/int8 tensor, rank=4 explicit perm | cmsis-nn | cmsis_transpose_s8 | TRANSPOSE_001 | core/transpose | 官方 Transpose QDQ/int8 rank4 显式 perm 数值顺序 | 2026-08-11 |
 | official | Unsqueeze | static data-path QDQ/int8 tensor, constant axes, element count unchanged | cmsis-nn | generated_c_unsqueeze_s8 | UNSQUEEZE_001 | core/unsqueeze | 官方 Unsqueeze QDQ/int8 数据路径静态升维数值顺序 | 2026-08-11 |
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | WHERE_001 | core/where | 官方 Where 静态 bool mask 选择 QDQ/int8 数据数值精度 | 2026-08-11 |
