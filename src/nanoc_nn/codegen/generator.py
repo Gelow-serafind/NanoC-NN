@@ -108,13 +108,20 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "Gather",
             "Gemm",
             "GlobalAveragePool",
+            "GlobalLpPool",
+            "GlobalMaxPool",
             "LeakyRelu",
             "Log",
+            "LpNormalization",
+            "LpPool",
             "MatMul",
             "Max",
             "MaxPool",
+            "Mean",
             "Min",
             "Mul",
+            "CumSum",
+            "Sum",
             "Neg",
             "Pad",
             "Pow",
@@ -478,7 +485,7 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             lines.extend(_generated_bool_logic_call(layer, current_output))
         elif layer["kind"] == "where":
             lines.extend(_generated_where_call(layer, current_output))
-        elif layer["kind"] in {"sub", "div", "min", "max", "pow", "prelu"}:
+        elif layer["kind"] in {"sub", "div", "min", "max", "pow", "prelu", "mean", "sum"}:
             lines.extend(_generated_binary_call(layer, current_output))
         elif layer["kind"] == "abs":
             lines.extend(_generated_abs_call(layer, current_output))
@@ -520,6 +527,8 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             "reducesumsquare",
         }:
             lines.extend(_generated_reduce_call(layer, current_output))
+        elif layer["kind"] in {"globalmaxpool", "globallppool", "lppool", "lpnormalization", "cumsum"}:
+            lines.extend(_generated_spatial_call(layer, current_output))
         elif layer["kind"] == "unsqueeze":
             lines.extend(_generated_unsqueeze_call(layer, current_output))
         elif layer["kind"] == "pad":
@@ -746,6 +755,8 @@ def _cmsis_tensor_runtime_run_body(
             "max",
             "pow",
             "prelu",
+            "mean",
+            "sum",
             "equal",
             "greater",
             "less",
@@ -777,7 +788,7 @@ def _cmsis_tensor_runtime_run_body(
             lines.extend(_cmsis_add_call(layer, output_expr))
         elif layer["kind"] == "mul":
             lines.extend(_cmsis_mul_call(layer, output_expr))
-        elif layer["kind"] in {"sub", "div", "min", "max", "pow", "prelu"}:
+        elif layer["kind"] in {"sub", "div", "min", "max", "pow", "prelu", "mean", "sum"}:
             lines.extend(_generated_binary_call(layer, output_expr))
         elif layer["kind"] in {
             "equal",
@@ -831,6 +842,8 @@ def _cmsis_tensor_runtime_run_body(
             "reducesumsquare",
         }:
             lines.extend(_generated_reduce_call(layer, output_expr))
+        elif layer["kind"] in {"globalmaxpool", "globallppool", "lppool", "lpnormalization", "cumsum"}:
+            lines.extend(_generated_spatial_call(layer, output_expr))
         elif layer["kind"] == "unsqueeze":
             lines.extend(_generated_unsqueeze_call(layer, output_expr))
         elif layer["kind"] == "pad":
@@ -1225,6 +1238,8 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         "max",
         "pow",
         "prelu",
+        "mean",
+        "sum",
         "equal",
         "greater",
         "less",
@@ -1271,6 +1286,11 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         "reducelogsum",
         "reducelogsumexp",
         "reducesumsquare",
+        "globalmaxpool",
+        "globallppool",
+        "lppool",
+        "lpnormalization",
+        "cumsum",
         "unsqueeze",
         "pad",
         "slice",
@@ -1690,6 +1710,10 @@ def _generated_binary_call(layer: dict[str, Any], current_output: str) -> list[s
         ]
     elif op == "prelu":
         guard_lines = ["            float nanoc_v = nanoc_a > 0.0f ? nanoc_a : nanoc_a * nanoc_b;"]
+    elif op == "mean":
+        guard_lines = ["            float nanoc_v = (nanoc_a + nanoc_b) * 0.5f;"]
+    elif op == "sum":
+        guard_lines = ["            float nanoc_v = nanoc_a + nanoc_b;"]
     else:
         return []
     return [
@@ -2341,6 +2365,8 @@ def _quantized_weight_declarations(graph: ModelGraph) -> list[str]:
             "max",
             "pow",
             "prelu",
+            "mean",
+            "sum",
             "equal",
             "greater",
             "less",
@@ -2406,6 +2432,8 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Floor",
             "Gemm",
             "Gather",
+            "GlobalLpPool",
+            "GlobalMaxPool",
             "Greater",
             "GreaterOrEqual",
             "HardSigmoid",
@@ -2413,10 +2441,15 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Less",
             "LessOrEqual",
             "Log",
+            "LpNormalization",
+            "LpPool",
             "MatMul",
             "Max",
+            "Mean",
             "Min",
             "Mul",
+            "CumSum",
+            "Sum",
             "Clip",
             "Celu",
             "LeakyRelu",
@@ -2455,6 +2488,13 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "ThresholdedRelu",
             "Unsqueeze",
             "Where",
+            "GlobalLpPool",
+            "GlobalMaxPool",
+            "LpNormalization",
+            "LpPool",
+            "Mean",
+            "Sum",
+            "CumSum",
         }:
             continue
         if node.op_type in {"Conv", "QLinearConv"}:
@@ -2562,8 +2602,10 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             layer = _add_layer(graph, mapping)
         elif mapping.onnx_op == "Mul":
             layer = _mul_layer(graph, mapping)
-        elif mapping.onnx_op in {"Sub", "Div", "Min", "Max", "Pow", "PRelu"}:
+        elif mapping.onnx_op in {"Sub", "Div", "Min", "Max", "Pow", "PRelu", "Mean", "Sum"}:
             layer = _generated_binary_layer(graph, mapping)
+        elif mapping.onnx_op in {"GlobalMaxPool", "GlobalLpPool", "LpPool", "LpNormalization", "CumSum"}:
+            layer = _generated_spatial_layer(graph, mapping)
         elif mapping.onnx_op in {"Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual"}:
             layer = _generated_compare_layer(graph, mapping)
         elif mapping.onnx_op in {"And", "Or", "Not", "Xor"}:
@@ -3024,6 +3066,150 @@ def _generated_binary_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, 
         layer["constant_symbol"] = f"{symbol}_weights"
         layer["constant_input_index"] = 1
     return layer
+
+
+def _generated_spatial_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    required = (
+        "input_scale",
+        "input_zero_point",
+        "output_scale",
+        "output_zero_point",
+        "activation_min",
+        "activation_max",
+        "block_size",
+        "input_shape",
+        "output_shape",
+    )
+    if any(field not in cmsis_nn for field in required):
+        return None
+    layer: dict[str, Any] = {
+        "kind": str(mapping.onnx_op).lower(),
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "input_tensors": [node.inputs[0]] if node.inputs else [],
+        "output_tensors": list(node.outputs),
+        "input_scale": float(cmsis_nn["input_scale"]),
+        "input_zero_point": int(cmsis_nn["input_zero_point"]),
+        "output_scale": float(cmsis_nn["output_scale"]),
+        "output_zero_point": int(cmsis_nn["output_zero_point"]),
+        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_max": int(cmsis_nn["activation_max"]),
+        "block_size": int(cmsis_nn["block_size"]),
+        "input_shape": [int(item) for item in cmsis_nn["input_shape"]],
+        "output_shape": [int(item) for item in cmsis_nn["output_shape"]],
+    }
+    for field in ("p", "axis", "kernel_shape", "strides"):
+        if field in cmsis_nn:
+            layer[field] = cmsis_nn[field]
+    return layer
+
+
+def _generated_spatial_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_expr = layer.get("input_expr", "current_input")
+    kind = str(layer["kind"])
+    api = f"generated_c_{kind}_s8"
+    in_shape = [int(item) for item in layer["input_shape"]]
+    out_shape = [int(item) for item in layer["output_shape"]]
+    in_scale = _c_float_literal(float(layer["input_scale"]))
+    in_zp = int(layer["input_zero_point"])
+    out_scale = _c_float_literal(float(layer["output_scale"]))
+    out_zp = int(layer["output_zero_point"])
+    amax = int(layer["activation_max"])
+    amin = int(layer["activation_min"])
+
+    lines = [f"    /* node {layer['index']}: {layer['name']} -> {api} */", "    {"]
+
+    def deq(expr: str) -> str:
+        return f"((float)({expr}) - {in_zp}) * {in_scale}"
+
+    if kind in {"globalmaxpool", "globallppool"}:
+        n, c, h, w = in_shape
+        spatial = h * w
+        init = "-3.402823466e+38f" if kind == "globalmaxpool" else "0.0f"
+        lines.append(f"        for (int nanoc_c = 0; nanoc_c < {c}; ++nanoc_c) {{")
+        lines.append(f"            float nanoc_v = {init};")
+        lines.append(f"            for (int nanoc_s = 0; nanoc_s < {spatial}; ++nanoc_s) {{")
+        lines.append(f"                float nanoc_x = {deq(f'{input_expr}[nanoc_c * {spatial} + nanoc_s]')};")
+        if kind == "globalmaxpool":
+            lines.append("                if (nanoc_x > nanoc_v) { nanoc_v = nanoc_x; }")
+        else:
+            lines.append("                nanoc_v += nanoc_x * nanoc_x;")
+        lines.append("            }")
+        if kind == "globallppool":
+            lines.append("            nanoc_v = sqrtf(nanoc_v);")
+        lines.append(f"            {current_output}[nanoc_c] = (int8_t)({_requant_expr('nanoc_v', out_scale, out_zp, amin, amax)});")
+        lines.append("        }")
+    elif kind == "lppool":
+        n, c, h, w = in_shape
+        on, oc, oh, ow = out_shape
+        kh, kw = [int(item) for item in layer.get("kernel_shape", [2, 2])]
+        sh, sw = [int(item) for item in layer.get("strides", [1, 1])]
+        lines.append(f"        for (int nanoc_c = 0; nanoc_c < {oc}; ++nanoc_c) {{")
+        lines.append(f"            for (int nanoc_oh = 0; nanoc_oh < {oh}; ++nanoc_oh) {{")
+        lines.append(f"                for (int nanoc_ow = 0; nanoc_ow < {ow}; ++nanoc_ow) {{")
+        lines.append("                    float nanoc_v = 0.0f;")
+        lines.append(f"                    for (int nanoc_kh = 0; nanoc_kh < {kh}; ++nanoc_kh) {{")
+        lines.append(f"                        for (int nanoc_kw = 0; nanoc_kw < {kw}; ++nanoc_kw) {{")
+        lines.append(
+            f"                            float nanoc_x = {deq(f'{input_expr}[nanoc_c * {h * w} + (nanoc_oh * {sh} + nanoc_kh) * {w} + (nanoc_ow * {sw} + nanoc_kw)]')};"
+        )
+        lines.append("                            nanoc_v += nanoc_x * nanoc_x;")
+        lines.append("                        }")
+        lines.append("                    }")
+        lines.append("                    nanoc_v = sqrtf(nanoc_v);")
+        lines.append(
+            f"                    {current_output}[nanoc_c * {oh * ow} + nanoc_oh * {ow} + nanoc_ow] = (int8_t)({_requant_expr('nanoc_v', out_scale, out_zp, amin, amax)});"
+        )
+        lines.append("                }")
+        lines.append("            }")
+        lines.append("        }")
+    elif kind == "lpnormalization":
+        rows, cols = in_shape
+        lines.append(f"        for (int nanoc_r = 0; nanoc_r < {rows}; ++nanoc_r) {{")
+        lines.append("            float nanoc_norm = 0.0f;")
+        lines.append(f"            for (int nanoc_c = 0; nanoc_c < {cols}; ++nanoc_c) {{")
+        lines.append(f"                float nanoc_x = {deq(f'{input_expr}[nanoc_r * {cols} + nanoc_c]')};")
+        lines.append("                nanoc_norm += nanoc_x * nanoc_x;")
+        lines.append("            }")
+        lines.append("            nanoc_norm = sqrtf(nanoc_norm);")
+        lines.append(f"            for (int nanoc_c = 0; nanoc_c < {cols}; ++nanoc_c) {{")
+        lines.append(f"                float nanoc_x = {deq(f'{input_expr}[nanoc_r * {cols} + nanoc_c]')};")
+        lines.append("                float nanoc_v = nanoc_norm > 0.0000001f ? nanoc_x / nanoc_norm : 0.0f;")
+        lines.append(
+            f"                {current_output}[nanoc_r * {cols} + nanoc_c] = (int8_t)({_requant_expr('nanoc_v', out_scale, out_zp, amin, amax)});"
+        )
+        lines.append("            }")
+        lines.append("        }")
+    elif kind == "cumsum":
+        rows, cols = in_shape
+        lines.append(f"        for (int nanoc_r = 0; nanoc_r < {rows}; ++nanoc_r) {{")
+        lines.append("            float nanoc_acc = 0.0f;")
+        lines.append(f"            for (int nanoc_c = 0; nanoc_c < {cols}; ++nanoc_c) {{")
+        lines.append(f"                float nanoc_x = {deq(f'{input_expr}[nanoc_r * {cols} + nanoc_c]')};")
+        lines.append("                nanoc_acc += nanoc_x;")
+        lines.append(
+            f"                {current_output}[nanoc_r * {cols} + nanoc_c] = (int8_t)({_requant_expr('nanoc_acc', out_scale, out_zp, amin, amax)});"
+        )
+        lines.append("            }")
+        lines.append("        }")
+    else:
+        return []
+    lines.append("    }")
+    lines.append("")
+    return lines
+
+
+def _requant_expr(var: str, out_scale: str, out_zp: int, amin: int, amax: int) -> str:
+    base = f"(int32_t)nearbyintf({var} / {out_scale} + {out_zp})"
+    return f"{base} < {amin} ? {amin} : ({base} > {amax} ? {amax} : {base})"
 
 
 def _generated_compare_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:

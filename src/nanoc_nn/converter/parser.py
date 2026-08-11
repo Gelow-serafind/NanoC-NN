@@ -40,6 +40,8 @@ SUPPORTED_OPS = {
     "Gemm",
     "Gather",
     "GlobalAveragePool",
+    "GlobalLpPool",
+    "GlobalMaxPool",
     "Greater",
     "GreaterOrEqual",
     "HardSigmoid",
@@ -48,9 +50,12 @@ SUPPORTED_OPS = {
     "Less",
     "LessOrEqual",
     "Log",
+    "LpNormalization",
+    "LpPool",
     "MatMul",
     "Max",
     "MaxPool",
+    "Mean",
     "Min",
     "Concat",
     "Div",
@@ -67,6 +72,8 @@ SUPPORTED_OPS = {
     "QLinearGlobalAveragePool",
     "QLinearMatMul",
     "Reciprocal",
+    "CumSum",
+    "Sum",
     "ReduceMax",
     "ReduceMean",
     "ReduceMin",
@@ -870,7 +877,7 @@ def _extract_quantization(
             )
             if reduce_quant is not None:
                 node_quant[node.name] = reduce_quant
-        elif node.op_type in {"Min", "Max", "Pow", "PRelu"}:
+        elif node.op_type in {"Min", "Max", "Pow", "PRelu", "Mean", "Sum"}:
             generated_elementwise_quant = _generated_elementwise_quant_info(
                 node,
                 tensor_quant,
@@ -880,6 +887,10 @@ def _extract_quantization(
             )
             if generated_elementwise_quant is not None:
                 node_quant[node.name] = generated_elementwise_quant
+        elif node.op_type in {"GlobalMaxPool", "GlobalLpPool", "LpPool", "LpNormalization", "CumSum"}:
+            spatial_quant = _generated_spatial_quant_info(node, tensor_quant, warnings)
+            if spatial_quant is not None:
+                node_quant[node.name] = spatial_quant
         elif node.op_type in {"Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual"}:
             compare_quant = _compare_quant_info(
                 node,
@@ -1007,6 +1018,8 @@ def _int8_contract(
         "Gather",
         "Gemm",
         "GlobalAveragePool",
+        "GlobalLpPool",
+        "GlobalMaxPool",
         "Greater",
         "GreaterOrEqual",
         "HardSigmoid",
@@ -1015,9 +1028,12 @@ def _int8_contract(
         "Less",
         "LessOrEqual",
         "Log",
+        "LpNormalization",
+        "LpPool",
         "MatMul",
         "Max",
         "MaxPool",
+        "Mean",
         "Min",
         "Mul",
         "Neg",
@@ -1032,6 +1048,8 @@ def _int8_contract(
         "QLinearGlobalAveragePool",
         "QLinearMatMul",
         "Reciprocal",
+        "CumSum",
+        "Sum",
         "ReduceMax",
         "ReduceMean",
         "ReduceMin",
@@ -1757,6 +1775,61 @@ def _generated_elementwise_quant_info(
             "block_size": block_size,
             "constant_input": second_quantized if weight_info is not None else "",
         },
+    }
+
+
+def _generated_spatial_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    output_quant = tensor_quant.get(output_name)
+    if input_quant is None or output_quant is None:
+        return None
+    input_shape = node.input_shapes.get(input_name, [])
+    output_shape = node.output_shapes.get(output_name, [])
+    if not _is_static_shape(input_shape + output_shape):
+        warnings.append(f"node '{node.name}' {node.op_type} first generated path requires static shapes.")
+        return None
+    block_size = _static_element_count(output_shape, node.name, node.op_type, warnings)
+    if block_size is None:
+        return None
+    qmin, qmax = _activation_range(output_quant)
+    cmsis_nn: dict[str, Any] = {
+        "api": f"generated_c_{node.op_type.lower()}_s8",
+        "input_scale": float(input_quant["scale"]),
+        "input_zero_point": int(input_quant["zero_point"]),
+        "output_scale": float(output_quant["scale"]),
+        "output_zero_point": int(output_quant["zero_point"]),
+        "activation_min": qmin,
+        "activation_max": qmax,
+        "block_size": block_size,
+        "input_shape": [int(item) for item in input_shape],
+        "output_shape": [int(item) for item in output_shape],
+    }
+    if node.op_type in {"GlobalLpPool", "LpPool", "LpNormalization"}:
+        cmsis_nn["p"] = int(node.normalized_attributes.get("p", 2))
+    if node.op_type == "LpPool":
+        cmsis_nn["kernel_shape"] = _as_int_list(
+            node.normalized_attributes.get("kernel_shape"), [2, 2]
+        )
+        cmsis_nn["strides"] = _as_int_list(node.normalized_attributes.get("strides"), [1, 1])
+    if node.op_type == "LpNormalization":
+        rank = len(input_shape)
+        axis = int(node.normalized_attributes.get("axis", 1))
+        cmsis_nn["axis"] = axis + rank if axis < 0 else axis
+    if node.op_type == "CumSum":
+        cmsis_nn["axis"] = 1
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: output_quant},
+        "cmsis_nn": cmsis_nn,
     }
 
 

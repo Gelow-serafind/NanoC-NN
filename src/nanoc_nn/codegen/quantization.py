@@ -380,8 +380,25 @@ for _unary_op in (
     "Celu",
 ):
     REQUIRED_NODE_QUANT_FIELDS[_unary_op] = REQUIRED_NODE_QUANT_FIELDS["Tanh"]
-for _binary_op in ("Min", "Max", "Pow", "PRelu"):
+for _binary_op in ("Min", "Max", "Pow", "PRelu", "Mean", "Sum"):
     REQUIRED_NODE_QUANT_FIELDS[_binary_op] = REQUIRED_NODE_QUANT_FIELDS["Div"]
+for _spatial_op in ("GlobalMaxPool", "GlobalLpPool", "LpPool", "LpNormalization", "CumSum"):
+    REQUIRED_NODE_QUANT_FIELDS[_spatial_op] = {
+        "cmsis_nn": {
+            "api",
+            "input_scale",
+            "input_zero_point",
+            "output_scale",
+            "output_zero_point",
+            "activation_min",
+            "activation_max",
+            "block_size",
+            "input_shape",
+            "output_shape",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    }
 for _reduce_op in ("ReduceSum", "ReduceMax", "ReduceMin"):
     REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
 for _reduce_op in ("ReduceProd", "ReduceL1", "ReduceL2", "ReduceLogSum", "ReduceLogSumExp", "ReduceSumSquare"):
