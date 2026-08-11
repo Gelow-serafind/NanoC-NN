@@ -150,6 +150,10 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "Xor",
             "GreaterOrEqual",
             "LessOrEqual",
+            "Erf",
+            "Softplus",
+            "Softsign",
+            "HardSwish",
         }
     ]
     generated_layers = _runtime_layers(graph, generated_runtime_mappings)
@@ -483,6 +487,10 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             "ceil",
             "round",
             "sign",
+            "erf",
+            "softplus",
+            "softsign",
+            "hardswish",
         }:
             lines.extend(_generated_unary_call(layer, current_output))
         elif layer["kind"] in {
@@ -781,6 +789,10 @@ def _cmsis_tensor_runtime_run_body(
             "ceil",
             "round",
             "sign",
+            "erf",
+            "softplus",
+            "softsign",
+            "hardswish",
         }:
             lines.extend(_generated_unary_call(layer, output_expr))
         elif layer["kind"] in {
@@ -1213,6 +1225,10 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         "ceil",
         "round",
         "sign",
+        "erf",
+        "softplus",
+        "softsign",
+        "hardswish",
         "reducemean",
         "reducesum",
         "reducemax",
@@ -1834,6 +1850,16 @@ def _generated_unary_call(layer: dict[str, Any], current_output: str) -> list[st
             "            if (nanoc_x > 0.0f) { nanoc_v = 1.0f; }",
             "            if (nanoc_x < 0.0f) { nanoc_v = -1.0f; }",
         ]
+    elif kind == "erf":
+        value_lines = ["            float nanoc_v = erff(nanoc_x);"]
+    elif kind == "softplus":
+        value_lines = ["            float nanoc_v = log1pf(expf(nanoc_x));"]
+    elif kind == "softsign":
+        value_lines = ["            float nanoc_v = nanoc_x / (1.0f + fabsf(nanoc_x));"]
+    elif kind == "hardswish":
+        value_lines = [
+            "            float nanoc_v = nanoc_x * fminf(fmaxf(nanoc_x + 3.0f, 0.0f), 6.0f) / 6.0f;"
+        ]
     else:
         return []
     return [
@@ -2286,12 +2312,14 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Conv",
             "Concat",
             "Equal",
+            "Erf",
             "Exp",
             "Floor",
             "Gemm",
             "Gather",
             "Greater",
             "GreaterOrEqual",
+            "HardSwish",
             "Less",
             "LessOrEqual",
             "Log",
@@ -2322,6 +2350,8 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Sign",
             "Sigmoid",
             "Slice",
+            "Softplus",
+            "Softsign",
             "Sqrt",
             "Sub",
             "Div",
@@ -2358,6 +2388,10 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Ceil",
             "Round",
             "Sign",
+            "Erf",
+            "Softplus",
+            "Softsign",
+            "HardSwish",
             "Min",
             "Max",
             "Pow",
@@ -2444,6 +2478,10 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             "Ceil",
             "Round",
             "Sign",
+            "Erf",
+            "Softplus",
+            "Softsign",
+            "HardSwish",
         }:
             layer = _generated_unary_layer(graph, mapping)
         elif mapping.onnx_op in {
