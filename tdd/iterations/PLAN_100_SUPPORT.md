@@ -30,7 +30,7 @@
 | W1c | shape/常量折叠 | `Identity` `Cast` `Constant` `Split` `Expand` `Tile` `Shape` `Size` `ConstantOfShape` `Range` | 延后 | ⏸️ deferred（需 empty-runtime 路径） |
 | W1d-b | 池化/Lp/变体 | `GlobalMaxPool` `GlobalLpPool` `LpPool` `LpNormalization` `CumSum` `Mean` `Sum` | 批 4 | ✅ done（032） |
 | W0 | ABI 基础（index 输出） | `ArgMax` `ArgMin`（需扩展非 int8 外部 ABI + numeric runner） | 批 5 | ✅ 边界（033，NEG_002/003 unsupported） |
-| W2 | bool/索引补完 | bool-initializer 逻辑输入、逻辑级联；`NonZero` `Compress` `OneHot` `TopK` `GatherElements` `GatherND` `ScatterND` | 批 8-9 | pending |
+| W2 | bool/索引补完 | `NonZero` `Compress` `OneHot` `TopK` `GatherElements` `GatherND` `ScatterND` | 批 6 | ✅ 边界（033 后续，非 int8/动态/index 输入） |
 | W3 | 归一化 | `BatchNormalization` `InstanceNormalization` `LayerNormalization` `LRN` `GroupNormalization` | 批 10 | pending |
 | W4 | 卷积/量化变体 | `ConvTranspose` `ConvInteger` `MatMulInteger` `DynamicQuantizeLinear` `DepthToSpace` `SpaceToDepth` `Resize` `Upsample` | 批 11-12 | pending |
 | W5 | 尾项/边缘 | `Mod` `EyeLike` `Trilu` `ReverseSequence` `MaxUnpool` 窗口函数`Hamming/Hann/Blackman` `MelWeightMatrix` `DeformConv` `RoiAlign` | 批 13 | pending |
