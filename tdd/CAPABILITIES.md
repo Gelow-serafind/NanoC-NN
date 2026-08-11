@@ -1,10 +1,10 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-08-11T23:12:59.856401
-> Git commit: `da3bebe`
+> 最后更新: 2026-08-11T23:41:39.996546
+> Git commit: `68a838e`
 
-**能力集大小: 82 / 82 (100%)**
+**能力集大小: 86 / 86 (100%)**
 
 ## 已验证能力 (PASS)
 
@@ -30,6 +30,7 @@
 | official | Div | same-shape QDQ/int8 tensors, non-zero second input may be constant | cmsis-nn | generated_c_div_s8 | DIV_001 | core/div | 官方 Div QDQ/int8 同形状非零常量分支数值精度 | 2026-08-11 |
 | official | Equal | same-shape QDQ/int8 tensors, bool output consumed by Where | cmsis-nn | generated_c_equal_bool | EQUAL_001 | core/equal | 官方 Equal QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | EQUAL_001 | core/equal | 官方 Equal QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
+| official | Erf | static QDQ/int8 tensor | cmsis-nn | generated_c_erf_s8 | ERF_001 | core/erf | 官方 Erf QDQ/int8 静态张量数值精度 | 2026-08-11 |
 | official | Exp | static QDQ/int8 tensor, bounded input domain | cmsis-nn | generated_c_exp_s8 | EXP_001 | core/exp | 官方 Exp QDQ/int8 静态张量受控输入域数值精度 | 2026-08-11 |
 | official | Flatten | static QDQ/int8 tensor, axis=1, preserves ONNX row-major flatten order | cmsis-nn | generation_time_shape_alias_or_layout_copy | FLATTEN_001 | core/flatten | 官方 Flatten QDQ/int8 axis=1 数值顺序 | 2026-08-11 |
 | official | Floor | static QDQ/int8 tensor | cmsis-nn | generated_c_floor_s8 | FLOOR_001 | core/floor | 官方 Floor QDQ/int8 静态张量数值精度 | 2026-08-11 |
@@ -42,6 +43,7 @@
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | GREATER_001 | core/greater | 官方 Greater QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
 | official | GreaterOrEqual | same-shape QDQ/int8 tensors, bool output consumed by Where | cmsis-nn | generated_c_greaterorequal_bool | GREATEROREQUAL_001 | core/greaterorequal | 官方 GreaterOrEqual QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | GREATEROREQUAL_001 | core/greaterorequal | 官方 GreaterOrEqual QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
+| official | HardSwish | static QDQ/int8 tensor | cmsis-nn | generated_c_hardswish_s8 | HARDSWISH_001 | core/hardswish | 官方 HardSwish QDQ/int8 静态张量数值精度 | 2026-08-11 |
 | official | LeakyRelu | static QDQ/int8 tensor, scalar alpha attribute | cmsis-nn | generated_c_leakyrelu_s8 | LEAKYRELU_001 | core/leakyrelu | 官方 LeakyRelu QDQ/int8 alpha=0.1 数值精度 | 2026-08-11 |
 | official | Less | same-shape QDQ/int8 tensors, bool output consumed by Where | cmsis-nn | generated_c_less_bool | LESS_001 | core/less | 官方 Less QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | LESS_001 | core/less | 官方 Less QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-11 |
@@ -79,6 +81,8 @@
 | official | Slice | static QDQ/int8 tensor, constant starts/ends/axes/steps | cmsis-nn | generated_c_slice_s8 | SLICE_001 | core/slice | 官方 Slice QDQ/int8 静态区间数值顺序 | 2026-08-11 |
 | official | Softmax | static classification vector, int8 output path | cmsis-nn | cmsis_softmax_s8 | SOFTMAX_001 | core/softmax | 10 分类 Softmax int8 代码生成 | 2026-08-11 |
 | official | Softmax | static classification vector, int8 output path | cmsis-nn | cmsis_softmax_s8 | SOFTMAX_002 | core/softmax | SqueezeNet 末端 float output Softmax int8 C 输出 | 2026-08-11 |
+| official | Softplus | static QDQ/int8 tensor | cmsis-nn | generated_c_softplus_s8 | SOFTPLUS_001 | core/softplus | 官方 Softplus QDQ/int8 静态张量数值精度 | 2026-08-11 |
+| official | Softsign | static QDQ/int8 tensor | cmsis-nn | generated_c_softsign_s8 | SOFTSIGN_001 | core/softsign | 官方 Softsign QDQ/int8 静态张量数值精度 | 2026-08-11 |
 | official | Sqrt | static QDQ/int8 tensor, non-negative value domain | cmsis-nn | generated_c_sqrt_s8 | SQRT_001 | core/sqrt | 官方 Sqrt QDQ/int8 非负输入数值精度 | 2026-08-11 |
 | official | Squeeze | static QDQ/int8 tensor, explicit axes removing dimensions of size 1 | cmsis-nn | generation_time_shape_alias_or_layout_copy | SQUEEZE_001 | core/squeeze | 官方 Squeeze QDQ/int8 静态去 1 维数值顺序 | 2026-08-11 |
 | official | Sub | same-shape QDQ/int8 tensors, second input may be constant | cmsis-nn | generated_c_sub_s8 | SUB_001 | core/sub | 官方 Sub QDQ/int8 同形状常量分支数值精度 | 2026-08-11 |
