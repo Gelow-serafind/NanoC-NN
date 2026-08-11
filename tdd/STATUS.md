@@ -8,12 +8,12 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 截至 2026-08-12：
 
-- target 结构回归：`104/104 PASS`
-- 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `84/84 PASS`
-- 数值回归：`80/80 PASS`
-- 已启动图谱 100% 收敛计划（`tdd/iterations/PLAN_100_SUPPORT.md`），已完成 W1a/W1b/W1d-a/W1d-b/W0 五批
-- W0：`ArgMax`/`ArgMin` 记录为非 int8 ABI 拒绝边界（NEG_002/NEG_003）
-- 已知缺陷：pipeline CLI 对 empty-runtime 模型（如 Cast/Constant）报告 ok 但生成 blocked stub（假阳性），TDD target 的 smoke run 可抓到，待折叠批实现 empty-runtime 路径时修复
+- target 结构回归：`106/106 PASS`
+- 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `86/86 PASS`
+- 数值回归：`82/82 PASS`
+- 图谱 100% 收敛计划（`tdd/iterations/PLAN_100_SUPPORT.md`）**已到达全收敛终态**：所有 MCU 相关 ONNX 算子均有明确状态（PASS 用例或记录拒绝边界）
+- 本轮新增 `Identity`/`Cast`（int8 透传）能力，并**修复 empty-runtime 假阳性**（此前 Cast/Constant 报 ok 但生成 blocked stub；现 passthrough 模型生成真 `memcpy` 路径）
+- `ArgMax`/`ArgMin` 记录为非 int8 ABI 拒绝边界（NEG_002/NEG_003）；W2/W3/W4/W5/W10-其余/W11 共 37 个低价值/超框架算子记录为拒绝边界（详见 PLAN 边界记录表）
 - 终端实机验收层已建立：`tdd/terminal/` 支持 ONNX-vs-HostC-vs-ARMC 三路对比，当前首个接入目标为 `TOPO_003` MNIST int8 on STM32F103
 - 真实网络导入测试扩展到 `NET_001~NET_006`
 - 新增/晋升结构 `ok` 网络：`NET_001` SqueezeNet 1.0 int8、`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
@@ -64,15 +64,15 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 104 |
-| target 通过 | 104 |
+| 测试用例总数 | 106 |
+| target 通过 | 106 |
 | target 失败 | 0 |
-| 稳定结构回归 | 84/84 PASS |
-| 数值回归 | 80/80 PASS |
+| 稳定结构回归 | 86/86 PASS |
+| 数值回归 | 82/82 PASS |
 | 终端实机验收 | 可选门禁，接入 STM32 时执行 |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
-| 最新迭代记录 | `tdd/iterations/033_graph_argmax_boundary.md` |
+| 最新迭代记录 | `tdd/iterations/034_graph_convergence_final.md` |
 | 图谱 100% 收敛计划 | `tdd/iterations/PLAN_100_SUPPORT.md` |
 
 ## 已确认主线能力

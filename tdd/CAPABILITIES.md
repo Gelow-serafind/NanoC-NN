@@ -1,10 +1,10 @@
 # NanoC-NN 能力集
 
 > 本文件由 `python tdd/scripts/run_tests.py --mode target` 自动生成，禁止手动编辑。
-> 最后更新: 2026-08-12T01:24:24.351939
-> Git commit: `7f2da2a`
+> 最后更新: 2026-08-12T01:36:25.599269
+> Git commit: `bb9a25e`
 
-**能力集大小: 104 / 104 (100%)**
+**能力集大小: 106 / 106 (100%)**
 
 ## 已验证能力 (PASS)
 
@@ -19,6 +19,7 @@
 | extension | QLinearGlobalAveragePool | static rank=4 quantized global average pool | cmsis-nn | cmsis_avgpool_s8 | AVGPOOL_001 | core/avgpool | QLinearGlobalAveragePool int8 全局池化代码生成 | 2026-08-12 |
 | official | GlobalAveragePool | rank=4 static NCHW, QDQ/int8 tensor, full spatial H/W average | cmsis-nn | cmsis_global_avgpool_s8 | AVGPOOL_002 | core/avgpool | 官方 GlobalAveragePool QDQ/int8 全局池化数值精度 | 2026-08-12 |
 | official | AveragePool | rank=4 static NCHW, QDQ/int8 tensor, CMSIS-compatible average pool window | cmsis-nn | cmsis_avgpool_s8 | AVGPOOL_003 | core/avgpool | 官方 AveragePool QDQ/int8 2x2 stride=2 数值精度 | 2026-08-12 |
+| official | Cast | static QDQ/int8 tensor, int8-to-int8 generation-time alias | cmsis-nn | generation_time_identity_passthrough | CAST_001 | core/cast | 官方 Cast int8-to-int8 QDQ 透传数值精度 | 2026-08-12 |
 | official | Ceil | static QDQ/int8 tensor | cmsis-nn | generated_c_ceil_s8 | CEIL_001 | core/ceil | 官方 Ceil QDQ/int8 静态张量数值精度 | 2026-08-12 |
 | official | Celu | static QDQ/int8 tensor, alpha attribute | cmsis-nn | generated_c_celu_s8 | CELU_001 | core/celu | 官方 Celu QDQ/int8 alpha 属性数值精度 | 2026-08-12 |
 | official | Clip | static QDQ/int8 tensor with constant min/max inputs or legacy attributes | cmsis-nn | generated_c_clip_s8 | CLIP_001 | core/clip | 官方 Clip QDQ/int8 常量 min/max 数值精度 | 2026-08-12 |
@@ -50,6 +51,7 @@
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | GREATEROREQUAL_001 | core/greaterorequal | 官方 GreaterOrEqual QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-12 |
 | official | HardSigmoid | static QDQ/int8 tensor, alpha/beta attributes | cmsis-nn | generated_c_hardsigmoid_s8 | HARDSIGMOID_001 | core/hardsigmoid | 官方 HardSigmoid QDQ/int8 alpha/beta 属性数值精度 | 2026-08-12 |
 | official | HardSwish | static QDQ/int8 tensor | cmsis-nn | generated_c_hardswish_s8 | HARDSWISH_001 | core/hardswish | 官方 HardSwish QDQ/int8 静态张量数值精度 | 2026-08-12 |
+| official | Identity | static QDQ/int8 tensor, generation-time identity alias | cmsis-nn | generation_time_identity_passthrough | IDENTITY_001 | core/identity | 官方 Identity QDQ/int8 透传数值精度 | 2026-08-12 |
 | official | LeakyRelu | static QDQ/int8 tensor, scalar alpha attribute | cmsis-nn | generated_c_leakyrelu_s8 | LEAKYRELU_001 | core/leakyrelu | 官方 LeakyRelu QDQ/int8 alpha=0.1 数值精度 | 2026-08-12 |
 | official | Less | same-shape QDQ/int8 tensors, bool output consumed by Where | cmsis-nn | generated_c_less_bool | LESS_001 | core/less | 官方 Less QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-12 |
 | official | Where | static bool condition, same-shape QDQ/int8 then/else tensors | cmsis-nn | generated_c_where_s8 | LESS_001 | core/less | 官方 Less QDQ/int8 bool 结果驱动 Where 数值精度 | 2026-08-12 |
