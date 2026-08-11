@@ -29,13 +29,16 @@ SUPPORTED_OPS = {
     "Clip",
     "Conv",
     "Ceil",
+    "Equal",
     "Exp",
     "Flatten",
     "Floor",
     "Gemm",
     "Gather",
     "GlobalAveragePool",
+    "Greater",
     "LeakyRelu",
+    "Less",
     "Log",
     "MatMul",
     "Max",
@@ -55,6 +58,9 @@ SUPPORTED_OPS = {
     "ReduceMax",
     "ReduceMean",
     "ReduceMin",
+    "ReduceL1",
+    "ReduceL2",
+    "ReduceProd",
     "ReduceSum",
     "DequantizeLinear",
     "Dropout",
@@ -73,6 +79,7 @@ SUPPORTED_OPS = {
     "Tanh",
     "Transpose",
     "Unsqueeze",
+    "Where",
 }
 SUPPORTED_OPSET_MIN = 11
 SUPPORTED_OPSET_MAX = 17
@@ -94,6 +101,9 @@ PARAMETER_INITIALIZER_INPUTS = {
     "QuantizeLinear": {0},
     "Sub": {1},
     "Div": {1},
+    "Equal": {1},
+    "Greater": {1},
+    "Less": {1},
 }
 AUXILIARY_INITIALIZER_INPUTS = {
     "DequantizeLinear": {1, 2},
@@ -105,14 +115,18 @@ AUXILIARY_INITIALIZER_INPUTS = {
     "Clip": {1, 2},
     "Gather": {1},
     "Pad": {1, 2},
+    "ReduceL1": {1},
+    "ReduceL2": {1},
     "ReduceMax": {1},
     "ReduceMean": {1},
     "ReduceMin": {1},
+    "ReduceProd": {1},
     "ReduceSum": {1},
     "Reshape": {1},
     "Slice": {1, 2, 3, 4},
     "Squeeze": {1},
     "Unsqueeze": {1},
+    "Where": {0},
 }
 
 
@@ -808,7 +822,15 @@ def _extract_quantization(
             )
             if unary_quant is not None:
                 node_quant[node.name] = unary_quant
-        elif node.op_type in {"ReduceMean", "ReduceSum", "ReduceMax", "ReduceMin"}:
+        elif node.op_type in {
+            "ReduceMean",
+            "ReduceSum",
+            "ReduceMax",
+            "ReduceMin",
+            "ReduceProd",
+            "ReduceL1",
+            "ReduceL2",
+        }:
             reduce_quant = _reduce_mean_quant_info(
                 node,
                 tensor_quant,
@@ -827,6 +849,28 @@ def _extract_quantization(
             )
             if generated_elementwise_quant is not None:
                 node_quant[node.name] = generated_elementwise_quant
+        elif node.op_type in {"Equal", "Greater", "Less"}:
+            compare_quant = _compare_quant_info(
+                node,
+                tensor_quant,
+                dq_aliases,
+                quantized_weights,
+                warnings,
+            )
+            if compare_quant is not None:
+                node_quant[node.name] = compare_quant
+        elif node.op_type == "Where":
+            where_quant = _where_quant_info(
+                node,
+                tensor_quant,
+                node_quant,
+                dq_aliases,
+                quantized_weights,
+                initializer_by_name,
+                warnings,
+            )
+            if where_quant is not None:
+                node_quant[node.name] = where_quant
         elif node.op_type == "Unsqueeze":
             unsqueeze_quant = _unsqueeze_quant_info(
                 node,
@@ -913,12 +957,15 @@ def _int8_contract(
         "Concat",
         "Conv",
         "Div",
+        "Equal",
         "Exp",
         "Floor",
         "Gather",
         "Gemm",
         "GlobalAveragePool",
+        "Greater",
         "LeakyRelu",
+        "Less",
         "Log",
         "MatMul",
         "Max",
@@ -936,6 +983,9 @@ def _int8_contract(
         "ReduceMax",
         "ReduceMean",
         "ReduceMin",
+        "ReduceL1",
+        "ReduceL2",
+        "ReduceProd",
         "ReduceSum",
         "Softmax",
         "Sigmoid",
@@ -947,6 +997,7 @@ def _int8_contract(
         "Tanh",
         "Transpose",
         "Unsqueeze",
+        "Where",
     }
     runtime_nodes = [
         node
@@ -1646,6 +1697,127 @@ def _generated_elementwise_quant_info(
             "activation_max": qmax,
             "block_size": block_size,
             "constant_input": second_quantized if weight_info is not None else "",
+        },
+    }
+
+
+def _compare_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    dq_aliases: dict[str, str],
+    quantized_weights: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 2 or not node.outputs:
+        return None
+    a, b = node.inputs[:2]
+    output_name = node.outputs[0]
+    input_1_quant = tensor_quant.get(a)
+    input_2_quant = tensor_quant.get(b)
+    if input_1_quant is None or input_2_quant is None:
+        return None
+    output_shape = next(iter(node.output_shapes.values()), [])
+    input_1_shape = node.input_shapes.get(a, [])
+    input_2_shape = node.input_shapes.get(b, [])
+    if input_1_shape != output_shape or input_2_shape != output_shape:
+        warnings.append(
+            f"node '{node.name}' {node.op_type} first generated bool path requires same-shape inputs."
+        )
+        return None
+    block_size = _static_element_count(output_shape, node.name, node.op_type, warnings)
+    if block_size is None:
+        return None
+    weights = {"weight": "", "bias": "", "bias_values": []}
+    second_quantized = dq_aliases.get(b, b)
+    weight_info = quantized_weights.get(second_quantized)
+    if weight_info is not None:
+        weights["weight"] = second_quantized
+        weights["weight_info"] = weight_info
+    return {
+        "op_type": node.op_type,
+        "inputs": {a: input_1_quant, b: input_2_quant},
+        "outputs": {output_name: {"elem_type": "BOOL", "shape": output_shape}},
+        "weights": weights,
+        "cmsis_nn": {
+            "api": f"generated_c_{node.op_type.lower()}_bool",
+            "input_1_scale": float(input_1_quant["scale"]),
+            "input_1_zero_point": int(input_1_quant["zero_point"]),
+            "input_2_scale": float(input_2_quant["scale"]),
+            "input_2_zero_point": int(input_2_quant["zero_point"]),
+            "block_size": block_size,
+            "constant_input": second_quantized if weight_info is not None else "",
+        },
+    }
+
+
+def _where_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    node_quant: dict[str, dict[str, Any]],
+    dq_aliases: dict[str, str],
+    quantized_weights: dict[str, dict[str, Any]],
+    initializer_by_name: dict[str, InitializerInfo],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if len(node.inputs) < 3 or not node.outputs:
+        return None
+    condition_name, x_name, y_name = node.inputs[:3]
+    output_name = node.outputs[0]
+    x_quant = tensor_quant.get(x_name)
+    y_quant = tensor_quant.get(y_name)
+    output_quant = tensor_quant.get(output_name)
+    if x_quant is None or y_quant is None or output_quant is None:
+        return None
+    output_shape = node.output_shapes.get(output_name, [])
+    x_shape = node.input_shapes.get(x_name, [])
+    y_shape = node.input_shapes.get(y_name, [])
+    if x_shape != output_shape or y_shape != output_shape:
+        warnings.append(f"node '{node.name}' Where first generated path requires same-shape data inputs.")
+        return None
+    block_size = _static_element_count(output_shape, node.name, node.op_type, warnings)
+    if block_size is None:
+        return None
+    qmin, qmax = _activation_range(output_quant)
+    weights = {"weight": "", "bias": "", "bias_values": []}
+    y_quantized = dq_aliases.get(y_name, y_name)
+    y_weight_info = quantized_weights.get(y_quantized)
+    if y_weight_info is not None:
+        weights["weight"] = y_quantized
+        weights["weight_info"] = y_weight_info
+    condition_values = _initializer_bool_list(initializer_by_name.get(condition_name))
+    condition_source = "initializer" if condition_values else "tensor"
+    condition_producer = ""
+    if condition_source == "tensor":
+        for candidate_name, candidate_quant in node_quant.items():
+            if condition_name in candidate_quant.get("outputs", {}):
+                condition_producer = candidate_name
+                break
+        if not condition_producer:
+            warnings.append(
+                f"node '{node.name}' Where condition must be a bool initializer or a supported compare output."
+            )
+            return None
+    return {
+        "op_type": node.op_type,
+        "inputs": {x_name: x_quant, y_name: y_quant},
+        "outputs": {output_name: output_quant},
+        "weights": weights,
+        "cmsis_nn": {
+            "api": "generated_c_where_s8",
+            "x_scale": float(x_quant["scale"]),
+            "x_zero_point": int(x_quant["zero_point"]),
+            "y_scale": float(y_quant["scale"]),
+            "y_zero_point": int(y_quant["zero_point"]),
+            "output_scale": float(output_quant["scale"]),
+            "output_zero_point": int(output_quant["zero_point"]),
+            "activation_min": qmin,
+            "activation_max": qmax,
+            "block_size": block_size,
+            "condition_source": condition_source,
+            "condition_input": condition_name,
+            "condition_values": condition_values,
+            "condition_producer": condition_producer,
+            "constant_input": y_quantized if y_weight_info is not None else "",
         },
     }
 
@@ -2760,6 +2932,13 @@ def _initializer_float_list(initializer: InitializerInfo | None) -> list[float]:
         return []
     values = np.asarray(initializer.array, dtype=np.float64).reshape(-1)
     return [float(item) for item in values.tolist()]
+
+
+def _initializer_bool_list(initializer: InitializerInfo | None) -> list[bool]:
+    if initializer is None:
+        return []
+    values = np.asarray(initializer.array, dtype=np.bool_).reshape(-1)
+    return [bool(item) for item in values.tolist()]
 
 
 def _input_radius(input_integer_bits: int, input_left_shift: int) -> int:

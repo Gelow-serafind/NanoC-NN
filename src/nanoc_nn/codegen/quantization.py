@@ -368,6 +368,38 @@ for _binary_op in ("Min", "Max", "Pow"):
     REQUIRED_NODE_QUANT_FIELDS[_binary_op] = REQUIRED_NODE_QUANT_FIELDS["Div"]
 for _reduce_op in ("ReduceSum", "ReduceMax", "ReduceMin"):
     REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
+for _reduce_op in ("ReduceProd", "ReduceL1", "ReduceL2"):
+    REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
+for _compare_op in ("Equal", "Greater", "Less"):
+    REQUIRED_NODE_QUANT_FIELDS[_compare_op] = {
+        "cmsis_nn": {
+            "api",
+            "input_1_scale",
+            "input_1_zero_point",
+            "input_2_scale",
+            "input_2_zero_point",
+            "block_size",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    }
+REQUIRED_NODE_QUANT_FIELDS["Where"] = {
+    "cmsis_nn": {
+        "api",
+        "x_scale",
+        "x_zero_point",
+        "y_scale",
+        "y_zero_point",
+        "output_scale",
+        "output_zero_point",
+        "activation_min",
+        "activation_max",
+        "block_size",
+        "condition_source",
+    },
+    "inputs": "non_empty_dict",
+    "outputs": "non_empty_dict",
+}
 REQUIRED_NODE_QUANT_FIELDS["QLinearAdd"] = {
     "cmsis_nn": {
         "api",

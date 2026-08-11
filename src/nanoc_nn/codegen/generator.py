@@ -123,9 +123,12 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "QLinearGlobalAveragePool",
             "QLinearMatMul",
             "Reciprocal",
+            "ReduceL1",
+            "ReduceL2",
             "ReduceMax",
             "ReduceMean",
             "ReduceMin",
+            "ReduceProd",
             "ReduceSum",
             "Round",
             "Sign",
@@ -137,6 +140,10 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "Tanh",
             "Transpose",
             "Unsqueeze",
+            "Where",
+            "Equal",
+            "Greater",
+            "Less",
         }
     ]
     generated_layers = _runtime_layers(graph, generated_runtime_mappings)
@@ -440,8 +447,16 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             lines.extend(_cmsis_add_call(layer, current_output))
         elif layer["kind"] == "mul":
             lines.extend(_cmsis_mul_call(layer, current_output))
+        elif layer["kind"] in {"equal", "greater", "less"}:
+            lines.extend(_generated_compare_call(layer, current_output))
+        elif layer["kind"] == "where":
+            lines.extend(_generated_where_call(layer, current_output))
         elif layer["kind"] in {"sub", "div", "min", "max", "pow"}:
             lines.extend(_generated_binary_call(layer, current_output))
+        elif layer["kind"] in {"equal", "greater", "less"}:
+            lines.extend(_generated_compare_call(layer, current_output))
+        elif layer["kind"] == "where":
+            lines.extend(_generated_where_call(layer, current_output))
         elif layer["kind"] == "abs":
             lines.extend(_generated_abs_call(layer, current_output))
         elif layer["kind"] in {
@@ -460,7 +475,15 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             "sign",
         }:
             lines.extend(_generated_unary_call(layer, current_output))
-        elif layer["kind"] in {"reducemean", "reducesum", "reducemax", "reducemin"}:
+        elif layer["kind"] in {
+            "reducemean",
+            "reducesum",
+            "reducemax",
+            "reducemin",
+            "reduceprod",
+            "reducel1",
+            "reducel2",
+        }:
             lines.extend(_generated_reduce_call(layer, current_output))
         elif layer["kind"] == "unsqueeze":
             lines.extend(_generated_unsqueeze_call(layer, current_output))
@@ -654,7 +677,9 @@ def _cmsis_tensor_runtime_run_body(
         constant_symbol = layer.get("constant_symbol")
         input_exprs = []
         for i, name in enumerate(input_tensors):
-            if constant_idx is not None and i == constant_idx and constant_symbol:
+            if layer.get("kind") == "where" and i == 0 and layer.get("condition_symbol"):
+                input_exprs.append(str(layer["condition_symbol"]))
+            elif constant_idx is not None and i == constant_idx and constant_symbol:
                 input_exprs.append(constant_symbol)
             elif name in flatten_transforms:
                 transform = flatten_transforms[name]
@@ -679,10 +704,15 @@ def _cmsis_tensor_runtime_run_body(
             layer["input_1_expr"] = input_exprs[0]
             if not constant_symbol:
                 layer["input_2_expr"] = input_exprs[1]
-        if layer["kind"] in {"sub", "div", "min", "max", "pow"} and len(input_exprs) >= 2:
+        if layer["kind"] in {"sub", "div", "min", "max", "pow", "equal", "greater", "less"} and len(input_exprs) >= 2:
             layer["input_1_expr"] = input_exprs[0]
             if not constant_symbol:
                 layer["input_2_expr"] = input_exprs[1]
+        if layer["kind"] == "where" and len(input_exprs) >= 3:
+            layer["condition_expr"] = input_exprs[0]
+            layer["x_expr"] = input_exprs[1]
+            if not constant_symbol:
+                layer["y_expr"] = input_exprs[2]
         if layer["kind"] == "concat":
             layer["input_exprs"] = input_exprs
         if layer["kind"] == "conv":
@@ -697,6 +727,10 @@ def _cmsis_tensor_runtime_run_body(
             lines.extend(_cmsis_mul_call(layer, output_expr))
         elif layer["kind"] in {"sub", "div", "min", "max", "pow"}:
             lines.extend(_generated_binary_call(layer, output_expr))
+        elif layer["kind"] in {"equal", "greater", "less"}:
+            lines.extend(_generated_compare_call(layer, output_expr))
+        elif layer["kind"] == "where":
+            lines.extend(_generated_where_call(layer, output_expr))
         elif layer["kind"] == "abs":
             lines.extend(_generated_abs_call(layer, output_expr))
         elif layer["kind"] in {
@@ -715,7 +749,15 @@ def _cmsis_tensor_runtime_run_body(
             "sign",
         }:
             lines.extend(_generated_unary_call(layer, output_expr))
-        elif layer["kind"] in {"reducemean", "reducesum", "reducemax", "reducemin"}:
+        elif layer["kind"] in {
+            "reducemean",
+            "reducesum",
+            "reducemax",
+            "reducemin",
+            "reduceprod",
+            "reducel1",
+            "reducel2",
+        }:
             lines.extend(_generated_reduce_call(layer, output_expr))
         elif layer["kind"] == "unsqueeze":
             lines.extend(_generated_unsqueeze_call(layer, output_expr))
@@ -1102,7 +1144,7 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         return count
     if layer["kind"] == "fc":
         return int(layer.get("output_size", 0))
-    if layer["kind"] in {"add", "mul", "sub", "div", "min", "max", "pow"}:
+    if layer["kind"] in {"add", "mul", "sub", "div", "min", "max", "pow", "equal", "greater", "less", "where"}:
         return int(layer.get("block_size", 0))
     if layer["kind"] in {
         "abs",
@@ -1123,6 +1165,9 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         "reducesum",
         "reducemax",
         "reducemin",
+        "reduceprod",
+        "reducel1",
+        "reducel2",
         "unsqueeze",
         "pad",
         "slice",
@@ -1571,6 +1616,74 @@ def _generated_binary_call(layer: dict[str, Any], current_output: str) -> list[s
     ]
 
 
+def _generated_compare_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    input_1 = layer.get("input_1_expr", "current_input")
+    input_2 = layer.get("constant_symbol") or layer.get("input_2_expr", "current_input")
+    op = str(layer["kind"])
+    api = f"generated_c_{op}_bool"
+    if op == "equal":
+        compare_line = "            int nanoc_cond = nanoc_a == nanoc_b;"
+    elif op == "greater":
+        compare_line = "            int nanoc_cond = nanoc_a > nanoc_b;"
+    elif op == "less":
+        compare_line = "            int nanoc_cond = nanoc_a < nanoc_b;"
+    else:
+        return []
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> {api} */",
+        "    {",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        (
+            f"            int32_t nanoc_a = (int32_t){input_1}[nanoc_i] - "
+            f"{int(layer['input_1_zero_point'])};"
+        ),
+        (
+            f"            int32_t nanoc_b = (int32_t){input_2}[nanoc_i] - "
+            f"{int(layer['input_2_zero_point'])};"
+        ),
+        compare_line,
+        f"            {current_output}[nanoc_i] = (int8_t)(nanoc_cond ? 1 : 0);",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
+def _generated_where_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    condition = layer.get("condition_symbol") or layer.get("condition_expr", "current_input")
+    x_expr = layer.get("x_expr", "current_input")
+    y_expr = layer.get("constant_symbol") or layer.get("y_expr", "current_input")
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> generated_c_where_s8 */",
+        "    {",
+        f"        for (size_t nanoc_i = 0u; nanoc_i < {int(layer['block_size'])}u; ++nanoc_i) {{",
+        f"            const int8_t nanoc_selected_q = {condition}[nanoc_i] ? {x_expr}[nanoc_i] : {y_expr}[nanoc_i];",
+        "            float nanoc_v;",
+        f"            if ({condition}[nanoc_i]) {{",
+        (
+            f"                nanoc_v = ((float)nanoc_selected_q - {int(layer['x_zero_point'])}) * "
+            f"{_c_float_literal(float(layer['x_scale']))};"
+        ),
+        "            } else {",
+        (
+            f"                nanoc_v = ((float)nanoc_selected_q - {int(layer['y_zero_point'])}) * "
+            f"{_c_float_literal(float(layer['y_scale']))};"
+        ),
+        "            }",
+        (
+            f"            float nanoc_qf = nanoc_v / {_c_float_literal(float(layer['output_scale']))} + "
+            f"{_c_float_literal(float(layer['output_zero_point']))};"
+        ),
+        "            int32_t nanoc_q = (int32_t)(nanoc_qf >= 0.0f ? nanoc_qf + 0.5f : nanoc_qf - 0.5f);",
+        f"            if (nanoc_q > {int(layer['activation_max'])}) {{ nanoc_q = {int(layer['activation_max'])}; }}",
+        f"            if (nanoc_q < {int(layer['activation_min'])}) {{ nanoc_q = {int(layer['activation_min'])}; }}",
+        f"            {current_output}[nanoc_i] = (int8_t)nanoc_q;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
 def _generated_unary_call(layer: dict[str, Any], current_output: str) -> list[str]:
     input_expr = layer.get("input_expr", "current_input")
     kind = str(layer["kind"])
@@ -1673,6 +1786,18 @@ def _generated_reduce_call(layer: dict[str, Any], current_output: str) -> list[s
         init_line = "            float nanoc_v = 3.402823466e+38f;"
         update_line = "                if (nanoc_x < nanoc_v) { nanoc_v = nanoc_x; }"
         finish_lines = []
+    elif kind == "reduceprod":
+        init_line = "            float nanoc_v = 1.0f;"
+        update_line = "                nanoc_v *= nanoc_x;"
+        finish_lines = []
+    elif kind == "reducel1":
+        init_line = "            float nanoc_v = 0.0f;"
+        update_line = "                nanoc_v += nanoc_x < 0.0f ? -nanoc_x : nanoc_x;"
+        finish_lines = []
+    elif kind == "reducel2":
+        init_line = "            float nanoc_v = 0.0f;"
+        update_line = "                nanoc_v += nanoc_x * nanoc_x;"
+        finish_lines = ["            nanoc_v = sqrtf(nanoc_v);"]
     else:
         init_line = "            float nanoc_v = 0.0f;"
         update_line = "                nanoc_v += nanoc_x;"
@@ -1989,10 +2114,23 @@ def _quantized_weight_declarations(graph: ModelGraph) -> list[str]:
     lines = ["/* Quantized CMSIS-NN runtime weights. */"]
     for layer in layers:
         symbol = layer["symbol"]
+        if "condition_values" in layer:
+            condition_values = _int_values(layer["condition_values"])
+            condition_symbol = str(layer.get("condition_symbol", f"{symbol}_condition"))
+            lines.extend(
+                [
+                    f"/* ONNX node: {layer['name']} static bool condition */",
+                    f"#define {condition_symbol.upper()}_SIZE {len(condition_values)}u",
+                    f"static const int8_t {condition_symbol}[{len(condition_values)}] = {{",
+                    *_format_int_array(condition_values),
+                    "};",
+                    "",
+                ]
+            )
         if "weight_values" not in layer:
             continue
         weight_values = _int_values(layer["weight_values"])
-        if layer["kind"] in {"add", "mul", "sub", "div", "min", "max", "pow"}:
+        if layer["kind"] in {"add", "mul", "sub", "div", "min", "max", "pow", "equal", "greater", "less", "where"}:
             lines.extend(
                 [
                     f"/* ONNX node: {layer['name']} constant input */",
@@ -2043,10 +2181,13 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Ceil",
             "Conv",
             "Concat",
+            "Equal",
             "Exp",
             "Floor",
             "Gemm",
             "Gather",
+            "Greater",
+            "Less",
             "Log",
             "MatMul",
             "Max",
@@ -2061,9 +2202,12 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "QLinearConv",
             "QLinearMatMul",
             "Reciprocal",
+            "ReduceL1",
+            "ReduceL2",
             "ReduceMax",
             "ReduceMean",
             "ReduceMin",
+            "ReduceProd",
             "ReduceSum",
             "Round",
             "Sign",
@@ -2074,6 +2218,7 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Div",
             "Tanh",
             "Unsqueeze",
+            "Where",
         }:
             continue
         if node.op_type in {"Conv", "QLinearConv"}:
@@ -2086,6 +2231,8 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             action = "arm_elementwise_add_s8"
         elif node.op_type == "Mul":
             action = "arm_elementwise_mul_s8"
+        elif node.op_type in {"Equal", "Greater", "Less"}:
+            action = f"generated_c_{node.op_type.lower()}_bool"
         elif node.op_type in {
             "Sub",
             "Div",
@@ -2105,10 +2252,17 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Min",
             "Max",
             "Pow",
+            "Equal",
+            "Greater",
+            "Less",
             "ReduceMax",
             "ReduceMean",
             "ReduceMin",
+            "ReduceL1",
+            "ReduceL2",
+            "ReduceProd",
             "ReduceSum",
+            "Where",
             "Unsqueeze",
             "Pad",
             "Slice",
@@ -2164,6 +2318,10 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             layer = _mul_layer(graph, mapping)
         elif mapping.onnx_op in {"Sub", "Div", "Min", "Max", "Pow"}:
             layer = _generated_binary_layer(graph, mapping)
+        elif mapping.onnx_op in {"Equal", "Greater", "Less"}:
+            layer = _generated_compare_layer(graph, mapping)
+        elif mapping.onnx_op == "Where":
+            layer = _where_layer(graph, mapping)
         elif mapping.onnx_op in {
             "Sigmoid",
             "Tanh",
@@ -2180,7 +2338,15 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             "Sign",
         }:
             layer = _generated_unary_layer(graph, mapping)
-        elif mapping.onnx_op in {"ReduceMean", "ReduceSum", "ReduceMax", "ReduceMin"}:
+        elif mapping.onnx_op in {
+            "ReduceMean",
+            "ReduceSum",
+            "ReduceMax",
+            "ReduceMin",
+            "ReduceProd",
+            "ReduceL1",
+            "ReduceL2",
+        }:
             layer = _reduce_mean_layer(graph, mapping)
         elif mapping.onnx_op == "Unsqueeze":
             layer = _unsqueeze_layer(graph, mapping)
@@ -2597,6 +2763,108 @@ def _generated_binary_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, 
         layer["weight_values"] = values
         layer["constant_symbol"] = f"{symbol}_weights"
         layer["constant_input_index"] = 1
+    return layer
+
+
+def _generated_compare_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    required = (
+        "input_1_scale",
+        "input_1_zero_point",
+        "input_2_scale",
+        "input_2_zero_point",
+        "block_size",
+    )
+    if any(field not in cmsis_nn for field in required):
+        return None
+    weights = graph.quantization.get("weights", {}) if graph.quantization else {}
+    quant_weights = quant.get("weights", {})
+    weight_name = str(quant_weights.get("weight", "")) if isinstance(quant_weights, dict) else ""
+    weight_info = weights.get(weight_name, {}) if isinstance(weights, dict) else {}
+    values = weight_info.get("values", []) if isinstance(weight_info, dict) else []
+    kind = str(mapping.onnx_op).lower()
+    symbol = _c_symbol(f"nanoc_{mapping.node_name}")
+    layer: dict[str, Any] = {
+        "kind": kind,
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": symbol,
+        "input_tensors": list(node.inputs[:2]),
+        "output_tensors": list(node.outputs),
+        "input_1_scale": float(cmsis_nn["input_1_scale"]),
+        "input_1_zero_point": int(cmsis_nn["input_1_zero_point"]),
+        "input_2_scale": float(cmsis_nn["input_2_scale"]),
+        "input_2_zero_point": int(cmsis_nn["input_2_zero_point"]),
+        "block_size": int(cmsis_nn["block_size"]),
+    }
+    if isinstance(values, list) and values:
+        layer["weight_values"] = values
+        layer["constant_symbol"] = f"{symbol}_weights"
+        layer["constant_input_index"] = 1
+    return layer
+
+
+def _where_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    required = (
+        "x_scale",
+        "x_zero_point",
+        "y_scale",
+        "y_zero_point",
+        "output_scale",
+        "output_zero_point",
+        "activation_min",
+        "activation_max",
+        "block_size",
+        "condition_source",
+    )
+    if any(field not in cmsis_nn for field in required):
+        return None
+    weights = graph.quantization.get("weights", {}) if graph.quantization else {}
+    quant_weights = quant.get("weights", {})
+    weight_name = str(quant_weights.get("weight", "")) if isinstance(quant_weights, dict) else ""
+    weight_info = weights.get(weight_name, {}) if isinstance(weights, dict) else {}
+    values = weight_info.get("values", []) if isinstance(weight_info, dict) else []
+    symbol = _c_symbol(f"nanoc_{mapping.node_name}")
+    layer: dict[str, Any] = {
+        "kind": "where",
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": symbol,
+        "input_tensors": list(node.inputs[:3]),
+        "output_tensors": list(node.outputs),
+        "x_scale": float(cmsis_nn["x_scale"]),
+        "x_zero_point": int(cmsis_nn["x_zero_point"]),
+        "y_scale": float(cmsis_nn["y_scale"]),
+        "y_zero_point": int(cmsis_nn["y_zero_point"]),
+        "output_scale": float(cmsis_nn["output_scale"]),
+        "output_zero_point": int(cmsis_nn["output_zero_point"]),
+        "activation_min": int(cmsis_nn["activation_min"]),
+        "activation_max": int(cmsis_nn["activation_max"]),
+        "block_size": int(cmsis_nn["block_size"]),
+        "condition_source": str(cmsis_nn["condition_source"]),
+    }
+    condition_values = cmsis_nn.get("condition_values", [])
+    if isinstance(condition_values, list) and condition_values:
+        layer["condition_values"] = [1 if bool(item) else 0 for item in condition_values]
+        layer["condition_symbol"] = f"{symbol}_condition"
+        layer["constant_condition_index"] = 0
+    if isinstance(values, list) and values:
+        layer["weight_values"] = values
+        layer["constant_symbol"] = f"{symbol}_weights"
+        layer["constant_input_index"] = 2
     return layer
 
 
