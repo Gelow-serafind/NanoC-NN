@@ -1894,6 +1894,21 @@ def gen_reducel2_001() -> Path:
     return _gen_reduce_axis1_case("REDUCEL2_001", "ReduceL2", "reducel2", 0.05)
 
 
+def gen_reducelogsum_001() -> Path:
+    """REDUCELOGSUM_001: official ReduceLogSum QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    return _gen_reduce_axis1_case("REDUCELOGSUM_001", "ReduceLogSum", "reducelogsum", 0.05)
+
+
+def gen_reducelogsumexp_001() -> Path:
+    """REDUCELOGSUMEXP_001: official ReduceLogSumExp QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    return _gen_reduce_axis1_case("REDUCELOGSUMEXP_001", "ReduceLogSumExp", "reducelogsumexp", 0.05)
+
+
+def gen_reducesumsquare_001() -> Path:
+    """REDUCESUMSQUARE_001: official ReduceSumSquare QDQ axis=1 keepdims=1 — [2,4] -> [2,1]."""
+    return _gen_reduce_axis1_case("REDUCESUMSQUARE_001", "ReduceSumSquare", "reducesumsquare", 0.05)
+
+
 def gen_pad_001() -> Path:
     """PAD_001: official Pad QDQ rank4 constant mode — [1,1,2,3] -> [1,1,4,5]."""
     path = MODELS_ROOT / "core" / "pad" / "PAD_001.onnx"
@@ -2565,6 +2580,9 @@ _GENERATORS: dict[str, object] = {
     "REDUCEPROD_001": gen_reduceprod_001,
     "REDUCEL1_001": gen_reducel1_001,
     "REDUCEL2_001": gen_reducel2_001,
+    "REDUCELOGSUM_001": gen_reducelogsum_001,
+    "REDUCELOGSUMEXP_001": gen_reducelogsumexp_001,
+    "REDUCESUMSQUARE_001": gen_reducesumsquare_001,
     "PAD_001": gen_pad_001,
     "SLICE_001": gen_slice_001,
     "GATHER_001": gen_gather_001,
