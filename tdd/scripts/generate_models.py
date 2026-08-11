@@ -120,6 +120,51 @@ def gen_abs_001() -> Path:
     return path
 
 
+def _gen_unary_simple_case(*, case_id: str, op_type: str, category: str, node_name: str) -> Path:
+    """构造单个官方 unary 算子的 QDQ/int8 用例 — [1,8] -> [1,8]。"""
+    path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
+    node = helper.make_node(op_type, ["input_dq"], ["output"], name=node_name)
+    _build_qdq_model(
+        graph_name=f"{case_id.lower()}_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=[node],
+        runtime_initializers=[],
+        save_path=path,
+    )
+    return path
+
+
+def gen_erf_001() -> Path:
+    """ERF_001: official Erf QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_simple_case(case_id="ERF_001", op_type="Erf", category="erf", node_name="erf")
+
+
+def gen_softplus_001() -> Path:
+    """SOFTPLUS_001: official Softplus QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_simple_case(
+        case_id="SOFTPLUS_001", op_type="Softplus", category="softplus", node_name="softplus"
+    )
+
+
+def gen_softsign_001() -> Path:
+    """SOFTSIGN_001: official Softsign QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_simple_case(
+        case_id="SOFTSIGN_001", op_type="Softsign", category="softsign", node_name="softsign"
+    )
+
+
+def gen_hardswish_001() -> Path:
+    """HARDSWISH_001: official HardSwish QDQ — [1,8] -> [1,8]."""
+    return _gen_unary_simple_case(
+        case_id="HARDSWISH_001", op_type="HardSwish", category="hardswish", node_name="hardswish"
+    )
+
+
 def gen_gemm_001() -> Path:
     """GEMM_001: 最小对称 FC 无 bias — [1,2] → [1,3]"""
     path = MODELS_ROOT / "core" / "gemm" / "GEMM_001.onnx"
@@ -2402,6 +2447,10 @@ _GENERATORS: dict[str, object] = {
     "OR_001": gen_or_001,
     "NOT_001": gen_not_001,
     "XOR_001": gen_xor_001,
+    "ERF_001": gen_erf_001,
+    "SOFTPLUS_001": gen_softplus_001,
+    "SOFTSIGN_001": gen_softsign_001,
+    "HARDSWISH_001": gen_hardswish_001,
     "REDUCEPROD_001": gen_reduceprod_001,
     "REDUCEL1_001": gen_reducel1_001,
     "REDUCEL2_001": gen_reducel2_001,
