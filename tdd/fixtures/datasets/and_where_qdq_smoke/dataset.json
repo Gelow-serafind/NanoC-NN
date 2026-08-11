@@ -1,0 +1,37 @@
+{
+ "dataset_id": "and_where_qdq_smoke",
+ "case_id": "AND_001",
+ "input_tensor": "input",
+ "input_shape": [
+  1,
+  8
+ ],
+ "samples": [
+  {
+   "id": "straddle_window",
+   "values": [
+    0.0,
+    0.15,
+    0.05,
+    0.2,
+    0.1,
+    0.25,
+    0.3,
+    0.35
+   ]
+  },
+  {
+   "id": "negative_and_positive",
+   "values": [
+    -0.05,
+    0.1,
+    0.25,
+    0.4,
+    0.15,
+    0.0,
+    0.2,
+    0.35
+   ]
+  }
+ ]
+}

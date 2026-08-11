@@ -1,0 +1,37 @@
+{
+ "dataset_id": "lessorequal_where_qdq_smoke",
+ "case_id": "LESSOREQUAL_001",
+ "input_tensor": "input",
+ "input_shape": [
+  1,
+  8
+ ],
+ "samples": [
+  {
+   "id": "some_equal_or_below",
+   "values": [
+    0.0,
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.35
+   ]
+  },
+  {
+   "id": "mixed_above_and_equal",
+   "values": [
+    -0.05,
+    0.1,
+    0.25,
+    0.4,
+    0.15,
+    0.0,
+    0.2,
+    0.35
+   ]
+  }
+ ]
+}

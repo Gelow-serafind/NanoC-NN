@@ -1560,6 +1560,150 @@ def gen_less_001() -> Path:
     )
 
 
+def gen_greaterorequal_001() -> Path:
+    """GREATEROREQUAL_001: GreaterOrEqual bool feeds Where — [1,8] -> [1,8]."""
+    return _gen_compare_where_case(
+        case_id="GREATEROREQUAL_001",
+        op_type="GreaterOrEqual",
+        category="greaterorequal",
+        const_values=np.array([0, 2, 2, 3, 5, 5, 6, 8], dtype=np.int8),
+    )
+
+
+def gen_lessorequal_001() -> Path:
+    """LESSOREQUAL_001: LessOrEqual bool feeds Where — [1,8] -> [1,8]."""
+    return _gen_compare_where_case(
+        case_id="LESSOREQUAL_001",
+        op_type="LessOrEqual",
+        category="lessorequal",
+        const_values=np.array([0, 2, 1, 3, 4, 6, 6, 7], dtype=np.int8),
+    )
+
+
+def _gen_bool_logic_case(
+    *,
+    case_id: str,
+    category: str,
+    op_a: str,
+    rhs_a: np.ndarray,
+    op_b: str | None,
+    rhs_b: np.ndarray | None,
+    logic_op: str,
+) -> Path:
+    """构造 compare -> bool-logic -> Where 的 QDQ/int8 用例。
+
+    两个比较算子（或单个，Not 时 op_b=None）产 bool 条件，经逻辑算子和
+    成 combined condition，再由 Where 做 int8 数据选择。bool 全部为内部
+    中间张量，外部 ABI 仍为 int8 QDQ。
+    """
+    path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
+    a_nodes, a_inits, _a_vis, a_dq = _make_qdq_constant(
+        prefix=f"{category}.rhs_a",
+        values=rhs_a.astype(np.int8).reshape(1, 8),
+        scale=0.05,
+        zero_point=0,
+    )
+    cond_a_name = f"{category}.a_cond"
+    comp_a_node = helper.make_node(op_a, ["input_dq", a_dq], [cond_a_name], name=f"{category}.{op_a.lower()}_a")
+    runtime_nodes = a_nodes + [comp_a_node]
+    runtime_inits = list(a_inits)
+
+    cond_b_name = None
+    if op_b is not None and rhs_b is not None:
+        b_nodes, b_inits, _b_vis, b_dq = _make_qdq_constant(
+            prefix=f"{category}.rhs_b",
+            values=rhs_b.astype(np.int8).reshape(1, 8),
+            scale=0.05,
+            zero_point=0,
+        )
+        cond_b_name = f"{category}.b_cond"
+        comp_b_node = helper.make_node(op_b, ["input_dq", b_dq], [cond_b_name], name=f"{category}.{op_b.lower()}_b")
+        runtime_nodes += b_nodes + [comp_b_node]
+        runtime_inits += list(b_inits)
+
+    combined_name = f"{category}.combined"
+    logic_inputs = [cond_a_name] if cond_b_name is None else [cond_a_name, cond_b_name]
+    logic_node = helper.make_node(logic_op, logic_inputs, [combined_name], name=f"{category}.{logic_op.lower()}")
+
+    zero_nodes, zero_inits, _zero_vis, zero_dq = _make_qdq_constant(
+        prefix=f"{category}.zero",
+        values=np.zeros((1, 8), dtype=np.int8),
+        scale=0.05,
+        zero_point=0,
+    )
+    where_node = helper.make_node(
+        "Where",
+        [combined_name, "input_dq", zero_dq],
+        ["output"],
+        name=f"{category}.where",
+    )
+    _build_qdq_model(
+        graph_name=f"{case_id.lower()}_qdq",
+        input_shape=[1, 8],
+        input_scale=0.05,
+        input_zp=0,
+        output_shape=[1, 8],
+        output_scale=0.05,
+        output_zp=0,
+        runtime_nodes=runtime_nodes + zero_nodes + [logic_node, where_node],
+        runtime_initializers=runtime_inits + zero_inits,
+        save_path=path,
+    )
+    return path
+
+
+def gen_and_001() -> Path:
+    """AND_001: Greater->And->Where 窗口条件 — [1,8] -> [1,8]."""
+    return _gen_bool_logic_case(
+        case_id="AND_001",
+        category="and",
+        op_a="Greater",
+        rhs_a=np.array([2, 2, 2, 2, 2, 2, 2, 2], dtype=np.int8),
+        op_b="Less",
+        rhs_b=np.array([6, 6, 6, 6, 6, 6, 6, 6], dtype=np.int8),
+        logic_op="And",
+    )
+
+
+def gen_or_001() -> Path:
+    """OR_001: Less->Or->Where 双上界条件 — [1,8] -> [1,8]."""
+    return _gen_bool_logic_case(
+        case_id="OR_001",
+        category="or",
+        op_a="Less",
+        rhs_a=np.array([2, 2, 2, 2, 2, 2, 2, 2], dtype=np.int8),
+        op_b="Less",
+        rhs_b=np.array([6, 6, 6, 6, 6, 6, 6, 6], dtype=np.int8),
+        logic_op="Or",
+    )
+
+
+def gen_not_001() -> Path:
+    """NOT_001: Greater->Not->Where 取反条件 — [1,8] -> [1,8]."""
+    return _gen_bool_logic_case(
+        case_id="NOT_001",
+        category="not",
+        op_a="Greater",
+        rhs_a=np.array([2, 2, 2, 2, 2, 2, 2, 2], dtype=np.int8),
+        op_b=None,
+        rhs_b=None,
+        logic_op="Not",
+    )
+
+
+def gen_xor_001() -> Path:
+    """XOR_001: Greater->Xor->Where 窗口互斥条件 — [1,8] -> [1,8]."""
+    return _gen_bool_logic_case(
+        case_id="XOR_001",
+        category="xor",
+        op_a="Greater",
+        rhs_a=np.array([2, 2, 2, 2, 2, 2, 2, 2], dtype=np.int8),
+        op_b="Less",
+        rhs_b=np.array([6, 6, 6, 6, 6, 6, 6, 6], dtype=np.int8),
+        logic_op="Xor",
+    )
+
+
 def _gen_reduce_axis1_case(case_id: str, op_type: str, category: str, output_scale: float) -> Path:
     path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
     node = helper.make_node(
@@ -2252,6 +2396,12 @@ _GENERATORS: dict[str, object] = {
     "EQUAL_001": gen_equal_001,
     "GREATER_001": gen_greater_001,
     "LESS_001": gen_less_001,
+    "GREATEROREQUAL_001": gen_greaterorequal_001,
+    "LESSOREQUAL_001": gen_lessorequal_001,
+    "AND_001": gen_and_001,
+    "OR_001": gen_or_001,
+    "NOT_001": gen_not_001,
+    "XOR_001": gen_xor_001,
     "REDUCEPROD_001": gen_reduceprod_001,
     "REDUCEL1_001": gen_reducel1_001,
     "REDUCEL2_001": gen_reducel2_001,
