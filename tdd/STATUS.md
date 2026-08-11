@@ -6,13 +6,13 @@
 
 NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
-截至 2026-08-11：
+截至 2026-08-12：
 
-- target 结构回归：`92/92 PASS`
-- 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `70/70 PASS`
-- 数值回归：`70/70 PASS`，本轮新增 `Elu`、`Selu`、`HardSigmoid`、`ThresholdedRelu`、`Celu`、`PRelu` 六个官方 ONNX 算子的最小数值验收；新增六项均为 `top1=2/2`、饱和率 `0.00`、最大绝对误差 `0.0`
-- 已启动图谱 100% 收敛计划（`tdd/iterations/PLAN_100_SUPPORT.md`），已完成 W1a/W1b 两批
-- 本轮修复 generated-C 量化取整 round-half-even 一致性（`nearbyintf`），全量回归确认无破坏；`Mish` 因需 opset 18（cap 17）记为边界推迟
+- target 结构回归：`95/95 PASS`
+- 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `73/73 PASS`
+- 数值回归：`73/73 PASS`，本轮新增 `ReduceLogSum`、`ReduceLogSumExp`、`ReduceSumSquare` 三个官方 ONNX 算子的最小数值验收；新增三项均为 `top1=2/2`、饱和率 `0.00`、最大绝对误差 `0.0`
+- 已启动图谱 100% 收敛计划（`tdd/iterations/PLAN_100_SUPPORT.md`），已完成 W1a/W1b/W1d-a 三批
+- 已知缺陷：pipeline CLI 对 empty-runtime 模型（如 Cast/Constant）报告 ok 但生成 blocked stub（假阳性），TDD target 的 smoke run 可抓到，待折叠批实现 empty-runtime 路径时修复
 - 终端实机验收层已建立：`tdd/terminal/` 支持 ONNX-vs-HostC-vs-ARMC 三路对比，当前首个接入目标为 `TOPO_003` MNIST int8 on STM32F103
 - 真实网络导入测试扩展到 `NET_001~NET_006`
 - 新增/晋升结构 `ok` 网络：`NET_001` SqueezeNet 1.0 int8、`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
@@ -43,6 +43,7 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 - ONNX 官方 `Erf`、`Softplus`、`Softsign`、`HardSwish` 已按 schema-driven TDD 进入能力集，当前确认静态 QDQ/int8 tensor，codegen 生成 C99 逐元素 correctness baseline（`erff`/`log1pf(expf)`/`x/(1+|x|)`/relu6 变体）。
 - ONNX 官方 `Elu`、`Selu`、`HardSigmoid`、`ThresholdedRelu`、`Celu` 已按 schema-driven TDD 进入能力集，当前确认静态 QDQ/int8 tensor + alpha/gamma/beta 属性透传，codegen 生成 C99 逐元素 correctness baseline。
 - ONNX 官方 `PRelu` 已按 schema-driven TDD 进入能力集，当前确认同形状 QDQ/int8 + 量化常量 slope，codegen 生成 C99 逐元素带泄漏路径。
+- ONNX 官方 `ReduceLogSum`、`ReduceLogSumExp`、`ReduceSumSquare` 已按 schema-driven TDD 进入能力集，当前确认 rank=2、`axes=[1]`、`keepdims=1` 的 QDQ/int8 行归约路径。
 - ONNX 官方 `ReduceProd`、`ReduceL1`、`ReduceL2` 已按 schema-driven TDD 进入能力集，当前确认 rank=2、`axes=[1]`、`keepdims=1` 的 QDQ/int8 行归约路径。
 - SqueezeNet 暴露出的 Microsoft 扩展 `QLinearGlobalAveragePool` 已提炼为独立最小用例 `AVGPOOL_001`，当前确认静态 rank=4 NCHW、全局 H/W 池化，lowering 到 `arm_avgpool_s8`
 - `NET_001` SqueezeNet 1.0 int8 已完成结构与数值闭环：完整网络可生成真实 CMSIS-NN C 工程，通过 C99 smoke compile/run，并在统一 smoke 数据集上通过 ONNX-vs-C 并行推理验收。
@@ -62,15 +63,15 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 92 |
-| target 通过 | 92 |
+| 测试用例总数 | 95 |
+| target 通过 | 95 |
 | target 失败 | 0 |
-| 稳定结构回归 | 70/70 PASS |
-| 数值回归 | 70/70 PASS |
+| 稳定结构回归 | 73/73 PASS |
+| 数值回归 | 73/73 PASS |
 | 终端实机验收 | 可选门禁，接入 STM32 时执行 |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
-| 最新迭代记录 | `tdd/iterations/030_graph_attr_activation_batch.md` |
+| 最新迭代记录 | `tdd/iterations/031_graph_reduce_ext_batch.md` |
 | 图谱 100% 收敛计划 | `tdd/iterations/PLAN_100_SUPPORT.md` |
 
 ## 已确认主线能力
@@ -97,6 +98,7 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 | Erf / Softplus / Softsign / HardSwish int8 逐元素激活 | `ERF_001`, `SOFTPLUS_001`, `SOFTSIGN_001`, `HARDSWISH_001` | 结构 PASS + 数值 PASS |
 | Elu / Selu / HardSigmoid / ThresholdedRelu / Celu 属性激活 | `ELU_001`, `SELU_001`, `HARDSIGMOID_001`, `THRESHOLDEDRELU_001`, `CELU_001` | 结构 PASS + 数值 PASS |
 | PRelu int8 常量 slope 带泄漏 | `PRELU_001` | 结构 PASS + 数值 PASS |
+| ReduceLogSum / ReduceLogSumExp / ReduceSumSquare int8 行归约 | `REDUCELOGSUM_001`, `REDUCELOGSUMEXP_001`, `REDUCESUMSQUARE_001` | 结构 PASS + 数值 PASS |
 | ReduceMean / ReduceSum / ReduceMax / ReduceMin / ReduceProd / ReduceL1 / ReduceL2 int8 行归约 | `REDUCEMEAN_001`, `REDUCESUM_001`, `REDUCEMAX_001`, `REDUCEMIN_001`, `REDUCEPROD_001`, `REDUCEL1_001`, `REDUCEL2_001` | 结构 PASS + 数值 PASS |
 | Pad / Slice / Gather int8 静态索引 copy | `PAD_001`, `SLICE_001`, `GATHER_001` | 结构 PASS + 数值 PASS |
 | Unsqueeze int8 静态升维 copy | `UNSQUEEZE_001` | 结构 PASS + 数值 PASS |

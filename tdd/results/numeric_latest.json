@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-08-11T23:53:23.639922",
-  "git_commit": "92c93df",
+  "timestamp": "2026-08-12T00:04:54.167649",
+  "git_commit": "d72e00e",
   "platform": "Darwin 25.2.0 (arm64)",
   "command": "/Users/tiedan/Desktop/NanoC-NN/tdd/scripts/run_numeric_tests.py --generate",
-  "total": 70,
-  "passed": 70,
+  "total": 73,
+  "passed": 73,
   "failed": 0,
   "results": [
     {
@@ -121,7 +121,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 3.02
+      "duration_sec": 2.99
     },
     {
       "case_id": "MATMUL_001",
@@ -341,7 +341,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.91
     },
     {
       "case_id": "RESHAPE_001",
@@ -449,7 +449,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.82
     },
     {
       "case_id": "SQUEEZE_001",
@@ -557,7 +557,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.91
     },
     {
       "case_id": "AVGPOOL_002",
@@ -653,7 +653,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.84
     },
     {
       "case_id": "AVGPOOL_003",
@@ -769,7 +769,7 @@
           "max_abs_error": 0.05000000447034836
         }
       ],
-      "duration_sec": 2.89
+      "duration_sec": 2.85
     },
     {
       "case_id": "SOFTMAX_002",
@@ -865,7 +865,7 @@
           "max_abs_error": 0.001285940408706665
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.99
     },
     {
       "case_id": "CONCAT_001",
@@ -1097,7 +1097,7 @@
           "max_abs_error": 0.20000001788139343
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.83
     },
     {
       "case_id": "ADD_001",
@@ -1213,7 +1213,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.84
     },
     {
       "case_id": "MUL_001",
@@ -1329,7 +1329,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.8
     },
     {
       "case_id": "SUB_001",
@@ -1445,7 +1445,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.8
     },
     {
       "case_id": "DIV_001",
@@ -1561,7 +1561,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.83
     },
     {
       "case_id": "SIGMOID_001",
@@ -1677,7 +1677,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.83
     },
     {
       "case_id": "TANH_001",
@@ -1909,7 +1909,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.86
     },
     {
       "case_id": "CLIP_001",
@@ -2141,7 +2141,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.83
     },
     {
       "case_id": "SQRT_001",
@@ -2257,7 +2257,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.85
     },
     {
       "case_id": "RECIPROCAL_001",
@@ -2373,7 +2373,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.91
     },
     {
       "case_id": "REDUCEMEAN_001",
@@ -2453,7 +2453,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.93
+      "duration_sec": 2.81
     },
     {
       "case_id": "UNSQUEEZE_001",
@@ -2549,7 +2549,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.88
+      "duration_sec": 2.84
     },
     {
       "case_id": "EXP_001",
@@ -2665,7 +2665,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.88
+      "duration_sec": 2.83
     },
     {
       "case_id": "LOG_001",
@@ -2781,7 +2781,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.86
     },
     {
       "case_id": "FLOOR_001",
@@ -2897,7 +2897,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.78
+      "duration_sec": 2.91
     },
     {
       "case_id": "CEIL_001",
@@ -3013,7 +3013,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.77
     },
     {
       "case_id": "ROUND_001",
@@ -3129,7 +3129,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.95
     },
     {
       "case_id": "SIGN_001",
@@ -3245,7 +3245,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.86
     },
     {
       "case_id": "MIN_001",
@@ -3361,7 +3361,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.97
+      "duration_sec": 2.76
     },
     {
       "case_id": "MAX_001",
@@ -3477,7 +3477,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.85
     },
     {
       "case_id": "POW_001",
@@ -3673,7 +3673,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.74
     },
     {
       "case_id": "REDUCEMAX_001",
@@ -3753,7 +3753,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.82
     },
     {
       "case_id": "REDUCEMIN_001",
@@ -3833,7 +3833,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.77
     },
     {
       "case_id": "WHERE_001",
@@ -3949,7 +3949,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.89
+      "duration_sec": 2.77
     },
     {
       "case_id": "EQUAL_001",
@@ -4065,7 +4065,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.79
     },
     {
       "case_id": "GREATER_001",
@@ -4181,7 +4181,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.8
     },
     {
       "case_id": "LESS_001",
@@ -4297,7 +4297,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.86
+      "duration_sec": 2.83
     },
     {
       "case_id": "GREATEROREQUAL_001",
@@ -4413,7 +4413,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.79
     },
     {
       "case_id": "LESSOREQUAL_001",
@@ -4529,7 +4529,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.8
     },
     {
       "case_id": "AND_001",
@@ -4645,7 +4645,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.8
     },
     {
       "case_id": "OR_001",
@@ -4761,7 +4761,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.92
+      "duration_sec": 2.83
     },
     {
       "case_id": "NOT_001",
@@ -4877,7 +4877,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.86
     },
     {
       "case_id": "XOR_001",
@@ -4993,7 +4993,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.81
     },
     {
       "case_id": "ERF_001",
@@ -5109,7 +5109,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.77
     },
     {
       "case_id": "SOFTPLUS_001",
@@ -5225,7 +5225,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.76
     },
     {
       "case_id": "SOFTSIGN_001",
@@ -5341,7 +5341,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.8
+      "duration_sec": 2.79
     },
     {
       "case_id": "HARDSWISH_001",
@@ -5457,7 +5457,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.79
     },
     {
       "case_id": "ELU_001",
@@ -5689,7 +5689,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.91
+      "duration_sec": 2.9
     },
     {
       "case_id": "HARDSIGMOID_001",
@@ -5805,7 +5805,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.78
     },
     {
       "case_id": "THRESHOLDEDRELU_001",
@@ -5921,7 +5921,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.84
+      "duration_sec": 2.78
     },
     {
       "case_id": "CELU_001",
@@ -6037,7 +6037,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.81
+      "duration_sec": 2.79
     },
     {
       "case_id": "PRELU_001",
@@ -6153,7 +6153,247 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.64
+      "duration_sec": 2.88
+    },
+    {
+      "case_id": "REDUCELOGSUM_001",
+      "dataset_id": "reducelogsum_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/reducelogsum/REDUCELOGSUM_001.onnx",
+      "output_dir": "tdd/work/numeric/REDUCELOGSUM_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "positive_row_sums",
+          "label": null,
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "onnx_top5": [
+            1,
+            0
+          ],
+          "c_top5": [
+            1,
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            -18,
+            -7
+          ],
+          "c_float": [
+            -0.9000000357627869,
+            -0.3499999940395355
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "all_positive",
+          "label": null,
+          "onnx_top1": 1,
+          "c_top1": 1,
+          "onnx_top5": [
+            1,
+            0
+          ],
+          "c_top5": [
+            1,
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            -14,
+            -7
+          ],
+          "c_float": [
+            -0.699999988079071,
+            -0.3499999940395355
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.58
+    },
+    {
+      "case_id": "REDUCELOGSUMEXP_001",
+      "dataset_id": "reducelogsumexp_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/reducelogsumexp/REDUCELOGSUMEXP_001.onnx",
+      "output_dir": "tdd/work/numeric/REDUCELOGSUMEXP_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "mixed_small",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            1
+          ],
+          "c_top5": [
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            29,
+            28
+          ],
+          "c_float": [
+            1.4500000476837158,
+            1.399999976158142
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "wider_span",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            1
+          ],
+          "c_top5": [
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            29,
+            28
+          ],
+          "c_float": [
+            1.4500000476837158,
+            1.399999976158142
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.52
+    },
+    {
+      "case_id": "REDUCESUMSQUARE_001",
+      "dataset_id": "reducesumsquare_qdq_smoke",
+      "onnx_path": "tdd/work/models/core/reducesumsquare/REDUCESUMSQUARE_001.onnx",
+      "output_dir": "tdd/work/numeric/REDUCESUMSQUARE_001",
+      "passed": true,
+      "pipeline_status": "ok",
+      "pipeline_exit_code": 0,
+      "compile_ok": true,
+      "run_ok": true,
+      "sample_count": 2,
+      "top1_matches": 2,
+      "top1_match_ratio": 1.0,
+      "labeled_count": 0,
+      "onnx_label_matches": 0,
+      "c_label_matches": 0,
+      "onnx_label_accuracy": null,
+      "c_label_accuracy": null,
+      "label_accuracy_delta": null,
+      "saturation_ratio": 0.0,
+      "max_abs_error": 0.0,
+      "error_msg": "",
+      "samples": [
+        {
+          "id": "mixed_signs",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            0,
+            1
+          ],
+          "c_top5": [
+            0,
+            1
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            11,
+            6
+          ],
+          "c_float": [
+            0.550000011920929,
+            0.30000001192092896
+          ],
+          "max_abs_error": 0.0
+        },
+        {
+          "id": "small_magnitudes",
+          "label": null,
+          "onnx_top1": 0,
+          "c_top1": 0,
+          "onnx_top5": [
+            1,
+            0
+          ],
+          "c_top5": [
+            1,
+            0
+          ],
+          "match": true,
+          "exact_match": true,
+          "near_tie": false,
+          "onnx_top1_margin_to_c_top1": 0.0,
+          "c_int8": [
+            2,
+            2
+          ],
+          "c_float": [
+            0.10000000149011612,
+            0.10000000149011612
+          ],
+          "max_abs_error": 0.0
+        }
+      ],
+      "duration_sec": 2.54
     },
     {
       "case_id": "REDUCEPROD_001",
@@ -6233,7 +6473,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.78
     },
     {
       "case_id": "REDUCEL1_001",
@@ -6313,7 +6553,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.8
     },
     {
       "case_id": "REDUCEL2_001",
@@ -6393,7 +6633,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.83
+      "duration_sec": 2.8
     },
     {
       "case_id": "PAD_001",
@@ -6557,7 +6797,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.82
+      "duration_sec": 2.79
     },
     {
       "case_id": "SLICE_001",
@@ -6653,7 +6893,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.87
+      "duration_sec": 2.84
     },
     {
       "case_id": "GATHER_001",
@@ -6733,7 +6973,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.85
+      "duration_sec": 2.96
     },
     {
       "case_id": "TRANSPOSE_001",
@@ -6865,7 +7105,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.9
+      "duration_sec": 2.78
     },
     {
       "case_id": "TOPO_003",
@@ -7381,7 +7621,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 2.94
+      "duration_sec": 2.8
     },
     {
       "case_id": "NET_001",
@@ -15523,7 +15763,7 @@
           "max_abs_error": 0.0569949634373188
         }
       ],
-      "duration_sec": 5.95
+      "duration_sec": 5.8
     },
     {
       "case_id": "NET_005",
@@ -15788,7 +16028,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.71
+      "duration_sec": 0.65
     },
     {
       "case_id": "TS_002",
@@ -16014,7 +16254,7 @@
           "max_abs_error": 0.0
         }
       ],
-      "duration_sec": 0.96
+      "duration_sec": 0.94
     },
     {
       "case_id": "TS_003",
@@ -16386,7 +16626,7 @@
           "max_abs_error": 2.9802322387695312e-08
         }
       ],
-      "duration_sec": 0.75
+      "duration_sec": 0.69
     },
     {
       "case_id": "TS_005",
@@ -16577,7 +16817,7 @@
           "max_abs_error": 5.960464477539063e-08
         }
       ],
-      "duration_sec": 0.72
+      "duration_sec": 0.71
     }
   ]
 }
