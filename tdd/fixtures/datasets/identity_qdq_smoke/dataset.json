@@ -1,0 +1,37 @@
+{
+ "dataset_id": "identity_qdq_smoke",
+ "case_id": "IDENTITY_001",
+ "input_tensor": "input",
+ "input_shape": [
+  1,
+  8
+ ],
+ "samples": [
+  {
+   "id": "mixed",
+   "values": [
+    0.1,
+    -0.2,
+    0.3,
+    0.0,
+    0.05,
+    -0.1,
+    0.25,
+    -0.15
+   ]
+  },
+  {
+   "id": "positive",
+   "values": [
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8
+   ]
+  }
+ ]
+}

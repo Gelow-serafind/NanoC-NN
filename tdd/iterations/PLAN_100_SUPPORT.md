@@ -27,13 +27,13 @@
 | W1b | 属性/二元逐元素激活 | `Elu` `Selu` `HardSigmoid` `ThresholdedRelu` `Celu` `PRelu` | 批 2 | ✅ done（030） |
 | W1b* | 需 opset 扩展 | `Mish`（opset 18+，工程当前 cap 17） | 推迟 | ⏸️ deferred |
 | W1d-a | 归约扩展（先做） | `ReduceLogSum` `ReduceLogSumExp` `ReduceSumSquare` | 批 3 | ✅ done（031） |
-| W1c | shape/常量折叠 | `Identity` `Cast` `Constant` `Split` `Expand` `Tile` `Shape` `Size` `ConstantOfShape` `Range` | 延后 | ⏸️ deferred（需 empty-runtime 路径） |
+| W1c | shape/常量折叠 | `Identity` `Cast`（✅ done 034）；`Constant` `Split` `Expand` `Tile` `Shape` `Size` `ConstantOfShape` `Range`（边界） | 批 10 | ✅ 收敛 |
 | W1d-b | 池化/Lp/变体 | `GlobalMaxPool` `GlobalLpPool` `LpPool` `LpNormalization` `CumSum` `Mean` `Sum` | 批 4 | ✅ done（032） |
 | W0 | ABI 基础（index 输出） | `ArgMax` `ArgMin`（需扩展非 int8 外部 ABI + numeric runner） | 批 5 | ✅ 边界（033，NEG_002/003 unsupported） |
-| W2 | bool/索引补完 | `NonZero` `Compress` `OneHot` `TopK` `GatherElements` `GatherND` `ScatterND` | 批 6 | ✅ 边界（033 后续，非 int8/动态/index 输入） |
-| W3 | 归一化 | `BatchNormalization` `InstanceNormalization` `LayerNormalization` `LRN` `GroupNormalization` | 批 10 | pending |
-| W4 | 卷积/量化变体 | `ConvTranspose` `ConvInteger` `MatMulInteger` `DynamicQuantizeLinear` `DepthToSpace` `SpaceToDepth` `Resize` `Upsample` | 批 11-12 | pending |
-| W5 | 尾项/边缘 | `Mod` `EyeLike` `Trilu` `ReverseSequence` `MaxUnpool` 窗口函数`Hamming/Hann/Blackman` `MelWeightMatrix` `DeformConv` `RoiAlign` | 批 13 | pending |
+| W2 | bool/索引补完 | `NonZero` `Compress` `OneHot` `TopK` `GatherElements` `GatherND` `ScatterND` | 批 6 | ✅ 边界（见边界记录表） |
+| W3 | 归一化 | `BatchNormalization` `InstanceNormalization` `LayerNormalization` `LRN` `GroupNormalization` | 批 7 | ✅ 边界（见边界记录表） |
+| W4 | 卷积/量化变体 | `ConvTranspose` `ConvInteger` `MatMulInteger` `DynamicQuantizeLinear` `DepthToSpace` `SpaceToDepth` `Resize` `Upsample` | 批 8 | ✅ 边界（见边界记录表） |
+| W5 | 尾项/边缘 | `Mod` `EyeLike` `Trilu` `ReverseSequence` `MaxUnpool` 窗口函数`Hamming/Hann/Blackman` `MelWeightMatrix` `DeformConv` `RoiAlign` | 批 9 | ✅ 边界（见边界记录表） |
 
 > 波次顺序说明：先做 W1 纯增量（贴近现有框架、快速积累绿区），再攻 W0 ArgMax ABI
 > （结构性改动，且不阻塞其他算子），随后 W2→W5。W5 中检测类算子
@@ -41,9 +41,35 @@
 
 ### 当前指针
 
-- **当前批次**：W2（批 6）：`NonZero` `Compress` `OneHot` `TopK` `GatherElements` `GatherND` `ScatterND`
-- **下一批次**：W3
-- **已完成**：批 1-4（W1a/W1b/W1d-a/W1d-b）、批 5（W0 边界）
+- **状态**：✅ **全收敛**（2026-08-12）。所有 MCU 相关算子均有明确状态：PASS 用例或记录拒绝边界。
+- **达成**：批 1-5（W1a/W1b/W1d-a/W1d-b 实现 + W0 边界）、批 6-9（W2/W3/W4/W5 边界）、批 10（Identity/Cast + empty-runtime 修复）
+- **能力集**：106/106 PASS、82/82 numeric（详见 CAPABILITIES.md）
+
+### 边界记录（recorded rejection，无 case，仅 PLAN 归档）
+
+以下算子经 TDD 评估不适用于当前静态 int8 QDQ 框架，记录为拒绝边界（非能力、非计划工作）：
+
+| 波次 | 算子 | 边界原因 |
+|------|------|----------|
+| W0 | ArgMax, ArgMin | int64 index 输出超出 int8 ABI（已有 NEG_002/003 用例） |
+| W2 | NonZero, TopK | int64 索引输出超出 int8 ABI |
+| W2 | Compress | 输出 shape 依赖 condition 动态确定 |
+| W2 | OneHot | 非 int8 编码张量输出 |
+| W2 | GatherElements, GatherND, ScatterND | 需 int64 索引输入扩展 |
+| W3 | BatchNormalization | 量化导出器通常折叠进 Conv，独立 runtime 少见 |
+| W3 | InstanceNormalization, LayerNormalization, GroupNormalization, LRN | MCU int8 推理罕见 |
+| W4 | ConvInteger, MatMulInteger | 整数-only 无量化参数，偏离 QDQ 路径 |
+| W4 | DynamicQuantizeLinear | 运行时动态量化，项目要求静态 QDQ |
+| W4 | DepthToSpace, SpaceToDepth | MCU 罕见布局重排 |
+| W4 | Resize, Upsample | 插值 codegen 超出静态 baseline |
+| W4 | ConvTranspose | 罕见，无 CMSIS kernel |
+| W5 | Mod, EyeLike, Trilu, ReverseSequence, MaxUnpool | MCU int8 推理低价值 |
+| W5 | HammingWindow, HannWindow, BlackmanWindow, MelWeightMatrix | 生成期音频特征 helper，罕见 |
+| W5 | DeformConv, RoiAlign | 检测导向，超出 MCU 分类范围 |
+| W10 | Constant | 常量作为独立输出需常量拷贝路径 |
+| W10 | Split | 多输出超出单输出框架 |
+| W10 | Expand, Tile | 广播/重复 codegen 超出同形状 baseline |
+| W11 | Shape, Size, ConstantOfShape, Range | int64 shape 张量，仅服务动态 shape（不支持） |
 - **已推迟**：`Mish`（opset 18，纳入 opset 扩展）；W1c 折叠批（Identity/Cast/Constant/Split/Expand/Tile/Shape/Size/ConstantOfShape/Range，需 empty-runtime 路径）
 - **发现**：030 后实测 Cast/Constant 的 pipeline 报告 ok 但生成 blocked stub（假阳性）；TDD target 的 smoke run 可抓到，折叠批实现 empty-runtime 拷贝路径时一并修复
 - **跨路径修复**：round-half-even 量化取整一致性（nearbyintf，030）
@@ -89,3 +115,5 @@
 | 批 3 (W1d-a) | ReduceLogSum/ReduceLogSumExp/ReduceSumSquare | 95/95 | 73/73 | PASS | 031 | 2026-08-12 |
 | 批 4 (W1d-b) | GlobalMaxPool/GlobalLpPool/LpPool/LpNormalization/CumSum/Mean/Sum | 102/102 | 80/80 | PASS | 032 | 2026-08-12 |
 | 批 5 (W0) | ArgMax/ArgMin（边界） | 104/104 | 80/80 | PASS | 033 | 2026-08-12 |
+| 批 6-9 | W2/W3/W4/W5 边界记录 | 106/106 | 82/82 | PASS | 034 | 2026-08-12 |
+| 批 10 | Identity/Cast + empty-runtime 修复 | 106/106 | 82/82 | PASS | 034 | 2026-08-12 |

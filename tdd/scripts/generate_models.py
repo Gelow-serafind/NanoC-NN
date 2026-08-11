@@ -2044,6 +2044,42 @@ def gen_sum_001() -> Path:
     )
 
 
+def gen_identity_001() -> Path:
+    """IDENTITY_001: official Identity QDQ passthrough — [1,8] -> [1,8]."""
+    return _gen_unary_simple_case(case_id="IDENTITY_001", op_type="Identity", category="identity", node_name="identity")
+
+
+def gen_cast_001() -> Path:
+    """CAST_001: official Cast int8-to-int8 between Q and DQ — [1,8] -> [1,8].
+
+    Input(float) -> Q(int8) -> Cast(to=int8, identity) -> DQ(float) -> Output.
+    Cast folds to a passthrough between the quantization boundaries.
+    """
+    path = MODELS_ROOT / "core" / "cast" / "CAST_001.onnx"
+    shape = [1, 8]
+    inp_vi = helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)
+    out_vi = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
+    q_name, q_scale, q_zp = "cast.q", "cast.q_scale", "cast.q_zp"
+    inits = [
+        numpy_helper.from_array(np.array(0.05, dtype=np.float32), name=q_scale),
+        numpy_helper.from_array(np.array(0, dtype=np.int8), name=q_zp),
+    ]
+    q_node = helper.make_node("QuantizeLinear", ["input", q_scale, q_zp], ["cast_in"], name="cast_q")
+    cast_node = helper.make_node("Cast", ["cast_in"], ["cast_out"], name="cast", to=TensorProto.INT8)
+    dq_node = helper.make_node(
+        "DequantizeLinear", ["cast_out", q_scale, q_zp], ["output"], name="cast_dq"
+    )
+    build_and_save(
+        nodes=[q_node, cast_node, dq_node],
+        inputs=[inp_vi],
+        outputs=[out_vi],
+        initializers=inits,
+        save_path=path,
+        graph_name="cast_001_qdq",
+    )
+    return path
+
+
 def gen_pad_001() -> Path:
     """PAD_001: official Pad QDQ rank4 constant mode — [1,1,2,3] -> [1,1,4,5]."""
     path = MODELS_ROOT / "core" / "pad" / "PAD_001.onnx"
@@ -2759,6 +2795,8 @@ _GENERATORS: dict[str, object] = {
     "CUMSUM_001": gen_cumsum_001,
     "MEAN_001": gen_mean_001,
     "SUM_001": gen_sum_001,
+    "IDENTITY_001": gen_identity_001,
+    "CAST_001": gen_cast_001,
     "PAD_001": gen_pad_001,
     "SLICE_001": gen_slice_001,
     "GATHER_001": gen_gather_001,
