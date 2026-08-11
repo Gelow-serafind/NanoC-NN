@@ -6,11 +6,11 @@
 
 NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
-截至 2026-07-24：
+截至 2026-08-11：
 
-- target 结构回归：`76/76 PASS`
-- 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `58/58 PASS`
-- 数值回归：`54/54 PASS`，本轮新增 `Where`、`Equal`、`Greater`、`Less`、`ReduceProd`、`ReduceL1`、`ReduceL2` 七个官方 ONNX 算子的最小数值验收；新增七项均为 `top1=2/2`、饱和率 `0.00`、最大绝对误差 `0.0`
+- target 结构回归：`82/82 PASS`
+- 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `60/60 PASS`
+- 数值回归：`60/60 PASS`，本轮新增 `GreaterOrEqual`、`LessOrEqual`、`And`、`Or`、`Not`、`Xor` 六个官方 ONNX 算子的最小数值验收；新增六项均为 `top1=2/2`、饱和率 `0.00`、最大绝对误差 `0.0`
 - 终端实机验收层已建立：`tdd/terminal/` 支持 ONNX-vs-HostC-vs-ARMC 三路对比，当前首个接入目标为 `TOPO_003` MNIST int8 on STM32F103
 - 真实网络导入测试扩展到 `NET_001~NET_006`
 - 新增/晋升结构 `ok` 网络：`NET_001` SqueezeNet 1.0 int8、`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
@@ -36,6 +36,8 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 - ONNX 官方 `ReduceSum`、`ReduceMax`、`ReduceMin` 已按 schema-driven TDD 进入能力集，当前确认 rank=2、`axes=[1]`、`keepdims=1` 的 QDQ/int8 行归约路径。
 - ONNX 官方 `Where` 已按 schema-driven TDD 进入能力集，当前确认静态 bool mask、同形状 QDQ/int8 then/else 数据选择，codegen 生成 C99 逐元素选择路径。
 - ONNX 官方 `Equal`、`Greater`、`Less` 已按 schema-driven TDD 进入能力集，当前确认同形状 QDQ/int8 比较，bool 输出作为中间 condition 被 `Where` 消费。
+- ONNX 官方 `GreaterOrEqual`、`LessOrEqual` 已按 schema-driven TDD 进入能力集，当前确认同形状 QDQ/int8 比较（含边界相等），bool 输出被 `Where` 消费。
+- ONNX 官方 `And`、`Or`、`Not`、`Xor` 已按 schema-driven TDD 进入能力集，当前确认 bool 输入由 compare 算子产出、bool 输出被 `Where` 消费，codegen 生成 C99 逐元素逻辑路径。
 - ONNX 官方 `ReduceProd`、`ReduceL1`、`ReduceL2` 已按 schema-driven TDD 进入能力集，当前确认 rank=2、`axes=[1]`、`keepdims=1` 的 QDQ/int8 行归约路径。
 - SqueezeNet 暴露出的 Microsoft 扩展 `QLinearGlobalAveragePool` 已提炼为独立最小用例 `AVGPOOL_001`，当前确认静态 rank=4 NCHW、全局 H/W 池化，lowering 到 `arm_avgpool_s8`
 - `NET_001` SqueezeNet 1.0 int8 已完成结构与数值闭环：完整网络可生成真实 CMSIS-NN C 工程，通过 C99 smoke compile/run，并在统一 smoke 数据集上通过 ONNX-vs-C 并行推理验收。
@@ -55,15 +57,15 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 | 指标 | 当前值 |
 |------|--------|
-| 测试用例总数 | 76 |
-| target 通过 | 76 |
+| 测试用例总数 | 82 |
+| target 通过 | 82 |
 | target 失败 | 0 |
-| 稳定结构回归 | 58/58 PASS |
-| 数值回归 | 54/54 PASS |
+| 稳定结构回归 | 60/60 PASS |
+| 数值回归 | 60/60 PASS |
 | 终端实机验收 | 可选门禁，接入 STM32 时执行 |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
-| 最新迭代记录 | `tdd/iterations/027_graph_compare_select_reduce_batch.md` |
+| 最新迭代记录 | `tdd/iterations/028_graph_bool_logic_compare_ext.md` |
 
 ## 已确认主线能力
 
@@ -84,6 +86,8 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 | Min / Max / Pow int8 逐元素算术 | `MIN_001`, `MAX_001`, `POW_001` | 结构 PASS + 数值 PASS |
 | Where int8 条件选择 | `WHERE_001` | 结构 PASS + 数值 PASS |
 | Equal / Greater / Less bool 中间比较 | `EQUAL_001`, `GREATER_001`, `LESS_001` | 结构 PASS + 数值 PASS |
+| GreaterOrEqual / LessOrEqual bool 中间比较 | `GREATEROREQUAL_001`, `LESSOREQUAL_001` | 结构 PASS + 数值 PASS |
+| And / Or / Not / Xor bool 逻辑中间张量 | `AND_001`, `OR_001`, `NOT_001`, `XOR_001` | 结构 PASS + 数值 PASS |
 | ReduceMean / ReduceSum / ReduceMax / ReduceMin / ReduceProd / ReduceL1 / ReduceL2 int8 行归约 | `REDUCEMEAN_001`, `REDUCESUM_001`, `REDUCEMAX_001`, `REDUCEMIN_001`, `REDUCEPROD_001`, `REDUCEL1_001`, `REDUCEL2_001` | 结构 PASS + 数值 PASS |
 | Pad / Slice / Gather int8 静态索引 copy | `PAD_001`, `SLICE_001`, `GATHER_001` | 结构 PASS + 数值 PASS |
 | Unsqueeze int8 静态升维 copy | `UNSQUEEZE_001` | 结构 PASS + 数值 PASS |
@@ -209,4 +213,4 @@ python tdd/tools/mnist_capture/server.py
 4. 继续导入 keyword spotting、tiny anomaly detection、简单 IMU 分类等 MCU 常见小模型。
 5. 将 `NET_004` KWS-style 升级为数值验收候选。
 6. 为 `NET_002` 和 `NET_001` 增加显式 SRAM/Flash 预算 probe，验证 Cortex-M3/M4/M7 平台门禁返回 `oversize` 而不是混入结构能力判断。
-7. 继续沿 ONNX 官方图谱推进下一批 MCU 常见算子形态，例如 `ArgMax` 分类输出、`GreaterOrEqual/LessOrEqual` 比较扩展、`And/Or/Not` bool 逻辑、或从 `NET_004` KWS-style 升级数值验收反向提炼下一批 case。
+7. 继续沿 ONNX 官方图谱推进下一批 MCU 常见算子形态。`GreaterOrEqual/LessOrEqual` 与 `And/Or/Not/Xor` 已在 028 完成；后续优先 `ArgMax/ArgMin` 分类 index 输出（需扩展非 int8 外部 ABI 与 numeric runner），再补 bool initializer 直接作为逻辑算子输入、bool 逻辑算子多层级联。
