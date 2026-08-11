@@ -125,11 +125,14 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
             "Reciprocal",
             "ReduceL1",
             "ReduceL2",
+            "ReduceLogSum",
+            "ReduceLogSumExp",
             "ReduceMax",
             "ReduceMean",
             "ReduceMin",
             "ReduceProd",
             "ReduceSum",
+            "ReduceSumSquare",
             "Round",
             "Sign",
             "Sigmoid",
@@ -512,6 +515,9 @@ def _cmsis_runtime_run_body(layers: list[dict[str, Any]]) -> list[str]:
             "reduceprod",
             "reducel1",
             "reducel2",
+            "reducelogsum",
+            "reducelogsumexp",
+            "reducesumsquare",
         }:
             lines.extend(_generated_reduce_call(layer, current_output))
         elif layer["kind"] == "unsqueeze":
@@ -820,6 +826,9 @@ def _cmsis_tensor_runtime_run_body(
             "reduceprod",
             "reducel1",
             "reducel2",
+            "reducelogsum",
+            "reducelogsumexp",
+            "reducesumsquare",
         }:
             lines.extend(_generated_reduce_call(layer, output_expr))
         elif layer["kind"] == "unsqueeze":
@@ -1259,6 +1268,9 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         "reduceprod",
         "reducel1",
         "reducel2",
+        "reducelogsum",
+        "reducelogsumexp",
+        "reducesumsquare",
         "unsqueeze",
         "pad",
         "slice",
@@ -1976,6 +1988,18 @@ def _generated_reduce_call(layer: dict[str, Any], current_output: str) -> list[s
         init_line = "            float nanoc_v = 0.0f;"
         update_line = "                nanoc_v += nanoc_x * nanoc_x;"
         finish_lines = ["            nanoc_v = sqrtf(nanoc_v);"]
+    elif kind == "reducelogsum":
+        init_line = "            float nanoc_v = 0.0f;"
+        update_line = "                nanoc_v += nanoc_x;"
+        finish_lines = ["            nanoc_v = logf(nanoc_v);"]
+    elif kind == "reducelogsumexp":
+        init_line = "            float nanoc_v = 0.0f;"
+        update_line = "                nanoc_v += expf(nanoc_x);"
+        finish_lines = ["            nanoc_v = logf(nanoc_v);"]
+    elif kind == "reducesumsquare":
+        init_line = "            float nanoc_v = 0.0f;"
+        update_line = "                nanoc_v += nanoc_x * nanoc_x;"
+        finish_lines = []
     else:
         init_line = "            float nanoc_v = 0.0f;"
         update_line = "                nanoc_v += nanoc_x;"
@@ -2409,11 +2433,14 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "Reciprocal",
             "ReduceL1",
             "ReduceL2",
+            "ReduceLogSum",
+            "ReduceLogSumExp",
             "ReduceMax",
             "ReduceMean",
             "ReduceMin",
             "ReduceProd",
             "ReduceSum",
+            "ReduceSumSquare",
             "Round",
             "Selu",
             "Sign",
@@ -2476,8 +2503,11 @@ def _synthetic_runtime_mappings(graph: ModelGraph) -> list[OpMapping]:
             "ReduceMin",
             "ReduceL1",
             "ReduceL2",
+            "ReduceLogSum",
+            "ReduceLogSumExp",
             "ReduceProd",
             "ReduceSum",
+            "ReduceSumSquare",
             "Where",
             "Unsqueeze",
             "Pad",
@@ -2573,6 +2603,9 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             "ReduceProd",
             "ReduceL1",
             "ReduceL2",
+            "ReduceLogSum",
+            "ReduceLogSumExp",
+            "ReduceSumSquare",
         }:
             layer = _reduce_mean_layer(graph, mapping)
         elif mapping.onnx_op == "Unsqueeze":

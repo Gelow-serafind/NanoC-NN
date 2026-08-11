@@ -384,7 +384,7 @@ for _binary_op in ("Min", "Max", "Pow", "PRelu"):
     REQUIRED_NODE_QUANT_FIELDS[_binary_op] = REQUIRED_NODE_QUANT_FIELDS["Div"]
 for _reduce_op in ("ReduceSum", "ReduceMax", "ReduceMin"):
     REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
-for _reduce_op in ("ReduceProd", "ReduceL1", "ReduceL2"):
+for _reduce_op in ("ReduceProd", "ReduceL1", "ReduceL2", "ReduceLogSum", "ReduceLogSumExp", "ReduceSumSquare"):
     REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
 for _compare_op in ("Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual"):
     REQUIRED_NODE_QUANT_FIELDS[_compare_op] = {
