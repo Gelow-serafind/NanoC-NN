@@ -29,7 +29,7 @@
 | W1d-a | 归约扩展（先做） | `ReduceLogSum` `ReduceLogSumExp` `ReduceSumSquare` | 批 3 | ✅ done（031） |
 | W1c | shape/常量折叠 | `Identity` `Cast`（✅ done 034）；`Constant` `Split` `Expand` `Tile` `Shape` `Size` `ConstantOfShape` `Range`（边界） | 批 10 | ✅ 收敛 |
 | W1d-b | 池化/Lp/变体 | `GlobalMaxPool` `GlobalLpPool` `LpPool` `LpNormalization` `CumSum` `Mean` `Sum` | 批 4 | ✅ done（032） |
-| W0 | ABI 基础（index 输出） | `ArgMax` `ArgMin`（需扩展非 int8 外部 ABI + numeric runner） | 批 5 | ✅ 边界（033，NEG_002/003 unsupported） |
+| W0 | ABI 基础（index 输出） | `ArgMax` `ArgMin`（需扩展非 int8 外部 ABI + numeric runner） | 批 5 | ✅ done（033 边界 → 035 转正 ok） |
 | W2 | bool/索引补完 | `NonZero` `Compress` `OneHot` `TopK` `GatherElements` `GatherND` `ScatterND` | 批 6 | ✅ 边界（见边界记录表） |
 | W3 | 归一化 | `BatchNormalization` `InstanceNormalization` `LayerNormalization` `LRN` `GroupNormalization` | 批 7 | ✅ 边界（见边界记录表） |
 | W4 | 卷积/量化变体 | `ConvTranspose` `ConvInteger` `MatMulInteger` `DynamicQuantizeLinear` `DepthToSpace` `SpaceToDepth` `Resize` `Upsample` | 批 8 | ✅ 边界（见边界记录表） |
@@ -41,9 +41,9 @@
 
 ### 当前指针
 
-- **状态**：✅ **全收敛**（2026-08-12）。所有 MCU 相关算子均有明确状态：PASS 用例或记录拒绝边界。
-- **达成**：批 1-5（W1a/W1b/W1d-a/W1d-b 实现 + W0 边界）、批 6-9（W2/W3/W4/W5 边界）、批 10（Identity/Cast + empty-runtime 修复）
-- **能力集**：106/106 PASS、82/82 numeric（详见 CAPABILITIES.md）
+- **状态**：✅ **全收敛**（2026-08-12），并已开始把高价值拒绝边界拉回能力集（W0 转正）。
+- **达成**：批 1-5（W1a/W1b/W1d-a/W1d-b 实现 + W0 边界）、批 6-9（W2/W3/W4/W5 边界）、批 10（Identity/Cast + empty-runtime 修复）、批 11（035，W0 ArgMax/ArgMin 转 ok + 非 int8 索引 ABI）
+- **能力集**：106/106 PASS、84/84 numeric（详见 CAPABILITIES.md）
 
 ### 边界记录（recorded rejection，无 case，仅 PLAN 归档）
 
@@ -51,8 +51,7 @@
 
 | 波次 | 算子 | 边界原因 |
 |------|------|----------|
-| W0 | ArgMax, ArgMin | int64 index 输出超出 int8 ABI（已有 NEG_002/003 用例） |
-| W2 | NonZero, TopK | int64 索引输出超出 int8 ABI |
+| W2 | NonZero, TopK | int64 索引输出超出 int8 ABI（035 后索引 ABI 已存在，TopK 列入后续转正候选） |
 | W2 | Compress | 输出 shape 依赖 condition 动态确定 |
 | W2 | OneHot | 非 int8 编码张量输出 |
 | W2 | GatherElements, GatherND, ScatterND | 需 int64 索引输入扩展 |
@@ -117,3 +116,4 @@
 | 批 5 (W0) | ArgMax/ArgMin（边界） | 104/104 | 80/80 | PASS | 033 | 2026-08-12 |
 | 批 6-9 | W2/W3/W4/W5 边界记录 | 106/106 | 82/82 | PASS | 034 | 2026-08-12 |
 | 批 10 | Identity/Cast + empty-runtime 修复 | 106/106 | 82/82 | PASS | 034 | 2026-08-12 |
+| 批 11 (W0) | ArgMax/ArgMin 转 ok + 非 int8 索引 ABI | 106/106 | 84/84 | PASS | 035 | 2026-08-12 |

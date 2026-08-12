@@ -22,6 +22,7 @@ class NumericCheck:
     max_abs_error: float | None = None
     max_saturation_ratio: float = 0.5
     float_api: bool = False
+    index_compare: bool = False
 
 
 @dataclass(frozen=True)
@@ -1510,18 +1511,36 @@ CASE_REGISTRY: list[CaseDef] = [
         schema_refs=("ONNX_FLOAT_NO_QDQ_BLOCKED",),
     ),
     CaseDef(
-        "NEG_002",
-        "ArgMax 非 int8 index 输出边界拒绝",
-        "unsupported",
-        "negative",
-        schema_refs=("ONNX_ARGMAX_NON_INT8_UNSUPPORTED",),
+        "ARGSMAX_001",
+        "官方 ArgMax QDQ/int8 rank2 axis=1 int32 index 输出数值精度",
+        "ok",
+        "core/argmax",
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="argmax_qdq_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=0.0,
+            max_saturation_ratio=0.0,
+            index_compare=True,
+        ),
+        schema_refs=("ONNX_ARGMAX_QDQ_INT8",),
     ),
     CaseDef(
-        "NEG_003",
-        "ArgMin 非 int8 index 输出边界拒绝",
-        "unsupported",
-        "negative",
-        schema_refs=("ONNX_ARGMIN_NON_INT8_UNSUPPORTED",),
+        "ARGSMIN_001",
+        "官方 ArgMin QDQ/int8 rank2 axis=1 int32 index 输出数值精度",
+        "ok",
+        "core/argmin",
+        regression=True,
+        numeric=NumericCheck(
+            dataset_id="argmin_qdq_smoke",
+            input_scale=1.0,
+            top1_min_match_ratio=1.0,
+            max_abs_error=0.0,
+            max_saturation_ratio=0.0,
+            index_compare=True,
+        ),
+        schema_refs=("ONNX_ARGMIN_QDQ_INT8",),
     ),
 ]
 

@@ -10,10 +10,11 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 
 - target 结构回归：`106/106 PASS`
 - 稳定回归入口：`PYTHONPATH=src python tdd/scripts/run_regression.py --generate` 已通过，baseline 结构 `86/86 PASS`
-- 数值回归：`82/82 PASS`
-- 图谱 100% 收敛计划（`tdd/iterations/PLAN_100_SUPPORT.md`）**已到达全收敛终态**：所有 MCU 相关 ONNX 算子均有明确状态（PASS 用例或记录拒绝边界）
-- 本轮新增 `Identity`/`Cast`（int8 透传）能力，并**修复 empty-runtime 假阳性**（此前 Cast/Constant 报 ok 但生成 blocked stub；现 passthrough 模型生成真 `memcpy` 路径）
-- `ArgMax`/`ArgMin` 记录为非 int8 ABI 拒绝边界（NEG_002/NEG_003）；W2/W3/W4/W5/W10-其余/W11 共 37 个低价值/超框架算子记录为拒绝边界（详见 PLAN 边界记录表）
+- 数值回归：`84/84 PASS`
+- 图谱 100% 收敛计划（`tdd/iterations/PLAN_100_SUPPORT.md`）**已到达全收敛终态**，且已开始把高价值拒绝边界拉回能力集：W0 的 `ArgMax`/`ArgMin` 从 `unsupported` 转正为 PASS 能力
+- 本轮新增**非 int8 外部 ABI**：索引模型经 `nanoc_model_run_index(const int8_t*, int32_t*)` 暴露 int32 index，numeric runner 新增精确整数比较模式（`index_compare`）
+- 新增 `ArgMax`/`ArgMin`（`ARGSMAX_001`/`ARGSMIN_001`，rank2 axis=1 分类头）能力；`Identity`/`Cast`（int8 透传）已具备，并修复 empty-runtime 假阳性
+- W2/W3/W4/W5/W10-其余/W11 共 37 个低价值/超框架算子仍记录为拒绝边界（详见 PLAN 边界记录表）
 - 终端实机验收层已建立：`tdd/terminal/` 支持 ONNX-vs-HostC-vs-ARMC 三路对比，当前首个接入目标为 `TOPO_003` MNIST int8 on STM32F103
 - 真实网络导入测试扩展到 `NET_001~NET_006`
 - 新增/晋升结构 `ok` 网络：`NET_001` SqueezeNet 1.0 int8、`NET_002` MobileNetV2 int8、`NET_004` KWS DS-CNN-style、`NET_005` signal jump int8
@@ -68,11 +69,11 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 | target 通过 | 106 |
 | target 失败 | 0 |
 | 稳定结构回归 | 86/86 PASS |
-| 数值回归 | 82/82 PASS |
+| 数值回归 | 84/84 PASS |
 | 终端实机验收 | 可选门禁，接入 STM32 时执行 |
 | 当前能力集文件 | `tdd/CAPABILITIES.md` |
 | 当前可视化图谱 | `tdd/reports/onnx_support_map.html` |
-| 最新迭代记录 | `tdd/iterations/034_graph_convergence_final.md` |
+| 最新迭代记录 | `tdd/iterations/035_argmax_argmin_index_abi.md` |
 | 图谱 100% 收敛计划 | `tdd/iterations/PLAN_100_SUPPORT.md` |
 
 ## 已确认主线能力
@@ -101,6 +102,7 @@ NanoC-NN 当前已经进入“真实完整网络驱动”的 TDD 阶段。
 | PRelu int8 常量 slope 带泄漏 | `PRELU_001` | 结构 PASS + 数值 PASS |
 | ReduceLogSum / ReduceLogSumExp / ReduceSumSquare int8 行归约 | `REDUCELOGSUM_001`, `REDUCELOGSUMEXP_001`, `REDUCESUMSQUARE_001` | 结构 PASS + 数值 PASS |
 | ReduceMean / ReduceSum / ReduceMax / ReduceMin / ReduceProd / ReduceL1 / ReduceL2 int8 行归约 | `REDUCEMEAN_001`, `REDUCESUM_001`, `REDUCEMAX_001`, `REDUCEMIN_001`, `REDUCEPROD_001`, `REDUCEL1_001`, `REDUCEL2_001` | 结构 PASS + 数值 PASS |
+| ArgMax / ArgMin int32 index 分类头 | `ARGSMAX_001`, `ARGSMIN_001` | 结构 PASS + 数值 PASS（index_compare 精确相等） |
 | Pad / Slice / Gather int8 静态索引 copy | `PAD_001`, `SLICE_001`, `GATHER_001` | 结构 PASS + 数值 PASS |
 | Unsqueeze int8 静态升维 copy | `UNSQUEEZE_001` | 结构 PASS + 数值 PASS |
 | Transpose int8 显式置换 | `TRANSPOSE_001` | 结构 PASS + 数值 PASS |
@@ -225,4 +227,4 @@ python tdd/tools/mnist_capture/server.py
 4. 继续导入 keyword spotting、tiny anomaly detection、简单 IMU 分类等 MCU 常见小模型。
 5. 将 `NET_004` KWS-style 升级为数值验收候选。
 6. 为 `NET_002` 和 `NET_001` 增加显式 SRAM/Flash 预算 probe，验证 Cortex-M3/M4/M7 平台门禁返回 `oversize` 而不是混入结构能力判断。
-7. 继续沿 ONNX 官方图谱推进下一批 MCU 常见算子形态。`GreaterOrEqual/LessOrEqual` 与 `And/Or/Not/Xor` 已在 028 完成；后续优先 `ArgMax/ArgMin` 分类 index 输出（需扩展非 int8 外部 ABI 与 numeric runner），再补 bool initializer 直接作为逻辑算子输入、bool 逻辑算子多层级联。
+7. 继续沿 ONNX 官方图谱推进下一批 MCU 常见算子形态。`ArgMax/ArgMin` 索引 ABI 已在 035 转正（`nanoc_model_run_index` + index_compare）；后续优先 `TopK`（复用 index ABI，values+index 双输出），再补 `Split`/`Constant` 折叠批与 bool initializer 直接作为逻辑算子输入。

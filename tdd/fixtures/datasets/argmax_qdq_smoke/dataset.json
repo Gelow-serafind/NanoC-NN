@@ -1,0 +1,12 @@
+{
+  "dataset_id": "argmax_qdq_smoke",
+  "case_id": "ARGSMAX_001",
+  "input_tensor": "input",
+  "input_shape": [1, 4],
+  "samples": [
+    {"id": "col1", "values": [0.5, 0.2, 0.1, 0.0]},
+    {"id": "col2", "values": [0.1, 0.35, 0.2, 0.05]},
+    {"id": "col3", "values": [0.15, 0.05, 0.4, 0.1]},
+    {"id": "col4", "values": [0.1, 0.2, 0.3, 0.45]}
+  ]
+}

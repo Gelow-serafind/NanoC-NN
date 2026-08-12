@@ -2522,9 +2522,9 @@ def gen_neg_001() -> Path:
     return path
 
 
-def _gen_arg_neg_case(*, case_id: str, op_type: str, node_name: str, graph_name: str) -> Path:
-    """ArgMax/ArgMin 非 int8 输出边界模型 — [1,4] int8 -> int64[1] index。"""
-    path = MODELS_ROOT / "negative" / f"{case_id}.onnx"
+def _gen_arg_case(*, case_id: str, op_type: str, category: str, node_name: str, graph_name: str) -> Path:
+    """ArgMax/ArgMin 正例模型 — [1,4] QDQ/int8 -> int64[1] index（外部 ABI 为 int32）。"""
+    path = MODELS_ROOT / "core" / category / f"{case_id}.onnx"
     in_shape = [1, 4]
     inp_vi = helper.make_tensor_value_info("input", TensorProto.FLOAT, in_shape)
     out_vi = helper.make_tensor_value_info("output", TensorProto.INT64, [1])
@@ -2546,14 +2546,14 @@ def _gen_arg_neg_case(*, case_id: str, op_type: str, node_name: str, graph_name:
     return path
 
 
-def gen_neg_002() -> Path:
-    """NEG_002: ArgMax int64 输出边界 — unsupported。"""
-    return _gen_arg_neg_case(case_id="NEG_002", op_type="ArgMax", node_name="argmax", graph_name="neg_002_argmax")
+def gen_argsmax_001() -> Path:
+    """ARGSMAX_001: official ArgMax QDQ axis=1 keepdims=1 — [1,4] int8 -> int64[1] index。"""
+    return _gen_arg_case(case_id="ARGSMAX_001", op_type="ArgMax", category="argmax", node_name="argmax", graph_name="argsmax_001_qdq")
 
 
-def gen_neg_003() -> Path:
-    """NEG_003: ArgMin int64 输出边界 — unsupported。"""
-    return _gen_arg_neg_case(case_id="NEG_003", op_type="ArgMin", node_name="argmin", graph_name="neg_003_argmin")
+def gen_argsmin_001() -> Path:
+    """ARGSMIN_001: official ArgMin QDQ axis=1 keepdims=1 — [1,4] int8 -> int64[1] index。"""
+    return _gen_arg_case(case_id="ARGSMIN_001", op_type="ArgMin", category="argmin", node_name="argmin", graph_name="argsmin_001_qdq")
 
 
 # ---------------------------------------------------------------------------
@@ -2819,8 +2819,8 @@ _GENERATORS: dict[str, object] = {
     "QLINEAR_NUM_002": gen_qlinear_num_002,
     "QLINEAR_NUM_003": gen_qlinear_num_003,
     "NEG_001": gen_neg_001,
-    "NEG_002": gen_neg_002,
-    "NEG_003": gen_neg_003,
+    "ARGSMAX_001": gen_argsmax_001,
+    "ARGSMIN_001": gen_argsmin_001,
 }
 
 

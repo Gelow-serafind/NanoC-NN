@@ -198,7 +198,10 @@ def run_numeric_case(
 
     c_runner = work_dir / "numeric_runner.c"
     binary = work_dir / "numeric_runner"
-    if check.float_api:
+    if check.index_compare:
+        _write_index_c_runner(c_runner, samples, graph, check)
+        compile_ok, compile_error = _compile_c_runner(codegen_dir, c_runner, binary)
+    elif check.float_api:
         _write_float_c_runner(c_runner, samples, graph, check)
         compile_ok, compile_error = _compile_float_c_runner(codegen_dir, c_runner, binary)
     else:
@@ -210,24 +213,31 @@ def run_numeric_case(
         result.duration_sec = round(time.monotonic() - t0, 2)
         return result
 
-    if check.float_api:
+    if check.index_compare:
+        c_raw_outputs, run_error = _run_index_c_runner(binary)
+        c_outputs = c_raw_outputs
+    elif check.float_api:
         c_outputs, run_error = _run_float_c_runner(binary)
         c_raw_outputs = [np.asarray([], dtype=np.int8) for _ in c_outputs]
     else:
         c_raw_outputs, run_error = _run_c_runner(binary)
+        c_outputs = []
     result.run_ok = run_error == ""
     if run_error:
         result.error_msg = f"C runner failed: {run_error[:500]}"
         result.duration_sec = round(time.monotonic() - t0, 2)
         return result
 
-    if not check.float_api:
-        output_quant = _model_output_quant(graph)
-        c_outputs = [
-            (raw.astype(np.float32) - float(output_quant["zero_point"])) * float(output_quant["scale"])
-            for raw in c_raw_outputs
-        ]
-    _compare_outputs(result, samples, onnx_outputs, c_raw_outputs, c_outputs, check)
+    if check.index_compare:
+        _compare_index_outputs(result, samples, onnx_outputs, c_raw_outputs, check)
+    else:
+        if not check.float_api:
+            output_quant = _model_output_quant(graph)
+            c_outputs = [
+                (raw.astype(np.float32) - float(output_quant["zero_point"])) * float(output_quant["scale"])
+                for raw in c_raw_outputs
+            ]
+        _compare_outputs(result, samples, onnx_outputs, c_raw_outputs, c_outputs, check)
     result.duration_sec = round(time.monotonic() - t0, 2)
     return result
 
@@ -571,6 +581,52 @@ int main(void)
     path.write_text(code, encoding="utf-8")
 
 
+def _write_index_c_runner(
+    path: Path,
+    samples: list[dict[str, Any]],
+    graph: dict[str, Any],
+    check: NumericCheck,
+) -> None:
+    """索引输出模型 runner：int32 index buffer + nanoc_model_run_index 入口。"""
+    input_arrays = []
+    for index, sample in enumerate(samples):
+        quantized = _pack_quantized_inputs(sample, graph, check)
+        values = ", ".join(str(int(value)) for value in quantized.reshape(-1).tolist())
+        input_arrays.append(f"static const int8_t sample_{index}[{quantized.size}] = {{{values}}};")
+
+    sample_list = ", ".join(f"sample_{index}" for index in range(len(samples)))
+    code = f"""/* Auto-generated numeric TDD runner (index output). */
+#include <stdint.h>
+#include <stdio.h>
+#include "model.h"
+
+#define NUM_SAMPLES {len(samples)}
+
+{chr(10).join(input_arrays)}
+
+static const int8_t *samples[NUM_SAMPLES] = {{{sample_list}}};
+static int32_t output_buffer[NANOC_MODEL_OUTPUT_INDEX_COUNT];
+
+int main(void)
+{{
+    for (int i = 0; i < NUM_SAMPLES; ++i) {{
+        int ret = nanoc_model_run_index(samples[i], output_buffer);
+        if (ret != 0) {{
+            printf("C_ERROR sample=%d ret=%d\\n", i, ret);
+            return ret;
+        }}
+        printf("C_OUT sample=%d", i);
+        for (int j = 0; j < NANOC_MODEL_OUTPUT_INDEX_COUNT; ++j) {{
+            printf(" %d", (int)output_buffer[j]);
+        }}
+        printf("\\n");
+    }}
+    return 0;
+}}
+"""
+    path.write_text(code, encoding="utf-8")
+
+
 def _pack_quantized_inputs(
     sample: dict[str, Any],
     graph: dict[str, Any],
@@ -700,6 +756,28 @@ def _run_c_runner(binary: Path) -> tuple[list[np.ndarray], str]:
     return outputs, ""
 
 
+def _run_index_c_runner(binary: Path) -> tuple[list[np.ndarray], str]:
+    completed = subprocess.run(
+        [str(binary)],
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    if completed.returncode != 0:
+        return [], (completed.stderr or completed.stdout)[:1000]
+    outputs: list[np.ndarray] = []
+    for line in completed.stdout.splitlines():
+        if not line.startswith("C_OUT"):
+            continue
+        parts = line.split()
+        values = [int(value) for value in parts[2:]]
+        outputs.append(np.asarray(values, dtype=np.int32))
+    if not outputs:
+        return [], "C runner produced no C_OUT lines"
+    return outputs, ""
+
+
 def _run_float_c_runner(binary: Path) -> tuple[list[np.ndarray], str]:
     completed = subprocess.run(
         [str(binary)],
@@ -821,6 +899,63 @@ def _compare_outputs(
             f"max abs error {result.max_abs_error:.3f} > {check.max_abs_error:.3f}"
         )
 
+    result.passed = not issues
+    result.error_msg = "; ".join(issues)
+
+
+def _compare_index_outputs(
+    result: NumericCaseResult,
+    samples: list[dict[str, Any]],
+    onnx_outputs: list[np.ndarray],
+    c_index_outputs: list[np.ndarray],
+    check: NumericCheck,
+) -> None:
+    """索引输出精确比较：ONNX int64 index 与 C int32 index 逐元素相等。
+
+    索引输出不做 top1/saturation 统计（无量化饱和概念），只要求 index 精确一致。
+    """
+    result.sample_count = len(samples)
+    matches = 0
+    max_abs = 0.0
+    details: list[dict[str, Any]] = []
+    for sample, onnx_out, c_out in zip(
+        samples,
+        onnx_outputs,
+        c_index_outputs,
+        strict=True,
+    ):
+        onnx_idx = np.asarray(onnx_out, dtype=np.int64).reshape(-1)
+        c_idx = np.asarray(c_out, dtype=np.int64).reshape(-1)
+        diff = np.abs(onnx_idx - c_idx) if onnx_idx.size == c_idx.size else np.array([1.0])
+        sample_max_abs = float(np.max(diff)) if diff.size else 0.0
+        max_abs = max(max_abs, sample_max_abs)
+        exact = bool(sample_max_abs == 0.0)
+        if exact:
+            matches += 1
+        details.append(
+            {
+                "id": sample["id"],
+                "onnx_index": [int(value) for value in onnx_idx.tolist()],
+                "c_index": [int(value) for value in c_idx.tolist()],
+                "exact_match": exact,
+                "max_abs_error": sample_max_abs,
+            }
+        )
+    result.top1_matches = matches
+    result.top1_match_ratio = matches / len(samples) if samples else 0.0
+    result.saturation_ratio = 0.0
+    result.max_abs_error = max_abs
+    result.samples = details
+
+    issues = []
+    if result.top1_match_ratio < check.top1_min_match_ratio:
+        issues.append(
+            f"index match ratio {result.top1_match_ratio:.3f} < {check.top1_min_match_ratio:.3f}"
+        )
+    if check.max_abs_error is not None and result.max_abs_error > check.max_abs_error:
+        issues.append(
+            f"index max abs error {result.max_abs_error:.3f} > {check.max_abs_error:.3f}"
+        )
     result.passed = not issues
     result.error_msg = "; ".join(issues)
 
