@@ -24,6 +24,8 @@ SUPPORTED_OPS = {
     "Add",
     "AveragePool",
     "And",
+    "ArgMax",
+    "ArgMin",
     "BatchNormalization",
     "Cast",
     "Constant",
@@ -878,6 +880,10 @@ def _extract_quantization(
             )
             if reduce_quant is not None:
                 node_quant[node.name] = reduce_quant
+        elif node.op_type in {"ArgMax", "ArgMin"}:
+            arg_quant = _argmax_quant_info(node, tensor_quant, warnings)
+            if arg_quant is not None:
+                node_quant[node.name] = arg_quant
         elif node.op_type in {"Min", "Max", "Pow", "PRelu", "Mean", "Sum"}:
             generated_elementwise_quant = _generated_elementwise_quant_info(
                 node,
@@ -1006,6 +1012,8 @@ def _int8_contract(
         "Abs",
         "Add",
         "And",
+        "ArgMax",
+        "ArgMin",
         "AveragePool",
         "Concat",
         "Conv",
@@ -2154,6 +2162,61 @@ def _reduce_mean_quant_info(
             "axes": axes,
             "keepdims": keepdims,
             "block_size": _shape_element_count(output_shape),
+        },
+    }
+
+
+def _argmax_quant_info(
+    node: NodeInfo,
+    tensor_quant: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    """ArgMax/ArgMin 索引输出量化提取：仅输入侧 int8 量化，输出为 int64 index。
+
+    ArgMax/ArgMin 的输出是 index（int64），无量化段；对 int8 输入做单调扫描即可
+    得到与反量化后一致的 argmax/argmin。当前支持 rank=2、axis=1、keepdims∈{0,1}。
+    """
+    if not node.inputs or not node.outputs:
+        return None
+    input_name = node.inputs[0]
+    output_name = node.outputs[0]
+    input_quant = tensor_quant.get(input_name)
+    if input_quant is None:
+        return None
+    input_shape = node.input_shapes.get(input_name, [])
+    if len(input_shape) != 2:
+        warnings.append(
+            f"node '{node.name}' {node.op_type} index path supports rank=2 only."
+        )
+        return None
+    rank = len(input_shape)
+    axis = int(node.normalized_attributes.get("axis", node.attributes.get("axis", 0)))
+    if axis < 0:
+        axis += rank
+    if axis != 1:
+        warnings.append(
+            f"node '{node.name}' {node.op_type} index path supports axis=1 only (got {axis})."
+        )
+        return None
+    keepdims = int(node.normalized_attributes.get("keepdims", node.attributes.get("keepdims", 1)))
+    select_last_index = int(
+        node.normalized_attributes.get("select_last_index", node.attributes.get("select_last_index", 0))
+    )
+    index_count = int(input_shape[0])
+    return {
+        "op_type": node.op_type,
+        "inputs": {input_name: input_quant},
+        "outputs": {output_name: {"dtype": "INT64", "index": True}},
+        "cmsis_nn": {
+            "api": f"generated_c_{node.op_type.lower()}_index",
+            "input_scale": float(input_quant["scale"]),
+            "input_zero_point": int(input_quant["zero_point"]),
+            "input_shape": [int(dim) for dim in input_shape],
+            "index_count": index_count,
+            "axis": axis,
+            "keepdims": keepdims,
+            "select_last_index": select_last_index,
+            "block_size": index_count,
         },
     }
 

@@ -97,6 +97,9 @@ def _renderer_is_complete(graph: ModelGraph, mappings: list[OpMapping]) -> bool:
         in {
             "Abs",
             "Add",
+            "And",
+            "ArgMax",
+            "ArgMin",
             "AveragePool",
             "Ceil",
             "Clip",
@@ -194,7 +197,7 @@ def _write_project_files(
             weights_header,
         ),
         out_dir / "src" / "model.c": _model_c(model_graph, mappings, memory_plan, status),
-        out_dir / "src" / "main.c": _main_c(),
+        out_dir / "src" / "main.c": _main_c(model_graph),
         out_dir / "CMakeLists.txt": _cmake(options),
         out_dir / "firmware_integration.md": _firmware_integration(options, memory_plan, status),
     }
@@ -213,27 +216,39 @@ def _model_h(graph: ModelGraph, memory_plan: MemoryPlan) -> str:
     output_bytes = max(1, sum(item.size_bytes for item in memory_plan.output_buffers))
     input_floats = max(1, sum((tensor.element_count or 0) for tensor in graph.inputs))
     output_floats = max(1, sum((tensor.element_count or 0) for tensor in graph.outputs))
+    output_index_count = max(1, sum((tensor.element_count or 0) for tensor in graph.outputs))
     activation_a = max(1, memory_plan.activation_buffers[0].size_bytes)
     activation_b = max(1, memory_plan.activation_buffers[1].size_bytes)
     scratch = max(1, memory_plan.max_scratch_bytes)
-    return "\n".join(
+    is_index_output = _graph_output_is_index(graph)
+    run_entry = (
+        "int nanoc_model_run_index(const int8_t *input, int32_t *output);"
+        if is_index_output
+        else "int nanoc_model_run(const int8_t *input, int8_t *output);"
+    )
+    lines = [
+        "#ifndef NANOC_MODEL_H",
+        "#define NANOC_MODEL_H",
+        "",
+        "#include <stdint.h>",
+        "#include <stddef.h>",
+        "",
+        f"#define NANOC_MODEL_INPUT_BYTES {input_bytes}u",
+        f"#define NANOC_MODEL_OUTPUT_BYTES {output_bytes}u",
+        f"#define NANOC_MODEL_INPUT_FLOATS {input_floats}u",
+        f"#define NANOC_MODEL_OUTPUT_FLOATS {output_floats}u",
+        f"#define NANOC_MODEL_ACTIVATION_A_BYTES {activation_a}u",
+        f"#define NANOC_MODEL_ACTIVATION_B_BYTES {activation_b}u",
+        f"#define NANOC_MODEL_SCRATCH_BYTES {scratch}u",
+        f"#define NANOC_MODEL_ESTIMATED_SRAM_BYTES {memory_plan.total_sram_bytes}u",
+        f"#define NANOC_MODEL_ESTIMATED_FLASH_BYTES {memory_plan.total_flash_bytes}u",
+        "",
+    ]
+    if is_index_output:
+        lines.append(f"#define NANOC_MODEL_OUTPUT_INDEX_COUNT {output_index_count}u")
+        lines.append("")
+    lines.extend(
         [
-            "#ifndef NANOC_MODEL_H",
-            "#define NANOC_MODEL_H",
-            "",
-            "#include <stdint.h>",
-            "#include <stddef.h>",
-            "",
-            f"#define NANOC_MODEL_INPUT_BYTES {input_bytes}u",
-            f"#define NANOC_MODEL_OUTPUT_BYTES {output_bytes}u",
-            f"#define NANOC_MODEL_INPUT_FLOATS {input_floats}u",
-            f"#define NANOC_MODEL_OUTPUT_FLOATS {output_floats}u",
-            f"#define NANOC_MODEL_ACTIVATION_A_BYTES {activation_a}u",
-            f"#define NANOC_MODEL_ACTIVATION_B_BYTES {activation_b}u",
-            f"#define NANOC_MODEL_SCRATCH_BYTES {scratch}u",
-            f"#define NANOC_MODEL_ESTIMATED_SRAM_BYTES {memory_plan.total_sram_bytes}u",
-            f"#define NANOC_MODEL_ESTIMATED_FLASH_BYTES {memory_plan.total_flash_bytes}u",
-            "",
             "typedef enum nanoc_status_t {",
             "    NANOC_STATUS_OK = 0,",
             "    NANOC_STATUS_BLOCKED = 2,",
@@ -242,13 +257,14 @@ def _model_h(graph: ModelGraph, memory_plan: MemoryPlan) -> str:
             "} nanoc_status_t;",
             "",
             "const char *nanoc_model_status(void);",
-            "int nanoc_model_run(const int8_t *input, int8_t *output);",
+            run_entry,
             "int nanoc_model_run_float(const float * const *inputs, float *output);",
             "",
             "#endif /* NANOC_MODEL_H */",
             "",
         ]
     )
+    return "\n".join(lines)
 
 
 def _model_weights_h(
@@ -280,6 +296,12 @@ def _model_c(
 ) -> str:
     if status == "ok" and _reference_runtime_enabled(graph) and _reference_runtime_supported(graph):
         return _reference_model_c(graph, memory_plan, status)
+    is_index_output = _graph_output_is_index(graph)
+    run_entry = (
+        "int nanoc_model_run_index(const int8_t *input, int32_t *output)"
+        if is_index_output
+        else "int nanoc_model_run(const int8_t *input, int8_t *output)"
+    )
     runtime_layers = _runtime_layers(graph, mappings) if status == "ok" else []
     tensor_buffers = _tensor_buffer_declarations(graph, runtime_layers)
     flatten_transforms = _flatten_layout_transforms(graph)
@@ -338,7 +360,7 @@ def _model_c(
         f"    return \"{status}\";",
         "}",
         "",
-        "int nanoc_model_run(const int8_t *input, int8_t *output)",
+        run_entry,
         "{",
         ]
     )
@@ -842,6 +864,8 @@ def _cmsis_tensor_runtime_run_body(
             "reducesumsquare",
         }:
             lines.extend(_generated_reduce_call(layer, output_expr))
+        elif layer["kind"] in {"argmax", "argmin"}:
+            lines.extend(_generated_argmax_call(layer, output_expr))
         elif layer["kind"] in {"globalmaxpool", "globallppool", "lppool", "lpnormalization", "cumsum"}:
             lines.extend(_generated_spatial_call(layer, output_expr))
         elif layer["kind"] == "unsqueeze":
@@ -1297,6 +1321,8 @@ def _layer_output_element_count(layer: dict[str, Any]) -> int:
         "pad",
         "slice",
         "gather",
+        "argmax",
+        "argmin",
     }:
         return int(layer.get("block_size", 0))
     if layer["kind"] == "transpose":
@@ -1340,6 +1366,13 @@ def _graph_output_size(graph: ModelGraph) -> int:
     if not graph.outputs:
         return 1
     return graph.outputs[0].element_count or 1
+
+
+def _graph_output_is_index(graph: ModelGraph) -> bool:
+    """Index-output model (ArgMax/ArgMin): ONNX output is INT64, no int8 quant path."""
+    if not graph.outputs:
+        return False
+    return graph.outputs[0].elem_type == "INT64"
 
 
 def _graph_input_size(graph: ModelGraph) -> int:
@@ -2062,6 +2095,41 @@ def _generated_reduce_call(layer: dict[str, Any], current_output: str) -> list[s
     ]
 
 
+def _generated_argmax_call(layer: dict[str, Any], current_output: str) -> list[str]:
+    """ArgMax/ArgMin 行扫描索引生成：对 rank2 int8 输入沿 axis=1 求 index。
+
+    int8 q-value 比较与反量化 float 比较等价（scale>0 保序），因此直接扫描
+    int8 缓冲即可。输出写入 int32 index（外部 ABI nanoc_model_run_index）。
+    select_last_index=1 时用 >=/<= 让后出现的相同极值覆盖，取最后一个。
+    """
+    input_expr = layer.get("input_expr", "current_input")
+    input_shape = [int(item) for item in layer["input_shape"]]
+    rows = input_shape[0]
+    cols = input_shape[1]
+    kind = str(layer["kind"])
+    api = f"generated_c_{kind}_index"
+    select_last = int(layer.get("select_last_index", 0))
+    if kind == "argmax":
+        cmp_op = ">=" if select_last else ">"
+    else:
+        cmp_op = "<=" if select_last else "<"
+    return [
+        f"    /* node {layer['index']}: {layer['name']} -> {api} */",
+        "    {",
+        f"        for (size_t nanoc_row = 0u; nanoc_row < {rows}u; ++nanoc_row) {{",
+        f"            int8_t nanoc_best = {input_expr}[nanoc_row * {cols}u];",
+        "            int32_t nanoc_best_idx = 0;",
+        f"            for (size_t nanoc_col = 1u; nanoc_col < {cols}u; ++nanoc_col) {{",
+        f"                int8_t nanoc_x = {input_expr}[nanoc_row * {cols}u + nanoc_col];",
+        f"                if (nanoc_x {cmp_op} nanoc_best) {{ nanoc_best = nanoc_x; nanoc_best_idx = (int32_t)nanoc_col; }}",
+        "            }",
+        f"            {current_output}[nanoc_row] = nanoc_best_idx;",
+        "        }",
+        "    }",
+        "",
+    ]
+
+
 def _generated_unsqueeze_call(layer: dict[str, Any], current_output: str) -> list[str]:
     input_expr = layer.get("input_expr", "current_input")
     return [
@@ -2652,6 +2720,8 @@ def _runtime_layers(graph: ModelGraph, mappings: list[OpMapping]) -> list[dict[s
             "ReduceSumSquare",
         }:
             layer = _reduce_mean_layer(graph, mapping)
+        elif mapping.onnx_op in {"ArgMax", "ArgMin"}:
+            layer = _arg_layer(graph, mapping)
         elif mapping.onnx_op == "Unsqueeze":
             layer = _unsqueeze_layer(graph, mapping)
         elif mapping.onnx_op == "Pad":
@@ -3439,6 +3509,47 @@ def _reduce_mean_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] 
     }
 
 
+def _arg_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
+    quant = _node_quant(graph, mapping.node_name)
+    node = _node_by_name(graph, mapping.node_name)
+    if node is None or quant is None:
+        return None
+    cmsis_nn = quant.get("cmsis_nn", {})
+    if not isinstance(cmsis_nn, dict):
+        return None
+    required = (
+        "input_scale",
+        "input_zero_point",
+        "input_shape",
+        "index_count",
+        "axis",
+        "keepdims",
+        "select_last_index",
+        "block_size",
+    )
+    if any(field not in cmsis_nn for field in required):
+        return None
+    input_shape = [int(item) for item in cmsis_nn["input_shape"]]
+    if len(input_shape) != 2:
+        return None
+    return {
+        "kind": str(mapping.onnx_op).lower(),
+        "index": mapping.index,
+        "name": mapping.node_name,
+        "symbol": _c_symbol(f"nanoc_{mapping.node_name}"),
+        "input_tensors": [node.inputs[0]] if node.inputs else [],
+        "output_tensors": list(node.outputs),
+        "input_scale": float(cmsis_nn["input_scale"]),
+        "input_zero_point": int(cmsis_nn["input_zero_point"]),
+        "input_shape": input_shape,
+        "index_count": int(cmsis_nn["index_count"]),
+        "axis": int(cmsis_nn["axis"]),
+        "keepdims": int(cmsis_nn["keepdims"]),
+        "select_last_index": int(cmsis_nn["select_last_index"]),
+        "block_size": int(cmsis_nn["block_size"]),
+    }
+
+
 def _unsqueeze_layer(graph: ModelGraph, mapping: OpMapping) -> dict[str, Any] | None:
     quant = _node_quant(graph, mapping.node_name)
     node = _node_by_name(graph, mapping.node_name)
@@ -3887,7 +3998,22 @@ def _mapping_comment(mapping: OpMapping) -> list[str]:
     ]
 
 
-def _main_c() -> str:
+def _main_c(graph: ModelGraph) -> str:
+    if _graph_output_is_index(graph):
+        return "\n".join(
+            [
+                "#include \"model.h\"",
+                "",
+                "static int8_t input_buffer[NANOC_MODEL_INPUT_BYTES];",
+                "static int32_t output_buffer[NANOC_MODEL_OUTPUT_INDEX_COUNT];",
+                "",
+                "int main(void)",
+                "{",
+                "    return nanoc_model_run_index(input_buffer, output_buffer);",
+                "}",
+                "",
+            ]
+        )
     return "\n".join(
         [
             "#include \"model.h\"",

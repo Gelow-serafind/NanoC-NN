@@ -403,6 +403,19 @@ for _reduce_op in ("ReduceSum", "ReduceMax", "ReduceMin"):
     REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
 for _reduce_op in ("ReduceProd", "ReduceL1", "ReduceL2", "ReduceLogSum", "ReduceLogSumExp", "ReduceSumSquare"):
     REQUIRED_NODE_QUANT_FIELDS[_reduce_op] = REQUIRED_NODE_QUANT_FIELDS["ReduceMean"]
+for _arg_op in ("ArgMax", "ArgMin"):
+    REQUIRED_NODE_QUANT_FIELDS[_arg_op] = {
+        "cmsis_nn": {
+            "api",
+            "input_scale",
+            "input_zero_point",
+            "input_shape",
+            "index_count",
+            "block_size",
+        },
+        "inputs": "non_empty_dict",
+        "outputs": "non_empty_dict",
+    }
 for _compare_op in ("Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual"):
     REQUIRED_NODE_QUANT_FIELDS[_compare_op] = {
         "cmsis_nn": {
